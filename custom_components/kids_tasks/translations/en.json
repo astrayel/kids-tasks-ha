@@ -1,0 +1,359 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Kids Tasks Setup",
+        "description": "Configure your kids task management system",
+        "data": {
+          "name": "Installation name",
+          "validation_required": "Parental validation required by default",
+          "notifications_enabled": "Notifications enabled"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect",
+      "invalid_config": "Invalid configuration",
+      "unknown": "Unexpected error",
+      "invalid_auth": "Invalid authentication",
+      "timeout": "Connection timeout"
+    },
+    "abort": {
+      "already_configured": "Integration is already configured",
+      "single_instance_allowed": "Only a single instance is allowed"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Kids Tasks Options",
+        "description": "Configure advanced options",
+        "data": {
+          "validation_required": "Parental validation required",
+          "notifications_enabled": "Notifications enabled",
+          "auto_reset_tasks": "Auto-reset tasks",
+          "points_multiplier": "Points multiplier"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "child_points": {
+        "name": "{child_name} Points"
+      },
+      "child_level": {
+        "name": "{child_name} Level"
+      },
+      "child_tasks_today": {
+        "name": "{child_name} Tasks Today"
+      },
+      "child_tasks_week": {
+        "name": "{child_name} Tasks This Week"
+      },
+      "child_streak": {
+        "name": "{child_name} Current Streak"
+      },
+      "pending_validations": {
+        "name": "Pending Validations"
+      },
+      "total_tasks_today": {
+        "name": "Total Tasks Today"
+      },
+      "total_tasks_week": {
+        "name": "Total Tasks This Week"
+      },
+      "active_tasks": {
+        "name": "Active Tasks"
+      },
+      "completed_tasks": {
+        "name": "Completed Tasks"
+      },
+      "overdue_tasks": {
+        "name": "Overdue Tasks"
+      }
+    },
+    "button": {
+      "complete_task": {
+        "name": "Complete: {task_name}"
+      },
+      "validate_task": {
+        "name": "Validate: {task_name}"
+      },
+      "reset_task": {
+        "name": "Reset: {task_name}"
+      },
+      "claim_reward": {
+        "name": "Claim: {reward_name}"
+      }
+    },
+    "select": {
+      "task_status": {
+        "name": "Status: {task_name}",
+        "state": {
+          "todo": "To Do",
+          "in_progress": "In Progress",
+          "completed": "Completed",
+          "pending_validation": "Pending Validation",
+          "validated": "Validated",
+          "failed": "Failed"
+        }
+      },
+      "task_category": {
+        "name": "Category: {task_name}",
+        "state": {
+          "bedroom": "Bedroom",
+          "bathroom": "Bathroom",
+          "kitchen": "Kitchen",
+          "homework": "Homework",
+          "outdoor": "Outdoor",
+          "pets": "Pets",
+          "other": "Other"
+        }
+      },
+      "task_frequency": {
+        "name": "Frequency: {task_name}",
+        "state": {
+          "daily": "Daily",
+          "weekly": "Weekly",
+          "monthly": "Monthly",
+          "once": "Once"
+        }
+      }
+    },
+    "number": {
+      "task_points": {
+        "name": "Points: {task_name}"
+      },
+      "child_points": {
+        "name": "Points: {child_name}"
+      },
+      "reward_cost": {
+        "name": "Cost: {reward_name}"
+      }
+    },
+    "switch": {
+      "task_active": {
+        "name": "Active: {task_name}"
+      },
+      "validation_required": {
+        "name": "Validation Required"
+      },
+      "notifications_enabled": {
+        "name": "Notifications Enabled"
+      }
+    }
+  },
+  "services": {
+    "add_child": {
+      "name": "Add Child",
+      "description": "Add a new child to the system",
+      "fields": {
+        "name": {
+          "name": "Name",
+          "description": "Child's name"
+        },
+        "avatar": {
+          "name": "Avatar",
+          "description": "Emoji or avatar URL"
+        },
+        "initial_points": {
+          "name": "Initial Points",
+          "description": "Starting points for the child"
+        }
+      }
+    },
+    "add_task": {
+      "name": "Add Task",
+      "description": "Create a new recurring task",
+      "fields": {
+        "name": {
+          "name": "Name",
+          "description": "Task name"
+        },
+        "description": {
+          "name": "Description",
+          "description": "Detailed task description"
+        },
+        "category": {
+          "name": "Category",
+          "description": "Task category"
+        },
+        "points": {
+          "name": "Points",
+          "description": "Points awarded for completing this task"
+        },
+        "frequency": {
+          "name": "Frequency",
+          "description": "How often this task repeats"
+        },
+        "assigned_child_id": {
+          "name": "Assigned Child",
+          "description": "ID of the child assigned to this task"
+        },
+        "validation_required": {
+          "name": "Validation Required",
+          "description": "Does this task require parental validation"
+        }
+      }
+    },
+    "add_reward": {
+      "name": "Add Reward",
+      "description": "Add a new reward to the catalog",
+      "fields": {
+        "name": {
+          "name": "Name",
+          "description": "Reward name"
+        },
+        "description": {
+          "name": "Description",
+          "description": "Reward description"
+        },
+        "cost": {
+          "name": "Cost",
+          "description": "Point cost of the reward"
+        },
+        "category": {
+          "name": "Category",
+          "description": "Reward category"
+        },
+        "limited_quantity": {
+          "name": "Limited Quantity",
+          "description": "Maximum number of times this reward can be claimed"
+        }
+      }
+    },
+    "complete_task": {
+      "name": "Complete Task",
+      "description": "Mark a task as completed",
+      "fields": {
+        "task_id": {
+          "name": "Task ID",
+          "description": "Unique identifier of the task"
+        },
+        "validation_required": {
+          "name": "Validation Required",
+          "description": "Force validation mode for this task"
+        }
+      }
+    },
+    "validate_task": {
+      "name": "Validate Task",
+      "description": "Validate a task pending validation",
+      "fields": {
+        "task_id": {
+          "name": "Task ID",
+          "description": "Unique identifier of the task to validate"
+        }
+      }
+    },
+    "reject_task": {
+      "name": "Reject Task",
+      "description": "Reject a task pending validation",
+      "fields": {
+        "task_id": {
+          "name": "Task ID",
+          "description": "Unique identifier of the task to reject"
+        },
+        "reason": {
+          "name": "Reason",
+          "description": "Reason for rejection (optional)"
+        }
+      }
+    },
+    "claim_reward": {
+      "name": "Claim Reward",
+      "description": "Allow a child to claim a reward",
+      "fields": {
+        "reward_id": {
+          "name": "Reward ID",
+          "description": "Unique identifier of the reward"
+        },
+        "child_id": {
+          "name": "Child ID",
+          "description": "Identifier of the child claiming the reward"
+        }
+      }
+    },
+    "reset_task": {
+      "name": "Reset Task",
+      "description": "Reset a task to initial state",
+      "fields": {
+        "task_id": {
+          "name": "Task ID",
+          "description": "Unique identifier of the task to reset"
+        }
+      }
+    },
+    "add_points": {
+      "name": "Add Points",
+      "description": "Add bonus points to a child",
+      "fields": {
+        "child_id": {
+          "name": "Child ID",
+          "description": "Child's identifier"
+        },
+        "points": {
+          "name": "Points",
+          "description": "Number of points to add"
+        },
+        "reason": {
+          "name": "Reason",
+          "description": "Reason for awarding points"
+        }
+      }
+    },
+    "remove_points": {
+      "name": "Remove Points",
+      "description": "Remove points from a child (penalty)",
+      "fields": {
+        "child_id": {
+          "name": "Child ID",
+          "description": "Child's identifier"
+        },
+        "points": {
+          "name": "Points",
+          "description": "Number of points to remove"
+        },
+        "reason": {
+          "name": "Reason",
+          "description": "Reason for point penalty"
+        }
+      }
+    }
+  },
+  "device_automation": {
+    "trigger_type": {
+      "task_completed": "Task completed",
+      "task_validated": "Task validated",
+      "level_up": "Level up",
+      "reward_claimed": "Reward claimed",
+      "streak_achieved": "Streak achieved"
+    },
+    "condition_type": {
+      "task_status": "Task status",
+      "child_level": "Child level",
+      "child_points": "Child points"
+    }
+  },
+  "exceptions": {
+    "child_not_found": {
+      "message": "Child not found: {child_id}"
+    },
+    "task_not_found": {
+      "message": "Task not found: {task_id}"
+    },
+    "reward_not_found": {
+      "message": "Reward not found: {reward_id}"
+    },
+    "insufficient_points": {
+      "message": "Insufficient points to claim this reward"
+    },
+    "task_already_completed": {
+      "message": "This task is already completed"
+    },
+    "invalid_task_status": {
+      "message": "Invalid task status: {status}"
+    }
+  }
+}

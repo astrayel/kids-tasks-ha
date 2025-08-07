@@ -1,0 +1,359 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Configuration Kids Tasks",
+        "description": "Configurez votre système de gestion des tâches enfants",
+        "data": {
+          "name": "Nom de l'installation",
+          "validation_required": "Validation parentale requise par défaut",
+          "notifications_enabled": "Notifications activées"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Impossible de se connecter",
+      "invalid_config": "Configuration invalide",
+      "unknown": "Erreur inconnue",
+      "invalid_auth": "Authentification invalide",
+      "timeout": "Délai d'attente dépassé"
+    },
+    "abort": {
+      "already_configured": "Cette intégration est déjà configurée",
+      "single_instance_allowed": "Une seule instance autorisée"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Options Kids Tasks",
+        "description": "Configurez les options avancées",
+        "data": {
+          "validation_required": "Validation parentale requise",
+          "notifications_enabled": "Notifications activées",
+          "auto_reset_tasks": "Réinitialisation automatique des tâches",
+          "points_multiplier": "Multiplicateur de points"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "child_points": {
+        "name": "{child_name} Points"
+      },
+      "child_level": {
+        "name": "{child_name} Niveau"
+      },
+      "child_tasks_today": {
+        "name": "{child_name} Tâches Aujourd'hui"
+      },
+      "child_tasks_week": {
+        "name": "{child_name} Tâches Cette Semaine"
+      },
+      "child_streak": {
+        "name": "{child_name} Série Actuelle"
+      },
+      "pending_validations": {
+        "name": "Tâches en Attente de Validation"
+      },
+      "total_tasks_today": {
+        "name": "Total Tâches Aujourd'hui"
+      },
+      "total_tasks_week": {
+        "name": "Total Tâches Cette Semaine"
+      },
+      "active_tasks": {
+        "name": "Tâches Actives"
+      },
+      "completed_tasks": {
+        "name": "Tâches Complétées"
+      },
+      "overdue_tasks": {
+        "name": "Tâches en Retard"
+      }
+    },
+    "button": {
+      "complete_task": {
+        "name": "Terminer: {task_name}"
+      },
+      "validate_task": {
+        "name": "Valider: {task_name}"
+      },
+      "reset_task": {
+        "name": "Réinitialiser: {task_name}"
+      },
+      "claim_reward": {
+        "name": "Réclamer: {reward_name}"
+      }
+    },
+    "select": {
+      "task_status": {
+        "name": "Statut: {task_name}",
+        "state": {
+          "todo": "À faire",
+          "in_progress": "En cours",
+          "completed": "Terminé",
+          "pending_validation": "En attente validation",
+          "validated": "Validé",
+          "failed": "Échoué"
+        }
+      },
+      "task_category": {
+        "name": "Catégorie: {task_name}",
+        "state": {
+          "bedroom": "Chambre",
+          "bathroom": "Salle de bain",
+          "kitchen": "Cuisine",
+          "homework": "Devoirs",
+          "outdoor": "Extérieur",
+          "pets": "Animaux",
+          "other": "Autre"
+        }
+      },
+      "task_frequency": {
+        "name": "Fréquence: {task_name}",
+        "state": {
+          "daily": "Quotidienne",
+          "weekly": "Hebdomadaire",
+          "monthly": "Mensuelle",
+          "once": "Une fois"
+        }
+      }
+    },
+    "number": {
+      "task_points": {
+        "name": "Points: {task_name}"
+      },
+      "child_points": {
+        "name": "Points: {child_name}"
+      },
+      "reward_cost": {
+        "name": "Coût: {reward_name}"
+      }
+    },
+    "switch": {
+      "task_active": {
+        "name": "Actif: {task_name}"
+      },
+      "validation_required": {
+        "name": "Validation requise"
+      },
+      "notifications_enabled": {
+        "name": "Notifications activées"
+      }
+    }
+  },
+  "services": {
+    "add_child": {
+      "name": "Ajouter un enfant",
+      "description": "Ajoute un nouvel enfant au système",
+      "fields": {
+        "name": {
+          "name": "Nom",
+          "description": "Nom de l'enfant"
+        },
+        "avatar": {
+          "name": "Avatar",
+          "description": "Emoji ou URL de l'avatar"
+        },
+        "initial_points": {
+          "name": "Points initiaux",
+          "description": "Nombre de points de départ"
+        }
+      }
+    },
+    "add_task": {
+      "name": "Ajouter une tâche",
+      "description": "Crée une nouvelle tâche récurrente",
+      "fields": {
+        "name": {
+          "name": "Nom",
+          "description": "Nom de la tâche"
+        },
+        "description": {
+          "name": "Description",
+          "description": "Description détaillée de la tâche"
+        },
+        "category": {
+          "name": "Catégorie",
+          "description": "Catégorie de la tâche"
+        },
+        "points": {
+          "name": "Points",
+          "description": "Points attribués pour cette tâche"
+        },
+        "frequency": {
+          "name": "Fréquence",
+          "description": "Fréquence de répétition de la tâche"
+        },
+        "assigned_child_id": {
+          "name": "Enfant assigné",
+          "description": "ID de l'enfant assigné à cette tâche"
+        },
+        "validation_required": {
+          "name": "Validation requise",
+          "description": "Cette tâche nécessite-t-elle une validation parentale"
+        }
+      }
+    },
+    "add_reward": {
+      "name": "Ajouter une récompense",
+      "description": "Ajoute une nouvelle récompense au catalogue",
+      "fields": {
+        "name": {
+          "name": "Nom",
+          "description": "Nom de la récompense"
+        },
+        "description": {
+          "name": "Description",
+          "description": "Description de la récompense"
+        },
+        "cost": {
+          "name": "Coût",
+          "description": "Coût en points de la récompense"
+        },
+        "category": {
+          "name": "Catégorie",
+          "description": "Catégorie de la récompense"
+        },
+        "limited_quantity": {
+          "name": "Quantité limitée",
+          "description": "Nombre maximum de fois que cette récompense peut être réclamée"
+        }
+      }
+    },
+    "complete_task": {
+      "name": "Terminer une tâche",
+      "description": "Marque une tâche comme terminée",
+      "fields": {
+        "task_id": {
+          "name": "ID Tâche",
+          "description": "Identifiant unique de la tâche"
+        },
+        "validation_required": {
+          "name": "Validation requise",
+          "description": "Forcer le mode validation pour cette tâche"
+        }
+      }
+    },
+    "validate_task": {
+      "name": "Valider une tâche",
+      "description": "Valide une tâche en attente de validation",
+      "fields": {
+        "task_id": {
+          "name": "ID Tâche",
+          "description": "Identifiant unique de la tâche à valider"
+        }
+      }
+    },
+    "reject_task": {
+      "name": "Rejeter une tâche",
+      "description": "Rejette une tâche en attente de validation",
+      "fields": {
+        "task_id": {
+          "name": "ID Tâche",
+          "description": "Identifiant unique de la tâche à rejeter"
+        },
+        "reason": {
+          "name": "Raison",
+          "description": "Raison du rejet (optionnel)"
+        }
+      }
+    },
+    "claim_reward": {
+      "name": "Réclamer une récompense",
+      "description": "Permet à un enfant de réclamer une récompense",
+      "fields": {
+        "reward_id": {
+          "name": "ID Récompense",
+          "description": "Identifiant unique de la récompense"
+        },
+        "child_id": {
+          "name": "ID Enfant",
+          "description": "Identifiant de l'enfant qui réclame la récompense"
+        }
+      }
+    },
+    "reset_task": {
+      "name": "Réinitialiser une tâche",
+      "description": "Remet une tâche à l'état initial",
+      "fields": {
+        "task_id": {
+          "name": "ID Tâche",
+          "description": "Identifiant unique de la tâche à réinitialiser"
+        }
+      }
+    },
+    "add_points": {
+      "name": "Ajouter des points",
+      "description": "Ajoute des points à un enfant (bonus)",
+      "fields": {
+        "child_id": {
+          "name": "ID Enfant",
+          "description": "Identifiant de l'enfant"
+        },
+        "points": {
+          "name": "Points",
+          "description": "Nombre de points à ajouter"
+        },
+        "reason": {
+          "name": "Raison",
+          "description": "Raison de l'attribution des points"
+        }
+      }
+    },
+    "remove_points": {
+      "name": "Retirer des points",
+      "description": "Retire des points à un enfant (pénalité)",
+      "fields": {
+        "child_id": {
+          "name": "ID Enfant",
+          "description": "Identifiant de l'enfant"
+        },
+        "points": {
+          "name": "Points",
+          "description": "Nombre de points à retirer"
+        },
+        "reason": {
+          "name": "Raison",
+          "description": "Raison du retrait des points"
+        }
+      }
+    }
+  },
+  "device_automation": {
+    "trigger_type": {
+      "task_completed": "Tâche terminée",
+      "task_validated": "Tâche validée",
+      "level_up": "Montée de niveau",
+      "reward_claimed": "Récompense réclamée",
+      "streak_achieved": "Série réalisée"
+    },
+    "condition_type": {
+      "task_status": "Statut de la tâche",
+      "child_level": "Niveau de l'enfant",
+      "child_points": "Points de l'enfant"
+    }
+  },
+  "exceptions": {
+    "child_not_found": {
+      "message": "Enfant non trouvé: {child_id}"
+    },
+    "task_not_found": {
+      "message": "Tâche non trouvée: {task_id}"
+    },
+    "reward_not_found": {
+      "message": "Récompense non trouvée: {reward_id}"
+    },
+    "insufficient_points": {
+      "message": "Points insuffisants pour réclamer cette récompense"
+    },
+    "task_already_completed": {
+      "message": "Cette tâche est déjà terminée"
+    },
+    "invalid_task_status": {
+      "message": "Statut de tâche invalide: {status}"
+    }
+  }
+}
