@@ -1,14 +1,10 @@
-# 🧸 Kids Tasks Manager pour Home Assistant
+# 🧸 Kids Tasks Manager pour Home Assistant 
 
-[releases-shield]: https://img.shields.io/github/release/astrayel/kids-tasks-ha.svg?style=for-the-badge
-[releases]: https://github.com/astrayel/kids-tasks-ha/releases
-[commits-shield]: https://img.shields.io/github/commit-activity/y/astrayel/kids-tasks-ha.svg?style=for-the-badge
-[commits]: https://github.com/astrayel/kids-tasks-ha/commits/main
-
-![Project Maintenance][maintenance-shield]
-[![BuyMeCoffee][buymecoffee-shield]][buymecoffee]
-
-[![Community Forum][forum-shield]][forum]
+[![GitHub Release](https://img.shields.io/github/v/release/astrayel/kids-tasks-ha?style=for-the-badge)](https://github.com/astrayel/kids-tasks-ha/releases)
+[![GitHub Issues](https://img.shields.io/github/issues/astrayel/kids-tasks-ha?style=for-the-badge)](https://github.com/astrayel/kids-tasks-ha/issues)
+[![GitHub Stars](https://img.shields.io/github/stars/astrayel/kids-tasks-ha?style=for-the-badge)](https://github.com/astrayel/kids-tasks-ha/stargazers)
+[![License](https://img.shields.io/github/license/astrayel/kids-tasks-ha?style=for-the-badge)](https://github.com/astrayel/kids-tasks-ha/blob/main/LICENSE)
+[![HACS Custom](https://img.shields.io/badge/HACS-Custom-orange?style=for-the-badge)](https://github.com/hacs/integration)
 
 _Intégration pour gérer les tâches récurrentes des enfants avec système de récompenses et validation parentale._
 
