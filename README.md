@@ -1,9 +1,9 @@
 # 🧸 Kids Tasks Manager pour Home Assistant
 
-[![GitHub Release][releases-shield]][releases]
-[![GitHub Activity][commits-shield]][commits]
-[![License][license-shield]](LICENSE)
-[![HACS][hacs-shield]][hacs]
+[releases-shield]: https://img.shields.io/github/release/astrayel/kids-tasks-ha.svg?style=for-the-badge
+[releases]: https://github.com/astrayel/kids-tasks-ha/releases
+[commits-shield]: https://img.shields.io/github/commit-activity/y/astrayel/kids-tasks-ha.svg?style=for-the-badge
+[commits]: https://github.com/astrayel/kids-tasks-ha/commits/main
 
 ![Project Maintenance][maintenance-shield]
 [![BuyMeCoffee][buymecoffee-shield]][buymecoffee]
@@ -36,7 +36,7 @@ _Intégration pour gérer les tâches récurrentes des enfants avec système de 
 1. Assurez-vous que [HACS](https://hacs.xyz/) est installé
 2. Allez dans HACS → Intégrations
 3. Cliquez sur les 3 points en haut à droite → "Dépôts personnalisés"
-4. Ajoutez `https://github.com/votre-username/kids-tasks-ha` comme dépôt de type "Intégration"
+4. Ajoutez `https://github.com/astrayel/kids-tasks-ha` comme dépôt de type "Intégration"
 5. Trouvez "Kids Tasks Manager" et cliquez sur "Télécharger"
 6. Redémarrez Home Assistant
 

@@ -13,7 +13,7 @@
 2. Cliquez sur "Intégrations" 
 3. Cliquez sur les 3 points en haut à droite
 4. Sélectionnez "Dépôts personnalisés"
-5. Ajoutez l'URL : `https://github.com/votre-username/kids-tasks-ha`
+5. Ajoutez l'URL : `https://github.com/astrayel/kids-tasks-ha`
 6. Sélectionnez "Intégration" comme catégorie
 7. Cliquez sur "Ajouter"
 
@@ -34,7 +34,7 @@
 
 ### Étape 1 : Télécharger les fichiers
 
-1. Téléchargez la dernière release depuis [GitHub](https://github.com/votre-username/kids-tasks-ha/releases)
+1. Téléchargez la dernière release depuis [GitHub](https://github.com/astrayel/kids-tasks-ha/releases)
 2. Extrayez l'archive
 
 ### Étape 2 : Copier les fichiers

@@ -39,4 +39,4 @@ et ce projet adhère au [Versioning Sémantique](https://semver.org/spec/v2.0.0.
 - Sélecteurs de statut des tâches
 - Contrôles numériques pour les points des tâches
 
-[1.0.0]: https://github.com/votre-username/kids-tasks-ha/releases/tag/v1.0.0
+[1.0.0]: https://github.com/astrayel/kids-tasks-ha/releases/tag/v1.0.0
