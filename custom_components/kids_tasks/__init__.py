@@ -13,6 +13,7 @@ from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.storage import Store
 import os
+from homeassistant.components.frontend import add_extra_js_url
 
 from .const import DOMAIN, STORAGE_VERSION, STORAGE_KEY
 from .coordinator import KidsTasksDataUpdateCoordinator
@@ -50,8 +51,30 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Setup services
     await async_setup_services(hass, coordinator)
     
-    # For HACS, the frontend files are handled automatically
-    # No manual registration needed when using HACS
+    # Register frontend resources - works for both HACS and manual installs
+    integration_dir = os.path.dirname(__file__)
+    
+    # Try to register with HACS paths first, fallback to integration directory
+    try:
+        # HACS style registration
+        add_extra_js_url(hass, f"/hacsfiles/{DOMAIN}/kids-tasks-card.js")
+        add_extra_js_url(hass, f"/hacsfiles/{DOMAIN}/kids-tasks-manager.js") 
+        add_extra_js_url(hass, f"/hacsfiles/{DOMAIN}/kids-tasks-forms.js")
+        add_extra_js_url(hass, f"/hacsfiles/{DOMAIN}/kids-tasks-data.js")
+        add_extra_js_url(hass, f"/hacsfiles/{DOMAIN}/kids-tasks-complete.js")
+        _LOGGER.info("Registered frontend resources via HACS paths")
+    except Exception as e:
+        _LOGGER.warning(f"Could not register HACS paths, trying direct paths: {e}")
+        # Fallback to direct paths
+        try:
+            add_extra_js_url(hass, f"/local/{DOMAIN}/kids-tasks-card.js")
+            add_extra_js_url(hass, f"/local/{DOMAIN}/kids-tasks-manager.js")
+            add_extra_js_url(hass, f"/local/{DOMAIN}/kids-tasks-forms.js") 
+            add_extra_js_url(hass, f"/local/{DOMAIN}/kids-tasks-data.js")
+            add_extra_js_url(hass, f"/local/{DOMAIN}/kids-tasks-complete.js")
+            _LOGGER.info("Registered frontend resources via local paths")
+        except Exception as e2:
+            _LOGGER.error(f"Failed to register frontend resources: {e2}")
     
     return True
 

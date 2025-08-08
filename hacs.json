@@ -2,5 +2,7 @@
   "name": "Kids Tasks Manager",
   "content_in_root": false,
   "filename": "kids_tasks",
-  "render_readme": true
+  "render_readme": true,
+  "zip_release": false,
+  "hide_default_branch": false
 }
