@@ -1,25 +1,25 @@
-// Interface graphique complète pour Kids Tasks Manager
-// Inclut toutes les fonctionnalités : dashboard, formulaires, gestion des données
+// Fichier principal qui assemble tous les composants de l'interface Kids Tasks Manager
 
-class KidsTasksCard extends HTMLElement {
+// Import des mixins (dans un vrai environnement, ces scripts seraient chargés séparément)
+// Pour l'instant, on les inclut directement dans ce fichier
+
+class KidsTasksCompleteManager extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: 'open' });
     this.currentView = 'dashboard';
     this.selectedChild = null;
     this.selectedTask = null;
-    this._initialized = false;
   }
 
   setConfig(config) {
     this.config = config || {};
     this.title = config.title || 'Gestionnaire de Tâches Enfants';
-    this.showNavigation = config.show_navigation !== false;
   }
 
   set hass(hass) {
     this._hass = hass;
-    if (!this._initialized && hass) {
+    if (!this._initialized) {
       this._initialized = true;
       this.addEventListener('click', this.handleClick.bind(this));
     }
@@ -31,15 +31,12 @@ class KidsTasksCard extends HTMLElement {
   }
 
   render() {
-    if (!this._hass) {
-      this.shadowRoot.innerHTML = '<div class="loading">Chargement...</div>';
-      return;
-    }
+    if (!this._hass) return;
 
     this.shadowRoot.innerHTML = `
       ${this.getStyles()}
       <div class="kids-tasks-manager">
-        ${this.showNavigation ? this.getNavigation() : ''}
+        ${this.getNavigation()}
         <div class="content">
           ${this.getCurrentView()}
         </div>
@@ -72,11 +69,21 @@ class KidsTasksCard extends HTMLElement {
       case 'edit-child':
         this.showChildForm(id);
         break;
+      case 'remove-child':
+        this.confirm(`Êtes-vous sûr de vouloir supprimer cet enfant ?`, () => {
+          this.removeChild(id);
+        });
+        break;
       case 'add-task':
         this.showTaskForm();
         break;
       case 'edit-task':
         this.showTaskForm(id);
+        break;
+      case 'remove-task':
+        this.confirm(`Êtes-vous sûr de vouloir supprimer cette tâche ?`, () => {
+          this.removeTask(id);
+        });
         break;
       case 'complete-task':
         this.completeTask(id);
@@ -102,11 +109,56 @@ class KidsTasksCard extends HTMLElement {
     }
   }
 
+  showClaimRewardDialog(rewardId) {
+    const reward = this.getRewardById(rewardId);
+    const children = this.getChildren();
+    
+    if (!reward || children.length === 0) return;
+
+    const availableChildren = children.filter(child => child.points >= reward.cost);
+
+    const modal = this.createModal(
+      'Échanger une récompense',
+      `
+        <div class="reward-claim">
+          <div class="reward-info">
+            <h3>${reward.name}</h3>
+            <p>Coût: ${reward.cost} points</p>
+            ${reward.description ? `<p>${reward.description}</p>` : ''}
+          </div>
+          
+          ${availableChildren.length > 0 ? `
+            <div class="form-group">
+              <label class="form-label">Choisir l'enfant :</label>
+              <select id="claim-child" class="form-select">
+                ${availableChildren.map(child => `
+                  <option value="${child.id}">${child.name} (${child.points} points)</option>
+                `).join('')}
+              </select>
+            </div>
+          ` : `
+            <div class="empty-state">
+              <p>Aucun enfant n'a suffisamment de points pour cette récompense.</p>
+            </div>
+          `}
+        </div>
+      `,
+      availableChildren.length > 0 ? () => {
+        const childId = this.shadowRoot.getElementById('claim-child').value;
+        this.claimReward(rewardId, childId);
+      } : null
+    );
+    
+    this.showModal(modal);
+  }
+
   // Styles CSS complets
   getStyles() {
     return `
       <style>
-        * { box-sizing: border-box; }
+        * {
+          box-sizing: border-box;
+        }
         
         .kids-tasks-manager {
           font-family: var(--paper-font-body1_-_font-family, Roboto, sans-serif);
@@ -114,7 +166,7 @@ class KidsTasksCard extends HTMLElement {
           border-radius: var(--border-radius, 8px);
           box-shadow: var(--card-box-shadow, 0 2px 4px rgba(0,0,0,0.1));
           overflow: hidden;
-          min-height: 300px;
+          min-height: 400px;
         }
         
         .nav-tabs {
@@ -122,6 +174,7 @@ class KidsTasksCard extends HTMLElement {
           background: var(--primary-color, #3f51b5);
           margin: 0;
           padding: 0;
+          border-bottom: 1px solid var(--divider-color, #e0e0e0);
         }
         
         .nav-tab {
@@ -140,11 +193,25 @@ class KidsTasksCard extends HTMLElement {
           justify-content: center;
         }
         
-        .nav-tab:hover { background: rgba(255, 255, 255, 0.1); }
-        .nav-tab.active { background: rgba(255, 255, 255, 0.2); font-weight: bold; }
+        .nav-tab:hover {
+          background: rgba(255, 255, 255, 0.1);
+        }
         
-        .content { padding: 20px; background: var(--card-background-color, white); }
-        .section { margin-bottom: 24px; }
+        .nav-tab.active {
+          background: rgba(255, 255, 255, 0.2);
+          font-weight: bold;
+        }
+        
+        .content {
+          padding: 20px;
+          background: var(--card-background-color, white);
+          min-height: 300px;
+        }
+        
+        .section {
+          margin-bottom: 24px;
+        }
+        
         .section h2 {
           margin: 0 0 16px 0;
           color: var(--primary-text-color, #212121);
@@ -156,7 +223,7 @@ class KidsTasksCard extends HTMLElement {
         
         .stats-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
           gap: 16px;
           margin-bottom: 24px;
         }
@@ -170,14 +237,25 @@ class KidsTasksCard extends HTMLElement {
           align-items: center;
         }
         
-        .stat-icon { font-size: 2em; margin-right: 16px; }
-        .stat-info { flex: 1; }
+        .stat-icon {
+          font-size: 2em;
+          margin-right: 16px;
+        }
+        
+        .stat-info {
+          flex: 1;
+        }
+        
         .stat-number {
           font-size: 1.5em;
           font-weight: bold;
           color: var(--primary-text-color, #212121);
         }
-        .stat-label { color: var(--secondary-text-color, #757575); font-size: 0.9em; }
+        
+        .stat-label {
+          color: var(--secondary-text-color, #757575);
+          font-size: 0.9em;
+        }
         
         .child-card {
           display: flex;
@@ -190,15 +268,26 @@ class KidsTasksCard extends HTMLElement {
           transition: all 0.3s;
         }
         
-        .child-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-        .child-avatar { font-size: 2.5em; margin-right: 16px; }
-        .child-info { flex: 1; }
+        .child-card:hover {
+          box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .child-avatar {
+          font-size: 2.5em;
+          margin-right: 16px;
+        }
+        
+        .child-info {
+          flex: 1;
+        }
+        
         .child-name {
           font-size: 1.1em;
           font-weight: bold;
           margin-bottom: 4px;
           color: var(--primary-text-color, #212121);
         }
+        
         .child-stats {
           color: var(--secondary-text-color, #757575);
           font-size: 0.9em;
@@ -241,18 +330,38 @@ class KidsTasksCard extends HTMLElement {
           transition: all 0.3s;
         }
         
-        .task-item:hover { box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
-        .task-item.pending_validation { border-left-color: #ff5722; background: #fff3e0; }
-        .task-item.validated { border-left-color: #4caf50; }
+        .task-item:hover {
+          box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+        }
         
-        .task-content { flex: 1; }
+        .task-item.pending_validation {
+          border-left-color: #ff5722;
+          background: #fff3e0;
+        }
+        
+        .task-item.validated {
+          border-left-color: #4caf50;
+        }
+        
+        .task-content {
+          flex: 1;
+        }
+        
         .task-title {
           font-weight: bold;
           margin-bottom: 4px;
           color: var(--primary-text-color, #212121);
         }
-        .task-meta { font-size: 0.85em; color: var(--secondary-text-color, #757575); }
-        .task-actions { display: flex; gap: 8px; }
+        
+        .task-meta {
+          font-size: 0.85em;
+          color: var(--secondary-text-color, #757575);
+        }
+        
+        .task-actions {
+          display: flex;
+          gap: 8px;
+        }
         
         .task-status {
           padding: 4px 12px;
@@ -278,34 +387,64 @@ class KidsTasksCard extends HTMLElement {
           font-size: 13px;
           font-weight: 500;
           transition: all 0.3s;
+          text-decoration: none;
           display: inline-flex;
           align-items: center;
           justify-content: center;
           min-height: 32px;
-          text-decoration: none;
         }
         
-        .btn:hover { transform: translateY(-1px); box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
-        .btn:active { transform: translateY(0); }
+        .btn:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
         
-        .btn-primary { background: var(--primary-color, #3f51b5); color: white; }
-        .btn-success { background: #4caf50; color: white; }
-        .btn-danger { background: #f44336; color: white; }
+        .btn:active {
+          transform: translateY(0);
+        }
+        
+        .btn-primary {
+          background: var(--primary-color, #3f51b5);
+          color: white;
+        }
+        
+        .btn-success {
+          background: #4caf50;
+          color: white;
+        }
+        
+        .btn-danger {
+          background: #f44336;
+          color: white;
+        }
+        
         .btn-secondary {
           background: var(--secondary-background-color, #fafafa);
           color: var(--primary-text-color, #212121);
           border: 1px solid var(--divider-color, #e0e0e0);
         }
         
-        .btn-icon { padding: 6px 12px; font-size: 12px; }
-        .btn-icon::before { margin-right: 4px; font-weight: normal; }
+        .btn-icon {
+          padding: 6px 12px;
+          font-size: 12px;
+        }
+        
+        .btn-icon::before {
+          margin-right: 4px;
+          font-weight: normal;
+        }
+        
         .add-btn::before { content: "+ "; }
         .edit-btn::before { content: "✎ "; }
+        .delete-btn::before { content: "🗑 "; }
         .validate-btn::before { content: "✓ "; }
         .reject-btn::before { content: "✗ "; }
         .claim-btn::before { content = "🎁 "; }
         
-        .form-group { margin-bottom: 16px; }
+        .form-group {
+          margin-bottom: 16px;
+        }
+        
         .form-label {
           display: block;
           margin-bottom: 4px;
@@ -330,9 +469,45 @@ class KidsTasksCard extends HTMLElement {
           box-shadow: 0 0 0 2px rgba(63, 81, 181, 0.2);
         }
         
-        .form-textarea { height: 80px; resize: vertical; }
-        .form-row { display: flex; gap: 12px; }
-        .form-row .form-group { flex: 1; }
+        .form-textarea {
+          height: 80px;
+          resize: vertical;
+        }
+        
+        .form-row {
+          display: flex;
+          gap: 12px;
+        }
+        
+        .form-row .form-group {
+          flex: 1;
+        }
+        
+        .avatar-options {
+          display: flex;
+          gap: 8px;
+          flex-wrap: wrap;
+          margin-bottom: 8px;
+        }
+        
+        .avatar-option {
+          padding: 8px;
+          border: 2px solid var(--divider-color, #e0e0e0);
+          border-radius: 8px;
+          background: var(--secondary-background-color, #fafafa);
+          cursor: pointer;
+          font-size: 1.5em;
+          transition: all 0.3s;
+        }
+        
+        .avatar-option:hover {
+          border-color: var(--primary-color, #3f51b5);
+        }
+        
+        .avatar-option.selected {
+          border-color: var(--accent-color, #ff4081);
+          background: rgba(255, 64, 129, 0.1);
+        }
         
         .modal {
           position: fixed;
@@ -349,7 +524,9 @@ class KidsTasksCard extends HTMLElement {
           animation: fadeIn 0.3s forwards;
         }
         
-        @keyframes fadeIn { to { opacity: 1; } }
+        @keyframes fadeIn {
+          to { opacity: 1; }
+        }
         
         .modal-content {
           background: var(--card-background-color, white);
@@ -364,7 +541,9 @@ class KidsTasksCard extends HTMLElement {
           animation: scaleIn 0.3s forwards;
         }
         
-        @keyframes scaleIn { to { transform: scale(1); } }
+        @keyframes scaleIn {
+          to { transform: scale(1); }
+        }
         
         .modal-header {
           display: flex;
@@ -375,8 +554,18 @@ class KidsTasksCard extends HTMLElement {
           background: var(--secondary-background-color, #fafafa);
         }
         
-        .modal-title { margin: 0; font-size: 1.2em; color: var(--primary-text-color, #212121); }
-        .modal-body { padding: 24px; max-height: 60vh; overflow-y: auto; }
+        .modal-title {
+          margin: 0;
+          font-size: 1.2em;
+          color: var(--primary-text-color, #212121);
+        }
+        
+        .modal-body {
+          padding: 24px;
+          max-height: 60vh;
+          overflow-y: auto;
+        }
+        
         .modal-footer {
           padding: 16px 24px;
           border-top: 1px solid var(--divider-color, #e0e0e0);
@@ -402,7 +591,9 @@ class KidsTasksCard extends HTMLElement {
           transition: all 0.3s;
         }
         
-        .close-btn:hover { background: rgba(0,0,0,0.1); }
+        .close-btn:hover {
+          background: rgba(0,0,0,0.1);
+        }
         
         .empty-state {
           text-align: center;
@@ -410,27 +601,44 @@ class KidsTasksCard extends HTMLElement {
           color: var(--secondary-text-color, #757575);
         }
         
-        .empty-state-icon { font-size: 4em; margin-bottom: 16px; opacity: 0.5; }
-        .empty-state p { margin: 0 0 20px 0; font-size: 1.1em; }
-        
-        .grid { display: grid; gap: 16px; }
-        .grid-2 { grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); }
-        .grid-3 { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
-        
-        .avatar-options { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
-        .avatar-option {
-          padding: 8px;
-          border: 2px solid var(--divider-color, #e0e0e0);
-          border-radius: 8px;
-          background: var(--secondary-background-color, #fafafa);
-          cursor: pointer;
-          font-size: 1.5em;
-          transition: all 0.3s;
+        .empty-state-icon {
+          font-size: 4em;
+          margin-bottom: 16px;
+          opacity: 0.5;
         }
-        .avatar-option:hover { border-color: var(--primary-color, #3f51b5); }
-        .avatar-option.selected {
-          border-color: var(--accent-color, #ff4081);
-          background: rgba(255, 64, 129, 0.1);
+        
+        .empty-state p {
+          margin: 0 0 20px 0;
+          font-size: 1.1em;
+        }
+        
+        .grid {
+          display: grid;
+          gap: 16px;
+        }
+        
+        .grid-2 {
+          grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        }
+        
+        .grid-3 {
+          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        }
+        
+        .reward-claim {
+          text-align: center;
+        }
+        
+        .reward-info {
+          margin-bottom: 24px;
+          padding: 16px;
+          background: var(--secondary-background-color, #fafafa);
+          border-radius: 8px;
+        }
+        
+        .reward-info h3 {
+          margin: 0 0 8px 0;
+          color: var(--primary-text-color, #212121);
         }
         
         .loading {
@@ -442,17 +650,52 @@ class KidsTasksCard extends HTMLElement {
         }
         
         @media (max-width: 768px) {
-          .content { padding: 16px; }
-          .nav-tab { font-size: 11px; padding: 8px 4px; }
-          .form-row { flex-direction: column; }
-          .grid-2, .grid-3 { grid-template-columns: 1fr; }
-          .stats-grid { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
-          .child-card { flex-direction: column; text-align: center; padding: 16px 12px; }
-          .child-avatar { margin: 0 0 12px 0; }
-          .task-item { flex-direction: column; align-items: flex-start; }
-          .task-actions { margin-top: 12px; width: 100%; justify-content: center; }
-          .modal-content { width: 95%; margin: 0 auto; }
-          .modal-body { padding: 16px; }
+          .content {
+            padding: 16px;
+          }
+          
+          .nav-tab {
+            font-size: 11px;
+            padding: 8px 4px;
+          }
+          
+          .form-row {
+            flex-direction: column;
+          }
+          
+          .grid-2, .grid-3 {
+            grid-template-columns: 1fr;
+          }
+          
+          .child-card {
+            flex-direction: column;
+            text-align: center;
+            padding: 16px 12px;
+          }
+          
+          .child-avatar {
+            margin: 0 0 12px 0;
+          }
+          
+          .task-item {
+            flex-direction: column;
+            align-items: flex-start;
+          }
+          
+          .task-actions {
+            margin-top: 12px;
+            width: 100%;
+            justify-content: center;
+          }
+          
+          .modal-content {
+            width: 95%;
+            margin: 0 auto;
+          }
+          
+          .modal-body {
+            padding: 16px;
+          }
         }
       </style>
     `;
@@ -479,13 +722,19 @@ class KidsTasksCard extends HTMLElement {
     `;
   }
 
+  // Vues
   getCurrentView() {
     switch (this.currentView) {
-      case 'dashboard': return this.getDashboardView();
-      case 'children': return this.getChildrenView();
-      case 'tasks': return this.getTasksView();
-      case 'rewards': return this.getRewardsView();
-      default: return this.getDashboardView();
+      case 'dashboard':
+        return this.getDashboardView();
+      case 'children':
+        return this.getChildrenView();
+      case 'tasks':
+        return this.getTasksView();
+      case 'rewards':
+        return this.getRewardsView();
+      default:
+        return this.getDashboardView();
     }
   }
 
@@ -494,10 +743,12 @@ class KidsTasksCard extends HTMLElement {
     const tasks = this.getTasks();
     const stats = this.getStats();
     const pendingTasks = tasks.filter(t => t.status === 'pending_validation');
+    const leaderboard = this.getChildrenLeaderboard();
 
     return `
       <div class="section">
         <h2>Tableau de bord</h2>
+        
         <div class="stats-grid">
           <div class="stat-card">
             <div class="stat-icon">👶</div>
@@ -530,10 +781,26 @@ class KidsTasksCard extends HTMLElement {
         </div>
       </div>
 
-      ${children.length > 0 ? `
+      ${leaderboard.length > 0 ? `
         <div class="section">
-          <h2>Enfants</h2>
-          ${children.map(child => this.renderChildCard(child)).join('')}
+          <h2>Classement des enfants</h2>
+          ${leaderboard.map((child, index) => `
+            <div class="child-card">
+              <div class="stat-icon">${index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '👶'}</div>
+              <div class="child-avatar">${child.avatar}</div>
+              <div class="child-info">
+                <div class="child-name">${child.name}</div>
+                <div class="child-stats">
+                  ${child.points} points • ${child.todayCompleted}/${child.todayTasks} tâches aujourd'hui
+                  ${child.completionRate > 0 ? `• ${Math.round(child.completionRate)}% de réussite` : ''}
+                  <div class="progress-bar">
+                    <div class="progress-fill" style="width: ${child.completionRate || 0}%"></div>
+                  </div>
+                </div>
+              </div>
+              <div class="level-badge">Niveau ${child.level}</div>
+            </div>
+          `).join('')}
         </div>
       ` : `
         <div class="empty-state">
@@ -554,15 +821,17 @@ class KidsTasksCard extends HTMLElement {
 
   getChildrenView() {
     const children = this.getChildren();
+
     return `
       <div class="section">
         <h2>
           Gestion des enfants
           <button class="btn btn-primary add-btn" data-action="add-child">Ajouter</button>
         </h2>
+        
         ${children.length > 0 ? `
           <div class="grid grid-2">
-            ${children.map(child => this.renderChildCard(child, true)).join('')}
+            ${children.map(child => this.renderChildCard(child)).join('')}
           </div>
         ` : `
           <div class="empty-state">
@@ -578,13 +847,17 @@ class KidsTasksCard extends HTMLElement {
   getTasksView() {
     const children = this.getChildren();
     const tasks = this.getTasks();
+
     return `
       <div class="section">
         <h2>
           Gestion des tâches
           <button class="btn btn-primary add-btn" data-action="add-task">Ajouter</button>
         </h2>
-        ${tasks.length > 0 ? tasks.map(task => this.renderTaskItem(task, children, false)).join('') : `
+        
+        ${tasks.length > 0 ? `
+          ${tasks.map(task => this.renderTaskItem(task, children, false)).join('')}
+        ` : `
           <div class="empty-state">
             <div class="empty-state-icon">📝</div>
             <p>Aucune tâche créée</p>
@@ -597,12 +870,14 @@ class KidsTasksCard extends HTMLElement {
 
   getRewardsView() {
     const rewards = this.getRewards();
+
     return `
       <div class="section">
         <h2>
           Gestion des récompenses
           <button class="btn btn-primary add-btn" data-action="add-reward">Ajouter</button>
         </h2>
+        
         ${rewards.length > 0 ? `
           <div class="grid grid-2">
             ${rewards.map(reward => this.renderRewardCard(reward)).join('')}
@@ -618,14 +893,15 @@ class KidsTasksCard extends HTMLElement {
     `;
   }
 
-  renderChildCard(child, showActions = false) {
+  // Rendu des éléments
+  renderChildCard(child) {
     const tasks = this.getTasks();
     const completedToday = this.getChildCompletedToday(child.id, tasks).length;
     const todayTasks = this.getChildTasksToday(child.id, tasks).length;
 
     return `
       <div class="child-card">
-        <div class="child-avatar">${child.avatar || '👶'}</div>
+        <div class="child-avatar">${child.avatar}</div>
         <div class="child-info">
           <div class="child-name">${child.name}</div>
           <div class="child-stats">
@@ -637,11 +913,9 @@ class KidsTasksCard extends HTMLElement {
           </div>
         </div>
         <div class="level-badge">Niveau ${child.level}</div>
-        ${showActions ? `
-          <div class="task-actions">
-            <button class="btn btn-secondary btn-icon edit-btn" data-action="edit-child" data-id="${child.id}">Modifier</button>
-          </div>
-        ` : ''}
+        <div class="task-actions">
+          <button class="btn btn-secondary btn-icon edit-btn" data-action="edit-child" data-id="${child.id}">Modifier</button>
+        </div>
       </div>
     `;
   }
@@ -691,266 +965,67 @@ class KidsTasksCard extends HTMLElement {
     `;
   }
 
-  // Récupération des données depuis Home Assistant
-  getChildren() {
-    const children = [];
-    const entities = this._hass.states;
-    
-    Object.keys(entities).forEach(entityId => {
-      if (entityId.startsWith('sensor.kids_tasks_') && entityId.includes('_points')) {
-        const childMatch = entityId.match(/sensor\.kids_tasks_(.+)_points/);
-        if (childMatch) {
-          const childId = childMatch[1];
-          const pointsEntity = entities[entityId];
-          const levelEntity = entities[`sensor.kids_tasks_${childId}_level`];
-          
-          if (pointsEntity && levelEntity) {
-            const points = parseInt(pointsEntity.state) || 0;
-            const level = parseInt(levelEntity.state) || 1;
-            const progress = ((points % 100) / 100) * 100;
-            
-            children.push({
-              id: childId,
-              name: pointsEntity.attributes.friendly_name?.replace(' Points', '') || childId,
-              points: points,
-              level: level,
-              progress: progress,
-              avatar: pointsEntity.attributes.avatar || '👶'
-            });
-          }
-        }
-      }
-    });
-    
-    return children.sort((a, b) => a.name.localeCompare(b.name));
-  }
+  // Intégration des autres composants (forms et data)
+  // Ces méthodes seront ajoutées via les mixins dans les autres fichiers
 
-  getTasks() {
-    const tasks = [];
-    const entities = this._hass.states;
-    
-    Object.keys(entities).forEach(entityId => {
-      if (entityId.startsWith('sensor.kids_tasks_task_')) {
-        const taskEntity = entities[entityId];
-        if (taskEntity && taskEntity.attributes) {
-          const attrs = taskEntity.attributes;
-          
-          tasks.push({
-            id: attrs.task_id || entityId.replace('sensor.kids_tasks_task_', ''),
-            name: attrs.friendly_name || attrs.task_name || 'Tâche sans nom',
-            description: attrs.description || '',
-            category: attrs.category || 'other',
-            points: parseInt(attrs.points) || 10,
-            frequency: attrs.frequency || 'daily',
-            status: taskEntity.state || 'todo',
-            assigned_child_id: attrs.assigned_child_id || null,
-            validation_required: attrs.validation_required !== false,
-            active: attrs.active !== false,
-            created_at: attrs.created_at || new Date().toISOString(),
-            last_completed_at: attrs.last_completed_at || null
-          });
-        }
-      }
-    });
-    
-    return tasks.sort((a, b) => {
-      if (a.status === 'pending_validation' && b.status !== 'pending_validation') return -1;
-      if (b.status === 'pending_validation' && a.status !== 'pending_validation') return 1;
-      return a.name.localeCompare(b.name);
-    });
-  }
-
-  getRewards() {
-    const rewards = [];
-    const entities = this._hass.states;
-    
-    Object.keys(entities).forEach(entityId => {
-      if (entityId.startsWith('sensor.kids_tasks_reward_')) {
-        const rewardEntity = entities[entityId];
-        if (rewardEntity && rewardEntity.attributes) {
-          const attrs = rewardEntity.attributes;
-          
-          rewards.push({
-            id: attrs.reward_id || entityId.replace('sensor.kids_tasks_reward_', ''),
-            name: attrs.friendly_name || attrs.reward_name || 'Récompense sans nom',
-            description: attrs.description || '',
-            category: attrs.category || 'fun',
-            cost: parseInt(attrs.cost) || 50,
-            active: attrs.active !== false,
-            limited_quantity: attrs.limited_quantity || null,
-            remaining_quantity: attrs.remaining_quantity || null
-          });
-        }
-      }
-    });
-    
-    return rewards.sort((a, b) => a.name.localeCompare(b.name));
-  }
-
-  getStats() {
-    const children = this.getChildren();
-    const tasks = this.getTasks();
-    const completedToday = tasks.filter(task => 
-      task.status === 'validated' && 
-      task.last_completed_at && 
-      this.isToday(task.last_completed_at)
-    ).length;
-
-    return {
-      totalChildren: children.length,
-      totalTasks: tasks.length,
-      completedToday: completedToday,
-      pendingValidation: tasks.filter(t => t.status === 'pending_validation').length
-    };
-  }
-
-  getChildTasksToday(childId, tasks = null) {
-    if (!tasks) tasks = this.getTasks();
-    return tasks.filter(task => 
-      task.assigned_child_id === childId && 
-      (task.frequency === 'daily' || 
-       (task.last_completed_at && this.isToday(task.last_completed_at)))
-    );
-  }
-
-  getChildCompletedToday(childId, tasks = null) {
-    if (!tasks) tasks = this.getTasks();
-    return tasks.filter(task => 
-      task.assigned_child_id === childId && 
-      task.status === 'validated' &&
-      task.last_completed_at && 
-      this.isToday(task.last_completed_at)
-    );
-  }
-
-  // Utilitaires
-  isToday(dateString) {
-    if (!dateString) return false;
-    const date = new Date(dateString);
-    const today = new Date();
-    return date.toDateString() === today.toDateString();
-  }
-
-  getChildName(childId, children = null) {
-    if (!children) children = this.getChildren();
-    const child = children.find(c => c.id === childId);
-    return child ? child.name : 'Non assigné';
-  }
-
-  getStatusLabel(status) {
-    const labels = {
-      'todo': 'À faire',
-      'in_progress': 'En cours', 
-      'completed': 'Terminé',
-      'pending_validation': 'En attente',
-      'validated': 'Validé',
-      'failed': 'Échoué'
-    };
-    return labels[status] || status;
-  }
-
-  getCategoryLabel(category) {
-    const labels = {
-      'bedroom': '🛏️ Chambre',
-      'bathroom': '🛁 Salle de bain',
-      'kitchen': '🍽️ Cuisine', 
-      'homework': '📚 Devoirs',
-      'outdoor': '🌳 Extérieur',
-      'pets': '🐕 Animaux',
-      'other': '📦 Autre',
-      'fun': '🎉 Amusement',
-      'screen_time': '📱 Écran',
-      'outing': '🚗 Sortie',
-      'privilege': '👑 Privilège',
-      'toy': '🧸 Jouet',
-      'treat': '🍭 Friandise'
-    };
-    return labels[category] || category;
-  }
-
-  getFrequencyLabel(frequency) {
-    const labels = {
-      'daily': 'Quotidienne',
-      'weekly': 'Hebdomadaire',
-      'monthly': 'Mensuelle', 
-      'once': 'Une fois'
-    };
-    return labels[frequency] || frequency;
-  }
-
-  // Actions de base (placeholders - à étendre pour les formulaires)
-  showChildForm(childId = null) {
-    alert(`Formulaire enfant à implémenter${childId ? ` (ID: ${childId})` : ''}`);
-  }
-
-  showTaskForm(taskId = null) {
-    alert(`Formulaire tâche à implémenter${taskId ? ` (ID: ${taskId})` : ''}`);
-  }
-
-  showRewardForm(rewardId = null) {
-    alert(`Formulaire récompense à implémenter${rewardId ? ` (ID: ${rewardId})` : ''}`);
-  }
-
-  showClaimRewardDialog(rewardId) {
-    alert(`Dialog échange récompense à implémenter (ID: ${rewardId})`);
-  }
-
-  completeTask(taskId) {
-    this._hass.callService('kids_tasks', 'complete_task', { task_id: taskId });
-  }
-
-  validateTask(taskId) {
-    this._hass.callService('kids_tasks', 'validate_task', { task_id: taskId });
-  }
-
-  rejectTask(taskId) {
-    this._hass.callService('kids_tasks', 'reset_task', { task_id: taskId });
-  }
-
-  // Modals (placeholders)
+  // Méthodes de base qui seront étendues
+  getChildren() { return []; }
+  getTasks() { return []; }
+  getRewards() { return []; }
+  getStats() { return { totalChildren: 0, totalTasks: 0, completedToday: 0, pendingValidation: 0 }; }
+  getChildrenLeaderboard() { return []; }
+  getChildTasksToday() { return []; }
+  getChildCompletedToday() { return []; }
+  getChildName() { return 'Non assigné'; }
+  getStatusLabel() { return 'Inconnu'; }
+  getCategoryLabel() { return 'Autre'; }
+  getFrequencyLabel() { return 'Une fois'; }
+  showChildForm() { console.log('showChildForm not implemented'); }
+  showTaskForm() { console.log('showTaskForm not implemented'); }
+  showRewardForm() { console.log('showRewardForm not implemented'); }
+  validateTask(id) { console.log('validateTask not implemented', id); }
+  rejectTask(id) { console.log('rejectTask not implemented', id); }
+  claimReward(rewardId, childId) { console.log('claimReward not implemented', rewardId, childId); }
   createModal() { return ''; }
-  showModal() {}
-  hideModal() {}
-
-  // Configuration pour Home Assistant
-  static getConfigElement() {
-    const element = document.createElement('div');
-    element.innerHTML = `
-      <div style="padding: 20px;">
-        <div style="margin-bottom: 16px;">
-          <label>Titre de la carte:</label>
-          <input type="text" class="form-control" 
-                 placeholder="Gestionnaire de Tâches Enfants"
-                 .value="\${this.config.title || ''}"
-                 .configValue="title">
-        </div>
-        <div style="margin-bottom: 16px;">
-          <label>
-            <input type="checkbox" 
-                   .checked="\${this.config.show_navigation !== false}"
-                   .configValue="show_navigation"> 
-            Afficher la navigation par onglets
-          </label>
-        </div>
-      </div>
-    `;
-    return element;
-  }
-
-  static getStubConfig() {
-    return {
-      title: "Gestionnaire de Tâches Enfants",
-      show_navigation: true
-    };
-  }
+  showModal() { console.log('showModal not implemented'); }
+  hideModal() { console.log('hideModal not implemented'); }
+  confirm(message, callback) { if (window.confirm(message)) callback(); }
+  getChildById() { return null; }
+  getTaskById() { return null; }
+  getRewardById() { return null; }
+  removeChild() { console.log('removeChild not implemented'); }
+  removeTask() { console.log('removeTask not implemented'); }
+  completeTask() { console.log('completeTask not implemented'); }
 }
 
-customElements.define('kids-tasks-card', KidsTasksCard);
+// Configuration de la carte pour Home Assistant
+KidsTasksCompleteManager.getConfigElement = function() {
+  const element = document.createElement('div');
+  element.innerHTML = `
+    <div>
+      <paper-input 
+        label="Titre (optionnel)" 
+        .value="\${this.config.title || ''}"
+        .configValue="title">
+      </paper-input>
+    </div>
+  `;
+  return element;
+};
 
-// Déclaration pour HACS
+KidsTasksCompleteManager.getStubConfig = function() {
+  return {
+    title: "Gestionnaire de Tâches Enfants"
+  };
+};
+
+// Enregistrer le composant
+customElements.define('kids-tasks-complete-manager', KidsTasksCompleteManager);
+
+// Déclarer la carte pour HACS/Home Assistant
 window.customCards = window.customCards || [];
 window.customCards.push({
-  type: 'kids-tasks-card', 
-  name: 'Kids Tasks Card',
-  description: 'Interface graphique pour gérer les tâches et récompenses des enfants'
+  type: 'kids-tasks-complete-manager',
+  name: 'Kids Tasks Manager',
+  description: 'Interface complète pour gérer les tâches et récompenses des enfants'
 });
