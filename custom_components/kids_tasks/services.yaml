@@ -441,7 +441,7 @@ backup_data:
 
 restore_data:
   name: Restore Data
-  description: "Restore data from a backup (WARNING: This will overwrite current data)""
+  description: "Restore data from a backup (WARNING: This will overwrite current data)"
   fields:
     backup_data:
       name: Backup Data
