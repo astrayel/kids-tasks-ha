@@ -32,6 +32,7 @@ SERVICE_ADD_CHILD_SCHEMA = vol.Schema(
     {
         vol.Required("name"): cv.string,
         vol.Optional("avatar"): cv.string,
+        vol.Optional("initial_points", default=0): vol.Coerce(int),
     }
 )
 
@@ -97,6 +98,7 @@ async def async_setup_services(
             id=child_id,
             name=call.data["name"],
             avatar=call.data.get("avatar"),
+            points=call.data.get("initial_points", 0),
         )
         await coordinator.async_add_child(child)
     

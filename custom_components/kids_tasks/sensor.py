@@ -81,9 +81,12 @@ class ChildPointsSensor(CoordinatorEntity, SensorEntity):
         level = child_data.get("level", 1)
         points = child_data.get("points", 0)
         return {
+            "type": "child",  # Add type for card detection
             "level": level,
             "points_to_next_level": (level * 100) - points,
             "child_id": self.child_id,
+            "name": child_data.get("name", "Unknown"),
+            "avatar": child_data.get("avatar", "👶"),
         }
 
 
