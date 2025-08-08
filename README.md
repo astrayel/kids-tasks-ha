@@ -27,7 +27,13 @@ _Intégration pour gérer les tâches récurrentes des enfants avec système de 
 
 ## 📸 Captures d'écran
 
-| Dashboard Parent | Dashboard Enfant | Configuration |
+### Interface Graphique
+| Tableau de bord | Gestion Enfants | Gestion Tâches | Validation Parentale |
+|---|---|---|---|
+| ![Dashboard](docs/images/interface_dashboard.png) | ![Enfants](docs/images/interface_children.png) | ![Tâches](docs/images/interface_tasks.png) | ![Validation](docs/images/interface_validation.png) |
+
+### Configuration
+| Dashboard Parent | Dashboard Enfant | Config Flow |
 |---|---|---|
 | ![Dashboard Parent](docs/images/dashboard_parent.png) | ![Dashboard Enfant](docs/images/dashboard_child.png) | ![Configuration](docs/images/config_flow.png) |
 
@@ -44,11 +50,29 @@ _Intégration pour gérer les tâches récurrentes des enfants avec système de 
 5. Trouvez **"Kids Tasks Manager"** et cliquez sur **"Télécharger"**
 6. Redémarrez Home Assistant
 
+### Installation automatique
+
+Utilisez le script fourni :
+```bash
+python install.py
+```
+
 ### Installation manuelle
 
 1. Téléchargez les fichiers depuis GitHub
 2. Copiez `custom_components/kids_tasks` vers votre dossier `config/custom_components/`
-3. Redémarrez Home Assistant
+3. Copiez `kids-tasks-card.js` vers `config/www/kids_tasks/`
+4. Redémarrez Home Assistant
+
+### Configuration de l'interface
+
+Ajoutez la ressource Lovelace :
+- URL : `/local/kids_tasks/kids-tasks-card.js`
+- Type : Module JavaScript
+
+Puis ajoutez une carte de type `kids-tasks-card` à votre dashboard.
+
+📖 **[Guide complet de l'interface](INTERFACE_GUIDE.md)**
 
 ---
 

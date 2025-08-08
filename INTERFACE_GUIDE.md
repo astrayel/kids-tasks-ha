@@ -6,20 +6,44 @@ L'interface graphique Kids Tasks Manager vous permet de gérer facilement les en
 
 ## 🚀 Installation
 
-### 1. Fichiers requis
+### 1. Installation automatique (Recommandée)
 
-L'interface principale est dans le fichier :
-```
-custom_components/kids_tasks/kids-tasks-card.js
+Utilisez le script d'installation fourni :
+
+```bash
+# Depuis le répertoire du projet
+python install.py
+
+# Ou spécifiez le chemin vers votre config HA
+python install.py /path/to/homeassistant/config
 ```
 
-### 2. Configuration dans Home Assistant
+Le script copiera automatiquement :
+- L'intégration dans `custom_components/kids_tasks/`
+- L'interface dans `www/kids_tasks/kids-tasks-card.js`
+
+### 2. Installation manuelle
+
+#### Étape 1 : Intégration
+Copiez le dossier complet :
+```
+custom_components/kids_tasks/ → config/custom_components/kids_tasks/
+```
+
+#### Étape 2 : Interface frontend
+Créez le répertoire et copiez le fichier :
+```bash
+mkdir -p config/www/kids_tasks/
+cp custom_components/kids_tasks/kids-tasks-card.js config/www/kids_tasks/
+```
+
+### 3. Configuration dans Home Assistant
 
 #### Via l'interface utilisateur :
 
 1. **Configuration** → **Lovelace Dashboards** → **Ressources**
 2. Cliquez sur **"+ Ajouter une ressource"**
-3. URL : `/local/community/kids-tasks-ha/kids-tasks-card.js`
+3. URL : `/local/kids_tasks/kids-tasks-card.js`
 4. Type de ressource : **Module JavaScript**
 5. Cliquez sur **"Créer"**
 
@@ -29,9 +53,12 @@ Ajoutez dans votre `configuration.yaml` :
 ```yaml
 lovelace:
   resources:
-    - url: /hacsfiles/kids-tasks-ha/kids-tasks-card.js
+    - url: /local/kids_tasks/kids-tasks-card.js
       type: module
 ```
+
+### 4. Redémarrage
+Redémarrez Home Assistant pour charger l'intégration.
 
 ### 3. Ajouter la carte à votre dashboard
 
