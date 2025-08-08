@@ -242,11 +242,25 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
         await self.async_request_refresh()
         return True
 
+    async def async_request_refresh(self) -> None:
+        """Request a data refresh."""
+        await self.async_refresh()
+
     async def async_clear_all_data(self) -> None:
         """Clear all data from storage."""
+        _LOGGER.info("Clearing all data - children: %d, tasks: %d, rewards: %d", 
+                    len(self.children), len(self.tasks), len(self.rewards))
+        
         self.children.clear()
-        self.tasks.clear()
+        self.tasks.clear() 
         self.rewards.clear()
         
         await self.async_save_data()
+        
+        # Force entity registry to reload
         await self.async_request_refresh()
+        
+        # Also fire event for potential UI updates
+        self.hass.bus.async_fire(f"{DOMAIN}_data_cleared")
+        
+        _LOGGER.info("All data cleared and refresh requested")

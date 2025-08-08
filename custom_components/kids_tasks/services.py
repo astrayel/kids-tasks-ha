@@ -189,7 +189,13 @@ async def async_setup_services(
     
     async def clear_all_data_service(call: ServiceCall) -> None:
         """Clear all data."""
-        await coordinator.async_clear_all_data()
+        try:
+            _LOGGER.info("Starting to clear all data...")
+            await coordinator.async_clear_all_data()
+            _LOGGER.info("All data cleared successfully")
+        except Exception as e:
+            _LOGGER.error("Failed to clear data: %s", e)
+            raise
     
     hass.services.async_register(
         DOMAIN, SERVICE_CLEAR_ALL_DATA, clear_all_data_service
