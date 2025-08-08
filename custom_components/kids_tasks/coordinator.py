@@ -241,3 +241,12 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
         await self.async_save_data()
         await self.async_request_refresh()
         return True
+
+    async def async_clear_all_data(self) -> None:
+        """Clear all data from storage."""
+        self.children.clear()
+        self.tasks.clear()
+        self.rewards.clear()
+        
+        await self.async_save_data()
+        await self.async_request_refresh()

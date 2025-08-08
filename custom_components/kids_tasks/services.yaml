@@ -450,3 +450,8 @@ restore_data:
       selector:
         text:
           multiline: true
+
+clear_all_data:
+  name: Clear All Data
+  description: "Clear all children, tasks, and rewards (WARNING: This will delete everything)"
+  fields: {}

@@ -27,6 +27,7 @@ SERVICE_COMPLETE_TASK = "complete_task"
 SERVICE_VALIDATE_TASK = "validate_task"
 SERVICE_CLAIM_REWARD = "claim_reward"
 SERVICE_RESET_TASK = "reset_task"
+SERVICE_CLEAR_ALL_DATA = "clear_all_data"
 
 SERVICE_ADD_CHILD_SCHEMA = vol.Schema(
     {
@@ -184,4 +185,12 @@ async def async_setup_services(
     
     hass.services.async_register(
         DOMAIN, SERVICE_RESET_TASK, reset_task_service, schema=SERVICE_RESET_TASK_SCHEMA
+    )
+    
+    async def clear_all_data_service(call: ServiceCall) -> None:
+        """Clear all data."""
+        await coordinator.async_clear_all_data()
+    
+    hass.services.async_register(
+        DOMAIN, SERVICE_CLEAR_ALL_DATA, clear_all_data_service
     )
