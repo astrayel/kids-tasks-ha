@@ -91,6 +91,9 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
         self.children[child.id] = child
         await self.async_save_data()
         await self.async_request_refresh()
+        
+        # Trigger integration reload to add new child entities
+        await self._async_reload_integration_for_new_child(child.id)
 
     async def async_update_child(self, child: Child) -> None:
         """Update a child."""
@@ -264,3 +267,21 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
         self.hass.bus.async_fire(f"{DOMAIN}_data_cleared")
         
         _LOGGER.info("All data cleared and refresh requested")
+    
+    async def _async_reload_integration_for_new_child(self, child_id: str) -> None:
+        """Reload the integration to add entities for a new child."""
+        try:
+            # Get the config entry for this integration
+            config_entries = [entry for entry in self.hass.config_entries.async_entries(DOMAIN)]
+            if not config_entries:
+                _LOGGER.error("No config entry found for %s", DOMAIN)
+                return
+            
+            config_entry = config_entries[0]
+            
+            # Trigger integration reload
+            await self.hass.config_entries.async_reload(config_entry.entry_id)
+            _LOGGER.info("Integration reloaded to add entities for new child: %s", child_id)
+                            
+        except Exception as e:
+            _LOGGER.error("Failed to reload integration for child %s: %s", child_id, e)
