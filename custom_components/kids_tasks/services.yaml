@@ -20,7 +20,7 @@ add_child:
         text:
     initial_points:
       name: Initial Points
-      description: Starting points for the child (default: 0)
+      description: "Starting points for the child (default: 0)"
       required: false
       default: 0
       selector:
