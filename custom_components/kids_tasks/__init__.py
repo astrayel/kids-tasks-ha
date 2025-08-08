@@ -50,13 +50,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Setup services
     await async_setup_services(hass, coordinator)
     
-    # Register frontend resources
-    integration_dir = os.path.dirname(__file__)
-    hass.http.register_static_path(
-        f"/{DOMAIN}",
-        integration_dir,
-        cache_headers=False
-    )
+    # For HACS, the frontend files are handled automatically
+    # No manual registration needed when using HACS
     
     return True
 
