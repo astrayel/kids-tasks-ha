@@ -59,9 +59,10 @@ class ChildPointsSensor(CoordinatorEntity, SensorEntity):
         super().__init__(coordinator)
         self.child_id = child_id
         self._attr_unique_id = f"{DOMAIN}_{child_id}_points"
-        self._attr_device_class = SensorDeviceClass.DISTANCE
+        self._attr_device_class = None  # Remove problematic device class
         self._attr_state_class = SensorStateClass.TOTAL
         self._attr_icon = "mdi:star"
+        self._attr_native_unit_of_measurement = "points"
 
     @property
     def name(self) -> str:
