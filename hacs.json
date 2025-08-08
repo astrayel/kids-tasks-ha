@@ -2,8 +2,5 @@
   "name": "Kids Tasks Manager",
   "content_in_root": false,
   "filename": "kids_tasks",
-  "render_readme": true,
-  "domains": ["sensor", "button", "select", "number"],
-  "iot_class": "Local Push",
-  "homeassistant": "2024.1.0"
+  "render_readme": true
 }
