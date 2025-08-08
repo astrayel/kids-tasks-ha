@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(copy:*)",
-      "Bash(cp:*)"
+      "Bash(cp:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
     ],
     "deny": []
   }
