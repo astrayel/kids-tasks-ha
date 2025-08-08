@@ -299,7 +299,7 @@ update_child:
 
 remove_child:
   name: Remove Child
-  description: Remove a child from the system (WARNING: This will delete all associated data)
+  description: "Remove a child from the system (WARNING: This will delete all associated data)"
   fields:
     child_id:
       name: Child ID

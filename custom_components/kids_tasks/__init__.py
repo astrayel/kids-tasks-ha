@@ -12,7 +12,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.storage import Store
-from homeassistant.components.frontend import add_extra_js_url
+import os
 
 from .const import DOMAIN, STORAGE_VERSION, STORAGE_KEY
 from .coordinator import KidsTasksDataUpdateCoordinator
@@ -51,11 +51,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await async_setup_services(hass, coordinator)
     
     # Register frontend resources
-    add_extra_js_url(hass, f"/local/community/{DOMAIN}/kids-tasks-card.js")
-    add_extra_js_url(hass, f"/local/community/{DOMAIN}/kids-tasks-manager.js")
-    add_extra_js_url(hass, f"/local/community/{DOMAIN}/kids-tasks-forms.js")
-    add_extra_js_url(hass, f"/local/community/{DOMAIN}/kids-tasks-data.js")
-    add_extra_js_url(hass, f"/local/community/{DOMAIN}/kids-tasks-complete.js")
+    integration_dir = os.path.dirname(__file__)
+    hass.http.register_static_path(
+        f"/{DOMAIN}",
+        integration_dir,
+        cache_headers=False
+    )
     
     return True
 
