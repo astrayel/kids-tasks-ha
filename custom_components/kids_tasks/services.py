@@ -131,6 +131,7 @@ SERVICE_UPDATE_CHILD_SCHEMA = vol.Schema(
 SERVICE_REMOVE_CHILD_SCHEMA = vol.Schema(
     {
         vol.Required("child_id"): cv.string,
+        vol.Optional("force_remove_entities", default=False): cv.boolean,
     }
 )
 
@@ -305,7 +306,10 @@ async def async_setup_services(
     
     async def remove_child_service(call: ServiceCall) -> None:
         """Remove a child."""
-        await coordinator.async_remove_child(call.data["child_id"])
+        await coordinator.async_remove_child(
+            call.data["child_id"],
+            call.data.get("force_remove_entities", False)
+        )
     
     async def update_task_service(call: ServiceCall) -> None:
         """Update a task."""

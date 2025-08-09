@@ -307,6 +307,13 @@ remove_child:
       required: true
       selector:
         text:
+    force_remove_entities:
+      name: Force Remove Entities
+      description: Force removal of all entities associated with this child (sensors, buttons, etc.)
+      required: false
+      default: false
+      selector:
+        boolean:
 
 update_task:
   name: Update Task

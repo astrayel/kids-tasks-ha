@@ -102,12 +102,24 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
             await self.async_save_data()
             await self.async_request_refresh()
 
-    async def async_remove_child(self, child_id: str) -> None:
-        """Remove a child."""
+    async def async_remove_child(self, child_id: str, force_remove_entities: bool = False) -> None:
+        """Remove a child and optionally force remove their entities."""
         if child_id in self.children:
+            # Remove child data
             del self.children[child_id]
+            
+            # Remove tasks assigned to this child
+            tasks_to_remove = [task_id for task_id, task in self.tasks.items() 
+                             if task.assigned_child_id == child_id]
+            for task_id in tasks_to_remove:
+                del self.tasks[task_id]
+            
             await self.async_save_data()
             await self.async_request_refresh()
+            
+            # Force remove entities if requested
+            if force_remove_entities:
+                await self._async_force_remove_child_entities(child_id)
 
     # Task management methods
     async def async_add_task(self, task: Task) -> None:
@@ -437,3 +449,30 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
                             
         except Exception as e:
             _LOGGER.error("Failed to reload integration for child %s: %s", child_id, e)
+
+    async def _async_force_remove_child_entities(self, child_id: str) -> None:
+        """Force remove all entities associated with a child."""
+        try:
+            from homeassistant.helpers import entity_registry
+            
+            # Get entity registry
+            er = entity_registry.async_get(self.hass)
+            
+            # Find all entities related to this child
+            entities_to_remove = []
+            
+            for entity_id, entity_entry in er.entities.items():
+                # Check if entity belongs to our domain and is related to this child
+                if (entity_entry.domain == DOMAIN and 
+                    entity_entry.unique_id and 
+                    child_id in entity_entry.unique_id):
+                    entities_to_remove.append(entity_id)
+            
+            # Remove the entities
+            for entity_id in entities_to_remove:
+                er.async_remove(entity_id)
+                
+            _LOGGER.info("Force removed %d entities for child %s", len(entities_to_remove), child_id)
+            
+        except Exception as e:
+            _LOGGER.error("Failed to force remove entities for child %s: %s", child_id, e)
