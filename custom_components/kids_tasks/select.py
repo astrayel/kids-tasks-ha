@@ -39,7 +39,7 @@ class TaskStatusSelect(CoordinatorEntity, SelectEntity):
         """Initialize the select."""
         super().__init__(coordinator)
         self.task_id = task_id
-        self._attr_unique_id = f"{DOMAIN}_status_{task_id}"
+        self._attr_unique_id = f"KT_status_{task_id}"
         self._attr_options = ["À faire", "En cours", "Terminé", "En attente validation", "Validé", "Échoué"]
         self._attr_icon = "mdi:format-list-bulleted"
 

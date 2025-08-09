@@ -46,6 +46,7 @@ async def async_setup_entry(
         PendingValidationsSensor(coordinator),
         TotalTasksCompletedTodaySensor(coordinator),
         ActiveTasksSensor(coordinator),
+        AllTasksListSensor(coordinator),
     ])
     
     async_add_entities(entities)
@@ -58,7 +59,7 @@ class ChildPointsSensor(CoordinatorEntity, SensorEntity):
         """Initialize the sensor."""
         super().__init__(coordinator)
         self.child_id = child_id
-        self._attr_unique_id = f"{DOMAIN}_{child_id}_points"
+        self._attr_unique_id = f"KT_{child_id}_points"
         self._attr_device_class = None  # Remove problematic device class
         self._attr_state_class = SensorStateClass.TOTAL
         self._attr_icon = "mdi:star"
@@ -98,7 +99,7 @@ class ChildLevelSensor(CoordinatorEntity, SensorEntity):
         """Initialize the sensor."""
         super().__init__(coordinator)
         self.child_id = child_id
-        self._attr_unique_id = f"{DOMAIN}_{child_id}_level"
+        self._attr_unique_id = f"KT_{child_id}_level"
         self._attr_icon = "mdi:trophy"
 
     @property
@@ -120,7 +121,7 @@ class ChildTasksCompletedTodaySensor(CoordinatorEntity, SensorEntity):
         """Initialize the sensor."""
         super().__init__(coordinator)
         self.child_id = child_id
-        self._attr_unique_id = f"{DOMAIN}_{child_id}_tasks_today"
+        self._attr_unique_id = f"KT_{child_id}_tasks_today"
         self._attr_icon = "mdi:check-circle"
 
     @property
@@ -155,7 +156,7 @@ class PendingValidationsSensor(CoordinatorEntity, SensorEntity):
     def __init__(self, coordinator: KidsTasksDataUpdateCoordinator) -> None:
         """Initialize the sensor."""
         super().__init__(coordinator)
-        self._attr_unique_id = f"{DOMAIN}_pending_validations"
+        self._attr_unique_id = f"KT_pending_validations"
         self._attr_icon = "mdi:clock-alert"
 
     @property
@@ -199,7 +200,7 @@ class TotalTasksCompletedTodaySensor(CoordinatorEntity, SensorEntity):
     def __init__(self, coordinator: KidsTasksDataUpdateCoordinator) -> None:
         """Initialize the sensor."""
         super().__init__(coordinator)
-        self._attr_unique_id = f"{DOMAIN}_total_tasks_today"
+        self._attr_unique_id = f"KT_total_tasks_today"
         self._attr_icon = "mdi:check-all"
 
     @property
@@ -232,7 +233,7 @@ class ActiveTasksSensor(CoordinatorEntity, SensorEntity):
     def __init__(self, coordinator: KidsTasksDataUpdateCoordinator) -> None:
         """Initialize the sensor."""
         super().__init__(coordinator)
-        self._attr_unique_id = f"{DOMAIN}_active_tasks"
+        self._attr_unique_id = f"KT_active_tasks"
         self._attr_icon = "mdi:format-list-checks"
 
     @property
@@ -248,3 +249,83 @@ class ActiveTasksSensor(CoordinatorEntity, SensorEntity):
             if task_data.get("active", True):
                 count += 1
         return count
+
+
+class AllTasksListSensor(CoordinatorEntity, SensorEntity):
+    """Sensor that shows all tasks with their details."""
+
+    def __init__(self, coordinator: KidsTasksDataUpdateCoordinator) -> None:
+        """Initialize the sensor."""
+        super().__init__(coordinator)
+        self._attr_unique_id = f"KT_all_tasks_list"
+        self._attr_icon = "mdi:format-list-bulleted"
+
+    @property
+    def name(self) -> str:
+        """Return the name of the sensor."""
+        return "Liste de Toutes les Tâches"
+
+    @property
+    def native_value(self) -> int:
+        """Return the total number of tasks."""
+        return len(self.coordinator.data.get("tasks", {}))
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return the state attributes with all tasks details."""
+        all_tasks = []
+        
+        for task_id, task_data in self.coordinator.data.get("tasks", {}).items():
+            # Get child name if assigned
+            child_name = "Non assigné"
+            if task_data.get("assigned_child_id"):
+                child_data = self.coordinator.data.get("children", {}).get(task_data["assigned_child_id"], {})
+                child_name = child_data.get("name", "Enfant inconnu")
+            
+            # Format status for display
+            status_display = {
+                "todo": "À faire",
+                "in_progress": "En cours", 
+                "completed": "Terminé",
+                "pending_validation": "En attente de validation",
+                "validated": "Validé",
+                "failed": "Échoué"
+            }.get(task_data.get("status", "todo"), "Statut inconnu")
+            
+            # Format frequency for display
+            frequency_display = {
+                "daily": "Quotidienne",
+                "weekly": "Hebdomadaire",
+                "monthly": "Mensuelle",
+                "once": "Une fois"
+            }.get(task_data.get("frequency", "daily"), "Inconnue")
+            
+            all_tasks.append({
+                "task_id": task_id,
+                "name": task_data.get("name", "Tâche sans nom"),
+                "description": task_data.get("description", ""),
+                "category": task_data.get("category", "other").title(),
+                "points": task_data.get("points", 0),
+                "frequency": frequency_display,
+                "status": status_display,
+                "assigned_child": child_name,
+                "validation_required": task_data.get("validation_required", False),
+                "active": task_data.get("active", True),
+                "created_at": task_data.get("created_at"),
+                "last_completed_at": task_data.get("last_completed_at"),
+                "completion_count": task_data.get("completion_count", 0)
+            })
+        
+        # Sort by name for consistent display
+        all_tasks.sort(key=lambda x: x["name"])
+        
+        return {
+            "tasks": all_tasks,
+            "total_count": len(all_tasks),
+            "active_count": sum(1 for task in all_tasks if task["active"]),
+            "completed_today_count": len([
+                task for task in all_tasks 
+                if task["last_completed_at"] and 
+                task["last_completed_at"].startswith(datetime.now().strftime("%Y-%m-%d"))
+            ])
+        }

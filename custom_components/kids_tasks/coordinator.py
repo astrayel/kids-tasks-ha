@@ -465,6 +465,7 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
                 # Check if entity belongs to our domain and is related to this child
                 if (entity_entry.domain == DOMAIN and 
                     entity_entry.unique_id and 
+                    entity_entry.unique_id.startswith("KT_") and
                     child_id in entity_entry.unique_id):
                     entities_to_remove.append(entity_id)
             

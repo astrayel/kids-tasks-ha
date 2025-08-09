@@ -40,6 +40,7 @@ SERVICE_RESET_ALL_DAILY_TASKS = "reset_all_daily_tasks"
 SERVICE_BACKUP_DATA = "backup_data"
 SERVICE_RESTORE_DATA = "restore_data"
 SERVICE_CLEAR_ALL_DATA = "clear_all_data"
+SERVICE_LIST_TASKS = "list_tasks"
 
 SERVICE_ADD_CHILD_SCHEMA = vol.Schema(
     {
@@ -407,4 +408,41 @@ async def async_setup_services(
     
     hass.services.async_register(
         DOMAIN, SERVICE_CLEAR_ALL_DATA, clear_all_data_service
+    )
+    
+    async def list_tasks_service(call: ServiceCall) -> None:
+        """List all tasks with details."""
+        try:
+            tasks_list = []
+            for task_id, task in coordinator.tasks.items():
+                # Get child name if assigned
+                child_name = "Non assigné"
+                if task.assigned_child_id and task.assigned_child_id in coordinator.children:
+                    child_name = coordinator.children[task.assigned_child_id].name
+                
+                tasks_list.append({
+                    "task_id": task_id,
+                    "name": task.name,
+                    "description": task.description,
+                    "category": task.category,
+                    "points": task.points,
+                    "frequency": task.frequency,
+                    "status": task.status,
+                    "assigned_child": child_name,
+                    "validation_required": task.validation_required,
+                    "active": task.active
+                })
+            
+            _LOGGER.info("Tasks list retrieved: %d tasks found", len(tasks_list))
+            # Log each task for visibility in Home Assistant logs
+            for task in tasks_list:
+                _LOGGER.info("Task: %s | Assigned: %s | Status: %s | Points: %d", 
+                           task["name"], task["assigned_child"], task["status"], task["points"])
+                           
+        except Exception as e:
+            _LOGGER.error("Failed to list tasks: %s", e)
+            raise
+    
+    hass.services.async_register(
+        DOMAIN, SERVICE_LIST_TASKS, list_tasks_service
     )

@@ -483,3 +483,8 @@ clear_all_data:
   name: Clear All Data
   description: "Clear all children, tasks, and rewards (WARNING: This will delete everything)"
   fields: {}
+
+list_tasks:
+  name: List All Tasks
+  description: List all tasks with their details (output will be shown in Home Assistant logs)
+  fields: {}
