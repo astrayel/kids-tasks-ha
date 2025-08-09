@@ -124,9 +124,17 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
     # Task management methods
     async def async_add_task(self, task: Task) -> None:
         """Add a new task."""
-        self.tasks[task.id] = task
-        await self.async_save_data()
-        await self.async_request_refresh()
+        try:
+            _LOGGER.info("Adding task to coordinator: %s", task.name)
+            self.tasks[task.id] = task
+            _LOGGER.info("Task added to memory, saving data...")
+            await self.async_save_data()
+            _LOGGER.info("Data saved, requesting refresh...")
+            await self.async_request_refresh()
+            _LOGGER.info("Task addition completed successfully")
+        except Exception as e:
+            _LOGGER.error("Failed to add task %s: %s", task.name, e)
+            raise UpdateFailed(f"Error communicating with API: {e}") from e
 
     async def async_update_task(self, task: Task) -> None:
         """Update a task."""

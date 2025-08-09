@@ -201,18 +201,29 @@ async def async_setup_services(
     
     async def add_task_service(call: ServiceCall) -> None:
         """Add a new task."""
-        task_id = str(uuid.uuid4())
-        task = Task(
-            id=task_id,
-            name=call.data["name"],
-            description=call.data.get("description", ""),
-            category=call.data.get("category", "other"),
-            points=call.data.get("points", 10),
-            frequency=call.data.get("frequency", "daily"),
-            assigned_child_id=call.data.get("assigned_child_id"),
-            validation_required=call.data.get("validation_required", True),
-        )
-        await coordinator.async_add_task(task)
+        try:
+            _LOGGER.info("Creating new task with data: %s", call.data)
+            
+            task_id = str(uuid.uuid4())
+            task = Task(
+                id=task_id,
+                name=call.data["name"],
+                description=call.data.get("description", ""),
+                category=call.data.get("category", "other"),
+                points=call.data.get("points", 10),
+                frequency=call.data.get("frequency", "daily"),
+                assigned_child_id=call.data.get("assigned_child_id"),
+                validation_required=call.data.get("validation_required", True),
+            )
+            
+            _LOGGER.info("Task object created: %s", task.to_dict())
+            await coordinator.async_add_task(task)
+            _LOGGER.info("Task successfully added with ID: %s", task_id)
+            
+        except Exception as e:
+            _LOGGER.error("Failed to create task: %s", e)
+            _LOGGER.error("Task data was: %s", call.data)
+            raise
     
     async def add_reward_service(call: ServiceCall) -> None:
         """Add a new reward."""
