@@ -213,6 +213,13 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
         await self.async_save_data()
         await self.async_request_refresh()
 
+    async def async_remove_reward(self, reward_id: str) -> None:
+        """Remove a reward."""
+        if reward_id in self.rewards:
+            del self.rewards[reward_id]
+            await self.async_save_data()
+            await self.async_request_refresh()
+
     async def async_claim_reward(self, reward_id: str, child_id: str) -> bool:
         """Claim a reward for a child."""
         if reward_id not in self.rewards or child_id not in self.children:
