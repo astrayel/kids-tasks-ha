@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import timedelta
+from datetime import datetime, timedelta
 from typing import Any
 
 from homeassistant.core import HomeAssistant
@@ -267,6 +267,151 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
         self.hass.bus.async_fire(f"{DOMAIN}_data_cleared")
         
         _LOGGER.info("All data cleared and refresh requested")
+
+    async def async_reject_task(self, task_id: str) -> bool:
+        """Reject a task and reset it to todo."""
+        if task_id not in self.tasks:
+            return False
+        
+        task = self.tasks[task_id]
+        task.status = "todo"
+        
+        await self.async_save_data()
+        await self.async_request_refresh()
+        return True
+
+    async def async_add_points(self, child_id: str, points: int) -> bool:
+        """Add bonus points to a child."""
+        if child_id not in self.children:
+            return False
+        
+        child = self.children[child_id]
+        old_level = child.level
+        child.add_points(points)
+        
+        # Check for level up
+        if child.level > old_level:
+            self.hass.bus.async_fire(
+                f"{DOMAIN}_level_up",
+                {
+                    "child_id": child_id,
+                    "new_level": child.level,
+                }
+            )
+        
+        await self.async_save_data()
+        await self.async_request_refresh()
+        return True
+
+    async def async_remove_points(self, child_id: str, points: int) -> bool:
+        """Remove points from a child."""
+        if child_id not in self.children:
+            return False
+        
+        child = self.children[child_id]
+        child.points = max(0, child.points - points)
+        child.level = max(1, (child.points // 100) + 1)
+        
+        await self.async_save_data()
+        await self.async_request_refresh()
+        return True
+
+    async def async_update_child(self, child_id: str, updates: dict) -> bool:
+        """Update a child's information."""
+        if child_id not in self.children:
+            return False
+        
+        child = self.children[child_id]
+        for key, value in updates.items():
+            if hasattr(child, key):
+                setattr(child, key, value)
+        
+        await self.async_save_data()
+        await self.async_request_refresh()
+        return True
+
+    async def async_update_task(self, task_id: str, updates: dict) -> bool:
+        """Update a task's information."""
+        if task_id not in self.tasks:
+            return False
+        
+        task = self.tasks[task_id]
+        for key, value in updates.items():
+            if hasattr(task, key):
+                setattr(task, key, value)
+        
+        await self.async_save_data()
+        await self.async_request_refresh()
+        return True
+
+    async def async_update_reward(self, reward_id: str, updates: dict) -> bool:
+        """Update a reward's information."""
+        if reward_id not in self.rewards:
+            return False
+        
+        reward = self.rewards[reward_id]
+        for key, value in updates.items():
+            if hasattr(reward, key):
+                setattr(reward, key, value)
+        
+        await self.async_save_data()
+        await self.async_request_refresh()
+        return True
+
+    async def async_reset_all_daily_tasks(self) -> None:
+        """Reset all daily tasks to todo status."""
+        for task in self.tasks.values():
+            if task.frequency == "daily":
+                task.status = "todo"
+        
+        await self.async_save_data()
+        await self.async_request_refresh()
+
+    async def async_backup_data(self, include_history: bool = True) -> str:
+        """Create a backup of all data."""
+        import json
+        
+        backup_data = {
+            "version": 1,
+            "timestamp": datetime.now().isoformat(),
+            "children": {child_id: child.to_dict() for child_id, child in self.children.items()},
+            "tasks": {task_id: task.to_dict() for task_id, task in self.tasks.items()},
+            "rewards": {reward_id: reward.to_dict() for reward_id, reward in self.rewards.items()},
+        }
+        
+        return json.dumps(backup_data, indent=2)
+
+    async def async_restore_data(self, backup_json: str) -> bool:
+        """Restore data from a backup."""
+        import json
+        
+        try:
+            backup_data = json.loads(backup_json)
+            
+            # Clear existing data
+            self.children.clear()
+            self.tasks.clear()
+            self.rewards.clear()
+            
+            # Restore children
+            for child_id, child_data in backup_data.get("children", {}).items():
+                self.children[child_id] = Child.from_dict(child_data)
+            
+            # Restore tasks
+            for task_id, task_data in backup_data.get("tasks", {}).items():
+                self.tasks[task_id] = Task.from_dict(task_data)
+            
+            # Restore rewards
+            for reward_id, reward_data in backup_data.get("rewards", {}).items():
+                self.rewards[reward_id] = Reward.from_dict(reward_data)
+            
+            await self.async_save_data()
+            await self.async_request_refresh()
+            return True
+            
+        except Exception as e:
+            _LOGGER.error("Failed to restore backup: %s", e)
+            return False
     
     async def _async_reload_integration_for_new_child(self, child_id: str) -> None:
         """Reload the integration to add entities for a new child."""

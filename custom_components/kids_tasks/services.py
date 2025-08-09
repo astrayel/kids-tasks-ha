@@ -25,8 +25,20 @@ SERVICE_ADD_TASK = "add_task"
 SERVICE_ADD_REWARD = "add_reward"
 SERVICE_COMPLETE_TASK = "complete_task"
 SERVICE_VALIDATE_TASK = "validate_task"
+SERVICE_REJECT_TASK = "reject_task"
 SERVICE_CLAIM_REWARD = "claim_reward"
 SERVICE_RESET_TASK = "reset_task"
+SERVICE_ADD_POINTS = "add_points"
+SERVICE_REMOVE_POINTS = "remove_points"
+SERVICE_UPDATE_CHILD = "update_child"
+SERVICE_REMOVE_CHILD = "remove_child"
+SERVICE_UPDATE_TASK = "update_task"
+SERVICE_REMOVE_TASK = "remove_task"
+SERVICE_UPDATE_REWARD = "update_reward"
+SERVICE_REMOVE_REWARD = "remove_reward"
+SERVICE_RESET_ALL_DAILY_TASKS = "reset_all_daily_tasks"
+SERVICE_BACKUP_DATA = "backup_data"
+SERVICE_RESTORE_DATA = "restore_data"
 SERVICE_CLEAR_ALL_DATA = "clear_all_data"
 
 SERVICE_ADD_CHILD_SCHEMA = vol.Schema(
@@ -82,6 +94,88 @@ SERVICE_CLAIM_REWARD_SCHEMA = vol.Schema(
 SERVICE_RESET_TASK_SCHEMA = vol.Schema(
     {
         vol.Required("task_id"): cv.string,
+    }
+)
+
+SERVICE_REJECT_TASK_SCHEMA = vol.Schema(
+    {
+        vol.Required("task_id"): cv.string,
+        vol.Optional("reason"): cv.string,
+    }
+)
+
+SERVICE_ADD_POINTS_SCHEMA = vol.Schema(
+    {
+        vol.Required("child_id"): cv.string,
+        vol.Required("points"): vol.Coerce(int),
+        vol.Optional("reason"): cv.string,
+    }
+)
+
+SERVICE_REMOVE_POINTS_SCHEMA = vol.Schema(
+    {
+        vol.Required("child_id"): cv.string,
+        vol.Required("points"): vol.Coerce(int),
+        vol.Optional("reason"): cv.string,
+    }
+)
+
+SERVICE_UPDATE_CHILD_SCHEMA = vol.Schema(
+    {
+        vol.Required("child_id"): cv.string,
+        vol.Optional("name"): cv.string,
+        vol.Optional("avatar"): cv.string,
+    }
+)
+
+SERVICE_REMOVE_CHILD_SCHEMA = vol.Schema(
+    {
+        vol.Required("child_id"): cv.string,
+    }
+)
+
+SERVICE_UPDATE_TASK_SCHEMA = vol.Schema(
+    {
+        vol.Required("task_id"): cv.string,
+        vol.Optional("name"): cv.string,
+        vol.Optional("description"): cv.string,
+        vol.Optional("points"): vol.Coerce(int),
+        vol.Optional("category"): vol.In(CATEGORIES),
+        vol.Optional("active"): cv.boolean,
+    }
+)
+
+SERVICE_REMOVE_TASK_SCHEMA = vol.Schema(
+    {
+        vol.Required("task_id"): cv.string,
+    }
+)
+
+SERVICE_UPDATE_REWARD_SCHEMA = vol.Schema(
+    {
+        vol.Required("reward_id"): cv.string,
+        vol.Optional("name"): cv.string,
+        vol.Optional("description"): cv.string,
+        vol.Optional("cost"): vol.Coerce(int),
+        vol.Optional("active"): cv.boolean,
+    }
+)
+
+SERVICE_REMOVE_REWARD_SCHEMA = vol.Schema(
+    {
+        vol.Required("reward_id"): cv.string,
+    }
+)
+
+SERVICE_BACKUP_DATA_SCHEMA = vol.Schema(
+    {
+        vol.Optional("include_history", default=True): cv.boolean,
+    }
+)
+
+SERVICE_RESTORE_DATA_SCHEMA = vol.Schema(
+    {
+        vol.Required("backup_data"): cv.string,
     }
 )
 
@@ -185,6 +279,116 @@ async def async_setup_services(
     
     hass.services.async_register(
         DOMAIN, SERVICE_RESET_TASK, reset_task_service, schema=SERVICE_RESET_TASK_SCHEMA
+    )
+    
+    async def reject_task_service(call: ServiceCall) -> None:
+        """Reject a task."""
+        await coordinator.async_reject_task(call.data["task_id"])
+    
+    async def add_points_service(call: ServiceCall) -> None:
+        """Add points to a child."""
+        child_id = call.data["child_id"]
+        points = call.data["points"]
+        await coordinator.async_add_points(child_id, points)
+    
+    async def remove_points_service(call: ServiceCall) -> None:
+        """Remove points from a child."""
+        child_id = call.data["child_id"]
+        points = call.data["points"]
+        await coordinator.async_remove_points(child_id, points)
+    
+    async def update_child_service(call: ServiceCall) -> None:
+        """Update a child."""
+        child_id = call.data["child_id"]
+        updates = {k: v for k, v in call.data.items() if k != "child_id"}
+        await coordinator.async_update_child(child_id, updates)
+    
+    async def remove_child_service(call: ServiceCall) -> None:
+        """Remove a child."""
+        await coordinator.async_remove_child(call.data["child_id"])
+    
+    async def update_task_service(call: ServiceCall) -> None:
+        """Update a task."""
+        task_id = call.data["task_id"]
+        updates = {k: v for k, v in call.data.items() if k != "task_id"}
+        await coordinator.async_update_task(task_id, updates)
+    
+    async def remove_task_service(call: ServiceCall) -> None:
+        """Remove a task."""
+        await coordinator.async_remove_task(call.data["task_id"])
+    
+    async def update_reward_service(call: ServiceCall) -> None:
+        """Update a reward."""
+        reward_id = call.data["reward_id"]
+        updates = {k: v for k, v in call.data.items() if k != "reward_id"}
+        await coordinator.async_update_reward(reward_id, updates)
+    
+    async def remove_reward_service(call: ServiceCall) -> None:
+        """Remove a reward."""
+        await coordinator.async_remove_reward(call.data["reward_id"])
+    
+    async def reset_all_daily_tasks_service(call: ServiceCall) -> None:
+        """Reset all daily tasks."""
+        await coordinator.async_reset_all_daily_tasks()
+    
+    async def backup_data_service(call: ServiceCall) -> None:
+        """Backup data."""
+        include_history = call.data.get("include_history", True)
+        backup = await coordinator.async_backup_data(include_history)
+        _LOGGER.info("Data backup created: %s", backup[:100] + "...")
+    
+    async def restore_data_service(call: ServiceCall) -> None:
+        """Restore data."""
+        backup_data = call.data["backup_data"]
+        await coordinator.async_restore_data(backup_data)
+    
+    # Register all services
+    hass.services.async_register(
+        DOMAIN, SERVICE_REJECT_TASK, reject_task_service, schema=SERVICE_REJECT_TASK_SCHEMA
+    )
+    
+    hass.services.async_register(
+        DOMAIN, SERVICE_ADD_POINTS, add_points_service, schema=SERVICE_ADD_POINTS_SCHEMA
+    )
+    
+    hass.services.async_register(
+        DOMAIN, SERVICE_REMOVE_POINTS, remove_points_service, schema=SERVICE_REMOVE_POINTS_SCHEMA
+    )
+    
+    hass.services.async_register(
+        DOMAIN, SERVICE_UPDATE_CHILD, update_child_service, schema=SERVICE_UPDATE_CHILD_SCHEMA
+    )
+    
+    hass.services.async_register(
+        DOMAIN, SERVICE_REMOVE_CHILD, remove_child_service, schema=SERVICE_REMOVE_CHILD_SCHEMA
+    )
+    
+    hass.services.async_register(
+        DOMAIN, SERVICE_UPDATE_TASK, update_task_service, schema=SERVICE_UPDATE_TASK_SCHEMA
+    )
+    
+    hass.services.async_register(
+        DOMAIN, SERVICE_REMOVE_TASK, remove_task_service, schema=SERVICE_REMOVE_TASK_SCHEMA
+    )
+    
+    hass.services.async_register(
+        DOMAIN, SERVICE_UPDATE_REWARD, update_reward_service, schema=SERVICE_UPDATE_REWARD_SCHEMA
+    )
+    
+    hass.services.async_register(
+        DOMAIN, SERVICE_REMOVE_REWARD, remove_reward_service, schema=SERVICE_REMOVE_REWARD_SCHEMA
+    )
+    
+    hass.services.async_register(
+        DOMAIN, SERVICE_RESET_ALL_DAILY_TASKS, reset_all_daily_tasks_service
+    )
+    
+    hass.services.async_register(
+        DOMAIN, SERVICE_BACKUP_DATA, backup_data_service, schema=SERVICE_BACKUP_DATA_SCHEMA
+    )
+    
+    hass.services.async_register(
+        DOMAIN, SERVICE_RESTORE_DATA, restore_data_service, schema=SERVICE_RESTORE_DATA_SCHEMA
     )
     
     async def clear_all_data_service(call: ServiceCall) -> None:
