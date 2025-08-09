@@ -32,19 +32,24 @@ add_child:
 add_task:
   name: Add Task
   description: Create a new recurring task for children
+  target: {}
   fields:
     name:
       name: Task Name
       description: The name of the task
       required: true
+      example: "Make bed"
       selector:
         text:
+          type: text
     description:
-      name: Description
+      name: Description  
       description: Detailed description of the task
       required: false
+      example: "Make the bed with clean sheets and arrange pillows"
       selector:
         text:
+          type: text
           multiline: true
     category:
       name: Category
@@ -54,13 +59,21 @@ add_task:
       selector:
         select:
           options:
-            - "bedroom"
-            - "bathroom"
-            - "kitchen"
-            - "homework"
-            - "outdoor"
-            - "pets"
-            - "other"
+            - label: "Bedroom"
+              value: "bedroom"
+            - label: "Bathroom" 
+              value: "bathroom"
+            - label: "Kitchen"
+              value: "kitchen"
+            - label: "Homework"
+              value: "homework"
+            - label: "Outdoor"
+              value: "outdoor"
+            - label: "Pets"
+              value: "pets"
+            - label: "Other"
+              value: "other"
+          mode: dropdown
     points:
       name: Points
       description: Points awarded for completing this task
@@ -71,6 +84,7 @@ add_task:
           min: 1
           max: 100
           step: 1
+          mode: box
     frequency:
       name: Frequency
       description: How often this task repeats
@@ -79,19 +93,26 @@ add_task:
       selector:
         select:
           options:
-            - "daily"
-            - "weekly"
-            - "monthly"
-            - "once"
+            - label: "Daily"
+              value: "daily"
+            - label: "Weekly"
+              value: "weekly"
+            - label: "Monthly"
+              value: "monthly"
+            - label: "Once"
+              value: "once"
+          mode: dropdown
     assigned_child_id:
-      name: Assigned Child ID
-      description: ID of the child assigned to this task
+      name: Assigned Child
+      description: ID of the child assigned to this task (leave empty for unassigned)
       required: false
+      example: "child-uuid-here"
       selector:
         text:
+          type: text
     validation_required:
-      name: Validation Required
-      description: Whether this task requires parental validation
+      name: Requires Validation
+      description: Whether this task requires parental validation before awarding points
       required: false
       default: true
       selector:
