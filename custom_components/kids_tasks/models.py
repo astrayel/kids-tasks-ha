@@ -104,6 +104,7 @@ class Task:
     due_date: datetime | None = None
     validation_required: bool = True
     active: bool = True
+    weekly_days: list[str] | None = None  # Jours de la semaine pour fréquence daily: ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
     
     def complete(self, validation_required: bool = None) -> str:
         """Mark task as completed."""
@@ -145,6 +146,7 @@ class Task:
             "due_date": self.due_date.isoformat() if self.due_date else None,
             "validation_required": self.validation_required,
             "active": self.active,
+            "weekly_days": self.weekly_days,
         }
     
     @classmethod
@@ -164,6 +166,7 @@ class Task:
             due_date=datetime.fromisoformat(data["due_date"]) if data.get("due_date") else None,
             validation_required=data.get("validation_required", True),
             active=data.get("active", True),
+            weekly_days=data.get("weekly_days"),
         )
 
 

@@ -66,6 +66,7 @@ SERVICE_ADD_TASK_SCHEMA = vol.Schema(
         vol.Optional("frequency", default="daily"): vol.In(FREQUENCIES),
         vol.Optional("assigned_child_id"): cv.string,
         vol.Optional("validation_required", default=True): cv.boolean,
+        vol.Optional("weekly_days"): vol.Any([cv.string], None),
     }
 )
 
@@ -154,6 +155,7 @@ SERVICE_UPDATE_TASK_SCHEMA = vol.Schema(
         vol.Optional("assigned_child_id"): cv.string,
         vol.Optional("validation_required"): cv.boolean,
         vol.Optional("active"): cv.boolean,
+        vol.Optional("weekly_days"): vol.Any([cv.string], None),
     }
 )
 
@@ -242,6 +244,7 @@ async def async_setup_services(
                 frequency=call.data.get("frequency", "daily"),
                 assigned_child_id=assigned_child_id,
                 validation_required=call.data.get("validation_required", True),
+                weekly_days=call.data.get("weekly_days"),
             )
             
             _LOGGER.info("Task object created: %s", task.to_dict())
