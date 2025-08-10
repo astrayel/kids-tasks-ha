@@ -209,7 +209,7 @@ async def async_setup_services(
     async def add_task_service(call: ServiceCall) -> None:
         """Add a new task."""
         try:
-            _LOGGER.info("Creating new task with data: %s", call.data)
+            _LOGGER.info("🔧 NOUVELLE VERSION - Creating new task with data: %s", call.data)
             
             # Validate assigned child exists if provided
             assigned_child_id = call.data.get("assigned_child_id")
