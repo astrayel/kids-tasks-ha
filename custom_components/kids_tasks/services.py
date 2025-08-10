@@ -49,6 +49,11 @@ SERVICE_ADD_CHILD_SCHEMA = vol.Schema(
         vol.Required("name"): cv.string,
         vol.Optional("avatar"): cv.string,
         vol.Optional("initial_points", default=0): vol.Coerce(int),
+        vol.Optional("person_entity_id"): cv.string,
+        vol.Optional("avatar_type", default="emoji"): vol.In(["emoji", "url", "inline", "person_entity"]),
+        vol.Optional("avatar_data"): cv.string,
+        vol.Optional("card_gradient_start"): cv.string,
+        vol.Optional("card_gradient_end"): cv.string,
     }
 )
 
@@ -204,6 +209,11 @@ async def async_setup_services(
             name=call.data["name"],
             avatar=call.data.get("avatar"),
             points=call.data.get("initial_points", 0),
+            person_entity_id=call.data.get("person_entity_id"),
+            avatar_type=call.data.get("avatar_type", "emoji"),
+            avatar_data=call.data.get("avatar_data"),
+            card_gradient_start=call.data.get("card_gradient_start"),
+            card_gradient_end=call.data.get("card_gradient_end"),
         )
         await coordinator.async_add_child(child)
     

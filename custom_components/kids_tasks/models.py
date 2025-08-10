@@ -20,6 +20,11 @@ class Child:
     points: int = 0
     level: int = 1
     avatar: str | None = None
+    person_entity_id: str | None = None  # ID de l'entité personne HA (optionnel)
+    avatar_type: str = "emoji"  # "emoji", "url", "inline", "person_entity"
+    avatar_data: str | None = None  # Données selon le type (URL, base64, etc.)
+    card_gradient_start: str | None = None  # Couleur début dégradé
+    card_gradient_end: str | None = None    # Couleur fin dégradé
     created_at: datetime = field(default_factory=datetime.now)
     
     @property
@@ -34,6 +39,20 @@ class Child:
         # Corrected level calculation: level 1 = 0-99 points, level 2 = 100-199 points, etc.
         self.level = (self.points // 100) + 1
         return self.level > old_level
+
+    def get_effective_avatar(self, hass=None) -> str:
+        """Get the effective avatar based on avatar_type."""
+        if self.avatar_type == "emoji":
+            return self.avatar or "👶"
+        elif self.avatar_type == "url" and self.avatar_data:
+            return self.avatar_data
+        elif self.avatar_type == "inline" and self.avatar_data:
+            return f"data:image/png;base64,{self.avatar_data}"
+        elif self.avatar_type == "person_entity" and self.person_entity_id and hass:
+            person_entity = hass.states.get(self.person_entity_id)
+            if person_entity and hasattr(person_entity.attributes, 'entity_picture'):
+                return person_entity.attributes.get('entity_picture', self.avatar or "👶")
+        return self.avatar or "👶"
     
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
@@ -43,6 +62,11 @@ class Child:
             "points": self.points,
             "level": self.level,
             "avatar": self.avatar,
+            "person_entity_id": self.person_entity_id,
+            "avatar_type": self.avatar_type,
+            "avatar_data": self.avatar_data,
+            "card_gradient_start": self.card_gradient_start,
+            "card_gradient_end": self.card_gradient_end,
             "created_at": self.created_at.isoformat(),
         }
     
@@ -55,6 +79,11 @@ class Child:
             points=data.get("points", 0),
             level=data.get("level", 1),
             avatar=data.get("avatar"),
+            person_entity_id=data.get("person_entity_id"),
+            avatar_type=data.get("avatar_type", "emoji"),
+            avatar_data=data.get("avatar_data"),
+            card_gradient_start=data.get("card_gradient_start"),
+            card_gradient_end=data.get("card_gradient_end"),
             created_at=datetime.fromisoformat(data.get("created_at", datetime.now().isoformat())),
         )
 
