@@ -22,9 +22,10 @@ _LOGGER = logging.getLogger(__name__)
 class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
     """Class to manage fetching data from the API."""
 
-    def __init__(self, hass: HomeAssistant, store: Store) -> None:
+    def __init__(self, hass: HomeAssistant, store: Store, config_entry_id: str = None) -> None:
         """Initialize."""
         self.store = store
+        self.config_entry_id = config_entry_id
         self.children: dict[str, Child] = {}
         self.tasks: dict[str, Task] = {}
         self.rewards: dict[str, Reward] = {}
@@ -92,8 +93,9 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
         await self.async_save_data()
         await self.async_request_refresh()
         
-        # Create child sensors dynamically if async_add_entities is available
-        if hasattr(self, 'async_add_entities') and self.async_add_entities is not None:
+        # Create child sensors dynamically
+        async_add_entities = self.hass.data.get(DOMAIN, {}).get(self.config_entry_id, {}).get("async_add_entities")
+        if async_add_entities is not None:
             try:
                 from .sensor import ChildPointsSensor, ChildLevelSensor, ChildTasksCompletedTodaySensor
                 child_sensors = [
@@ -101,8 +103,8 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
                     ChildLevelSensor(self, child.id),
                     ChildTasksCompletedTodaySensor(self, child.id),
                 ]
-                await self.async_add_entities(child_sensors)
-                _LOGGER.info("Child sensors created dynamically for child: %s", child.id)
+                async_add_entities(child_sensors)
+                _LOGGER.info("✅ Child sensors created dynamically for child: %s", child.id[:8])
             except Exception as e:
                 _LOGGER.warning("Could not create child sensors dynamically: %s", e)
                 # Continue without failing - sensors will be created on next restart
@@ -148,8 +150,19 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
             await self.async_request_refresh()
             _LOGGER.info("Task addition completed successfully")
             
-            # Task sensor will be created on next restart
-            _LOGGER.info("✅ Task created - TaskSensor will be created on restart: %s", task.id[:8])
+            # Create task sensor dynamically
+            async_add_entities = self.hass.data.get(DOMAIN, {}).get(self.config_entry_id, {}).get("async_add_entities")
+            if async_add_entities is not None:
+                try:
+                    from .sensor import TaskSensor
+                    task_sensor = TaskSensor(self, task.id)
+                    async_add_entities([task_sensor])
+                    _LOGGER.info("✅ Task sensor created dynamically: sensor.kids_tasks_task_%s", task.id[:8])
+                except Exception as e:
+                    _LOGGER.warning("Could not create task sensor dynamically: %s", e)
+                    _LOGGER.info("✅ Task created - TaskSensor will be created on restart: %s", task.id[:8])
+            else:
+                _LOGGER.info("✅ Task created - TaskSensor will be created on restart: %s", task.id[:8])
         except Exception as e:
             _LOGGER.error("Failed to add task %s: %s", task.name, e)
             raise UpdateFailed(f"Error communicating with API: {e}") from e
@@ -259,8 +272,19 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
             await self.async_request_refresh()
             _LOGGER.info("Reward addition completed successfully")
             
-            # Reward sensor will be created on next restart
-            _LOGGER.info("✅ Reward created - RewardSensor will be created on restart: %s", reward.id[:8])
+            # Create reward sensor dynamically
+            async_add_entities = self.hass.data.get(DOMAIN, {}).get(self.config_entry_id, {}).get("async_add_entities")
+            if async_add_entities is not None:
+                try:
+                    from .sensor import RewardSensor
+                    reward_sensor = RewardSensor(self, reward.id)
+                    async_add_entities([reward_sensor])
+                    _LOGGER.info("✅ Reward sensor created dynamically: sensor.kids_tasks_reward_%s", reward.id[:8])
+                except Exception as e:
+                    _LOGGER.warning("Could not create reward sensor dynamically: %s", e)
+                    _LOGGER.info("✅ Reward created - RewardSensor will be created on restart: %s", reward.id[:8])
+            else:
+                _LOGGER.info("✅ Reward created - RewardSensor will be created on restart: %s", reward.id[:8])
         except Exception as e:
             _LOGGER.error("Failed to add reward %s: %s", reward.name, e)
             raise UpdateFailed(f"Error communicating with API: {e}") from e

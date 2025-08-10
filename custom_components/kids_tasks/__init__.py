@@ -36,7 +36,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     store = Store(hass, STORAGE_VERSION, STORAGE_KEY)
     
     # Create coordinator
-    coordinator = KidsTasksDataUpdateCoordinator(hass, store)
+    coordinator = KidsTasksDataUpdateCoordinator(hass, store, entry.entry_id)
     await coordinator.async_config_entry_first_refresh()
     
     hass.data[DOMAIN][entry.entry_id] = {
