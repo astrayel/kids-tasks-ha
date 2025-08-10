@@ -29,6 +29,7 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up sensor platform."""
+    _LOGGER.info("🔧 NOUVELLE VERSION SENSOR - Setting up sensor platform with TaskSensor support")
     coordinator = hass.data[DOMAIN][config_entry.entry_id]["coordinator"]
     
     # Store the add_entities callback for dynamic entity creation
