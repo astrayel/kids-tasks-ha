@@ -92,8 +92,8 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
         await self.async_save_data()
         await self.async_request_refresh()
         
-        # Trigger integration reload to add new child entities
-        await self._async_reload_integration_for_new_child(child.id)
+        # Fire event to notify that new child entities should be added
+        self.hass.bus.async_fire(f"{DOMAIN}_child_added", {"child_id": child.id})
 
     async def async_update_child(self, child_id: str, updates: dict) -> None:
         """Update a child with new values."""
@@ -136,10 +136,8 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
             await self.async_request_refresh()
             _LOGGER.info("Task addition completed successfully")
             
-            # Trigger integration reload to add new task entities
-            _LOGGER.info("Triggering integration reload for new task entities...")
-            await self._async_reload_integration_for_new_entities()
-            _LOGGER.info("Integration reload completed")
+            # Fire event to notify that new task entity should be added
+            self.hass.bus.async_fire(f"{DOMAIN}_task_added", {"task_id": task.id})
         except Exception as e:
             _LOGGER.error("Failed to add task %s: %s", task.name, e)
             raise UpdateFailed(f"Error communicating with API: {e}") from e
@@ -249,8 +247,8 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
             await self.async_request_refresh()
             _LOGGER.info("Reward addition completed successfully")
             
-            # Trigger integration reload to add new reward entities
-            await self._async_reload_integration_for_new_entities()
+            # Fire event to notify that new reward entity should be added
+            self.hass.bus.async_fire(f"{DOMAIN}_reward_added", {"reward_id": reward.id})
         except Exception as e:
             _LOGGER.error("Failed to add reward %s: %s", reward.name, e)
             raise UpdateFailed(f"Error communicating with API: {e}") from e
@@ -278,7 +276,7 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
         
         # Deduct points from child
         child.points -= reward.cost
-        child.level = max(1, (child.points // 100) + 1)
+        child.level = (child.points // 100) + 1
         
         # Fire event
         self.hass.bus.async_fire(
@@ -359,7 +357,7 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
         
         child = self.children[child_id]
         child.points = max(0, child.points - points)
-        child.level = max(1, (child.points // 100) + 1)
+        child.level = (child.points // 100) + 1 if child.points > 0 else 1
         
         await self.async_save_data()
         await self.async_request_refresh()
@@ -462,41 +460,7 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
             _LOGGER.error("Failed to restore backup: %s", e)
             return False
     
-    async def _async_reload_integration_for_new_child(self, child_id: str) -> None:
-        """Reload the integration to add entities for a new child."""
-        try:
-            # Get the config entry for this integration
-            config_entries = [entry for entry in self.hass.config_entries.async_entries(DOMAIN)]
-            if not config_entries:
-                _LOGGER.error("No config entry found for %s", DOMAIN)
-                return
-            
-            config_entry = config_entries[0]
-            
-            # Trigger integration reload
-            await self.hass.config_entries.async_reload(config_entry.entry_id)
-            _LOGGER.info("Integration reloaded to add entities for new child: %s", child_id)
-                            
-        except Exception as e:
-            _LOGGER.error("Failed to reload integration for child %s: %s", child_id, e)
-
-    async def _async_reload_integration_for_new_entities(self) -> None:
-        """Reload the integration to add entities for new tasks/rewards."""
-        try:
-            # Get the config entry for this integration
-            config_entries = [entry for entry in self.hass.config_entries.async_entries(DOMAIN)]
-            if not config_entries:
-                _LOGGER.error("No config entry found for %s", DOMAIN)
-                return
-            
-            config_entry = config_entries[0]
-            
-            # Trigger integration reload
-            await self.hass.config_entries.async_reload(config_entry.entry_id)
-            _LOGGER.info("Integration reloaded to add new entities")
-                            
-        except Exception as e:
-            _LOGGER.error("Failed to reload integration for new entities: %s", e)
+    # Removed heavy reload methods - now using events for better performance
 
     async def _async_force_remove_child_entities(self, child_id: str) -> None:
         """Force remove all entities associated with a child."""

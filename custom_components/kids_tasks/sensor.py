@@ -41,6 +41,14 @@ async def async_setup_entry(
             ChildTasksCompletedTodaySensor(coordinator, child_id),
         ])
     
+    # Add individual task sensors
+    for task_id, task_data in coordinator.data.get("tasks", {}).items():
+        entities.append(TaskSensor(coordinator, task_id))
+    
+    # Add individual reward sensors
+    for reward_id, reward_data in coordinator.data.get("rewards", {}).items():
+        entities.append(RewardSensor(coordinator, reward_id))
+    
     # Add general sensors
     entities.extend([
         PendingValidationsSensor(coordinator),
@@ -378,3 +386,104 @@ class AllRewardsListSensor(CoordinatorEntity, SensorEntity):
             "active_count": sum(1 for reward in all_rewards if reward["active"]),
             "available_count": sum(1 for reward in all_rewards if reward["is_available"] and reward["active"])
         }
+
+
+class TaskSensor(CoordinatorEntity, SensorEntity):
+    """Individual sensor for each task."""
+
+    def __init__(self, coordinator: KidsTasksDataUpdateCoordinator, task_id: str) -> None:
+        """Initialize the sensor."""
+        super().__init__(coordinator)
+        self.task_id = task_id
+        self._attr_unique_id = f"{DOMAIN}_task_{task_id}"
+        self._attr_icon = "mdi:clipboard-check"
+
+    @property
+    def name(self) -> str:
+        """Return the name of the sensor."""
+        task_data = self.coordinator.data["tasks"].get(self.task_id, {})
+        task_name = task_data.get("name", "Tâche inconnue")
+        return f"Tâche: {task_name}"
+
+    @property
+    def native_value(self) -> str:
+        """Return the state of the sensor (task status)."""
+        task_data = self.coordinator.data["tasks"].get(self.task_id, {})
+        return task_data.get("status", "unknown")
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return the state attributes."""
+        task_data = self.coordinator.data["tasks"].get(self.task_id, {})
+        
+        # Get child name if assigned
+        child_name = "Non assigné"
+        if task_data.get("assigned_child_id"):
+            child_data = self.coordinator.data.get("children", {}).get(task_data["assigned_child_id"], {})
+            child_name = child_data.get("name", "Enfant inconnu")
+        
+        return {
+            "task_id": self.task_id,
+            "task_name": task_data.get("name", ""),
+            "description": task_data.get("description", ""),
+            "category": task_data.get("category", "other"),
+            "points": task_data.get("points", 0),
+            "frequency": task_data.get("frequency", "daily"),
+            "assigned_child_id": task_data.get("assigned_child_id"),
+            "assigned_child_name": child_name,
+            "validation_required": task_data.get("validation_required", False),
+            "active": task_data.get("active", True),
+            "created_at": task_data.get("created_at"),
+            "last_completed_at": task_data.get("last_completed_at"),
+        }
+
+    @property
+    def available(self) -> bool:
+        """Return if entity is available."""
+        return self.task_id in self.coordinator.data.get("tasks", {})
+
+
+class RewardSensor(CoordinatorEntity, SensorEntity):
+    """Individual sensor for each reward."""
+
+    def __init__(self, coordinator: KidsTasksDataUpdateCoordinator, reward_id: str) -> None:
+        """Initialize the sensor."""
+        super().__init__(coordinator)
+        self.reward_id = reward_id
+        self._attr_unique_id = f"{DOMAIN}_reward_{reward_id}"
+        self._attr_icon = "mdi:gift"
+
+    @property
+    def name(self) -> str:
+        """Return the name of the sensor."""
+        reward_data = self.coordinator.data["rewards"].get(self.reward_id, {})
+        reward_name = reward_data.get("name", "Récompense inconnue")
+        return f"Récompense: {reward_name}"
+
+    @property
+    def native_value(self) -> int:
+        """Return the state of the sensor (reward cost)."""
+        reward_data = self.coordinator.data["rewards"].get(self.reward_id, {})
+        return reward_data.get("cost", 0)
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return the state attributes."""
+        reward_data = self.coordinator.data["rewards"].get(self.reward_id, {})
+        
+        return {
+            "reward_id": self.reward_id,
+            "reward_name": reward_data.get("name", ""),
+            "description": reward_data.get("description", ""),
+            "cost": reward_data.get("cost", 50),
+            "category": reward_data.get("category", "fun"),
+            "active": reward_data.get("active", True),
+            "limited_quantity": reward_data.get("limited_quantity"),
+            "remaining_quantity": reward_data.get("remaining_quantity"),
+            "is_available": reward_data.get("remaining_quantity") is None or reward_data.get("remaining_quantity", 0) > 0,
+        }
+
+    @property
+    def available(self) -> bool:
+        """Return if entity is available."""
+        return self.reward_id in self.coordinator.data.get("rewards", {})

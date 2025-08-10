@@ -31,7 +31,8 @@ class Child:
         """Add points and check for level up."""
         old_level = self.level
         self.points += points
-        self.level = max(1, (self.points // 100) + 1)
+        # Corrected level calculation: level 1 = 0-99 points, level 2 = 100-199 points, etc.
+        self.level = (self.points // 100) + 1
         return self.level > old_level
     
     def to_dict(self) -> dict[str, Any]:
