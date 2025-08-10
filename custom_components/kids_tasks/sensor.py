@@ -402,6 +402,8 @@ class TaskSensor(CoordinatorEntity, SensorEntity):
         self.task_id = task_id
         self._attr_unique_id = f"{DOMAIN}_task_{task_id}"
         self._attr_icon = "mdi:clipboard-check"
+        # Force the entity_id format we want
+        self.entity_id = f"sensor.{DOMAIN}_task_{task_id}"
 
     @property
     def name(self) -> str:
@@ -457,6 +459,8 @@ class RewardSensor(CoordinatorEntity, SensorEntity):
         self.reward_id = reward_id
         self._attr_unique_id = f"{DOMAIN}_reward_{reward_id}"
         self._attr_icon = "mdi:gift"
+        # Force the entity_id format we want
+        self.entity_id = f"sensor.{DOMAIN}_reward_{reward_id}"
 
     @property
     def name(self) -> str:

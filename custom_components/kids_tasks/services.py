@@ -42,6 +42,7 @@ SERVICE_RESTORE_DATA = "restore_data"
 SERVICE_CLEAR_ALL_DATA = "clear_all_data"
 SERVICE_LIST_TASKS = "list_tasks"
 SERVICE_LIST_CHILDREN = "list_children"
+SERVICE_CLEANUP_OLD_ENTITIES = "cleanup_old_entities"
 
 SERVICE_ADD_CHILD_SCHEMA = vol.Schema(
     {
@@ -529,4 +530,50 @@ async def async_setup_services(
     
     hass.services.async_register(
         DOMAIN, SERVICE_LIST_CHILDREN, list_children_service
+    )
+    
+    async def cleanup_old_entities_service(call: ServiceCall) -> None:
+        """Cleanup old entity formats and recreate with new format."""
+        try:
+            from homeassistant.helpers import entity_registry
+            
+            # Get entity registry
+            er = entity_registry.async_get(hass)
+            
+            # Find and remove old format entities
+            old_entities_removed = []
+            
+            for entity_id, entity_entry in er.entities.items():
+                # Remove old tache_ format entities
+                if (entity_id.startswith('sensor.tache_') and 
+                    entity_entry.config_entry_id and 
+                    entity_entry.config_entry_id in hass.data.get(DOMAIN, {})):
+                    er.async_remove(entity_id)
+                    old_entities_removed.append(entity_id)
+                    _LOGGER.info("Removed old entity: %s", entity_id)
+                    
+                # Remove old button entities with old naming
+                elif (entity_id.startswith('button.') and 
+                      'tache' in entity_id and
+                      entity_entry.config_entry_id and 
+                      entity_entry.config_entry_id in hass.data.get(DOMAIN, {})):
+                    er.async_remove(entity_id)
+                    old_entities_removed.append(entity_id)
+                    _LOGGER.info("Removed old button entity: %s", entity_id)
+            
+            _LOGGER.info("🧹 Cleanup completed - Removed %d old entities", len(old_entities_removed))
+            
+            # Force recreate entities with new format by triggering setup
+            config_entries = [entry for entry in hass.config_entries.async_entries(DOMAIN)]
+            for entry in config_entries:
+                await hass.config_entries.async_reload(entry.entry_id)
+                
+            _LOGGER.info("✅ Integration reloaded - New entities should be created with correct format")
+                           
+        except Exception as e:
+            _LOGGER.error("Failed to cleanup old entities: %s", e)
+            raise
+    
+    hass.services.async_register(
+        DOMAIN, SERVICE_CLEANUP_OLD_ENTITIES, cleanup_old_entities_service
     )

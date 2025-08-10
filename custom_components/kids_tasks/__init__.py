@@ -59,7 +59,8 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         # Remove services when unloading
         services_to_remove = [
             "add_child", "add_task", "add_reward", "complete_task", 
-            "validate_task", "claim_reward", "reset_task", "clear_all_data"
+            "validate_task", "claim_reward", "reset_task", "clear_all_data",
+            "cleanup_old_entities"
         ]
         
         for service_name in services_to_remove:
