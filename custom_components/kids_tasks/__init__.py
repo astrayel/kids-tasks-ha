@@ -50,7 +50,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Setup services
     await async_setup_services(hass, coordinator)
     
-    
     return True
 
 

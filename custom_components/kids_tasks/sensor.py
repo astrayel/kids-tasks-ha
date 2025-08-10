@@ -31,6 +31,9 @@ async def async_setup_entry(
     """Set up sensor platform."""
     coordinator = hass.data[DOMAIN][config_entry.entry_id]["coordinator"]
     
+    # Store the add_entities callback for dynamic entity creation
+    coordinator.async_add_entities = async_add_entities
+    
     entities = []
     
     # Add child sensors

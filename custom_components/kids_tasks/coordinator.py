@@ -92,8 +92,16 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
         await self.async_save_data()
         await self.async_request_refresh()
         
-        # Fire event to notify that new child entities should be added
-        self.hass.bus.async_fire(f"{DOMAIN}_child_added", {"child_id": child.id})
+        # Create child sensors dynamically if async_add_entities is available
+        if hasattr(self, 'async_add_entities'):
+            from .sensor import ChildPointsSensor, ChildLevelSensor, ChildTasksCompletedTodaySensor
+            child_sensors = [
+                ChildPointsSensor(self, child.id),
+                ChildLevelSensor(self, child.id),
+                ChildTasksCompletedTodaySensor(self, child.id),
+            ]
+            await self.async_add_entities(child_sensors)
+            _LOGGER.info("Child sensors created dynamically for child: %s", child.id)
 
     async def async_update_child(self, child_id: str, updates: dict) -> None:
         """Update a child with new values."""
@@ -136,8 +144,12 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
             await self.async_request_refresh()
             _LOGGER.info("Task addition completed successfully")
             
-            # Fire event to notify that new task entity should be added
-            self.hass.bus.async_fire(f"{DOMAIN}_task_added", {"task_id": task.id})
+            # Create task sensor dynamically if async_add_entities is available
+            if hasattr(self, 'async_add_entities'):
+                from .sensor import TaskSensor
+                task_sensor = TaskSensor(self, task.id)
+                await self.async_add_entities([task_sensor])
+                _LOGGER.info("Task sensor created dynamically for task: %s", task.id)
         except Exception as e:
             _LOGGER.error("Failed to add task %s: %s", task.name, e)
             raise UpdateFailed(f"Error communicating with API: {e}") from e
@@ -247,8 +259,12 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
             await self.async_request_refresh()
             _LOGGER.info("Reward addition completed successfully")
             
-            # Fire event to notify that new reward entity should be added
-            self.hass.bus.async_fire(f"{DOMAIN}_reward_added", {"reward_id": reward.id})
+            # Create reward sensor dynamically if async_add_entities is available
+            if hasattr(self, 'async_add_entities'):
+                from .sensor import RewardSensor
+                reward_sensor = RewardSensor(self, reward.id)
+                await self.async_add_entities([reward_sensor])
+                _LOGGER.info("Reward sensor created dynamically for reward: %s", reward.id)
         except Exception as e:
             _LOGGER.error("Failed to add reward %s: %s", reward.name, e)
             raise UpdateFailed(f"Error communicating with API: {e}") from e
