@@ -32,7 +32,6 @@ add_child:
 add_task:
   name: Add Task
   description: Create a new recurring task for children
-  target: {}
   fields:
     name:
       name: Task Name
