@@ -135,6 +135,9 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
             _LOGGER.info("Data saved, requesting refresh...")
             await self.async_request_refresh()
             _LOGGER.info("Task addition completed successfully")
+            
+            # Trigger integration reload to add new task entities
+            await self._async_reload_integration_for_new_entities()
         except Exception as e:
             _LOGGER.error("Failed to add task %s: %s", task.name, e)
             raise UpdateFailed(f"Error communicating with API: {e}") from e
@@ -238,6 +241,9 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
         self.rewards[reward.id] = reward
         await self.async_save_data()
         await self.async_request_refresh()
+        
+        # Trigger integration reload to add new reward entities
+        await self._async_reload_integration_for_new_entities()
 
     async def async_remove_reward(self, reward_id: str) -> None:
         """Remove a reward."""
@@ -464,6 +470,24 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
         except Exception as e:
             _LOGGER.error("Failed to reload integration for child %s: %s", child_id, e)
 
+    async def _async_reload_integration_for_new_entities(self) -> None:
+        """Reload the integration to add entities for new tasks/rewards."""
+        try:
+            # Get the config entry for this integration
+            config_entries = [entry for entry in self.hass.config_entries.async_entries(DOMAIN)]
+            if not config_entries:
+                _LOGGER.error("No config entry found for %s", DOMAIN)
+                return
+            
+            config_entry = config_entries[0]
+            
+            # Trigger integration reload
+            await self.hass.config_entries.async_reload(config_entry.entry_id)
+            _LOGGER.info("Integration reloaded to add new entities")
+                            
+        except Exception as e:
+            _LOGGER.error("Failed to reload integration for new entities: %s", e)
+
     async def _async_force_remove_child_entities(self, child_id: str) -> None:
         """Force remove all entities associated with a child."""
         try:
@@ -479,7 +503,6 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
                 # Check if entity belongs to our domain and is related to this child
                 if (entity_entry.domain == DOMAIN and 
                     entity_entry.unique_id and 
-                    entity_entry.unique_id.startswith("KT_") and
                     child_id in entity_entry.unique_id):
                     entities_to_remove.append(entity_id)
             

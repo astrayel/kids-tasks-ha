@@ -45,8 +45,7 @@ class TaskCompleteButton(CoordinatorEntity, ButtonEntity):
         """Initialize the button."""
         super().__init__(coordinator)
         self.task_id = task_id
-        self._attr_unique_id = f"KT_complete_{task_id}"
-        self._attr_entity_id = f"button.kt_complete_{task_id}"
+        self._attr_unique_id = f"{DOMAIN}_complete_{task_id}"
         self._attr_icon = "mdi:check"
 
     @property
@@ -73,8 +72,7 @@ class TaskValidateButton(CoordinatorEntity, ButtonEntity):
         """Initialize the button."""
         super().__init__(coordinator)
         self.task_id = task_id
-        self._attr_unique_id = f"KT_validate_{task_id}"
-        self._attr_entity_id = f"button.kt_validate_{task_id}"
+        self._attr_unique_id = f"{DOMAIN}_validate_{task_id}"
         self._attr_icon = "mdi:check-decagram"
 
     @property
