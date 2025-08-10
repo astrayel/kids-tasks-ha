@@ -93,15 +93,19 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
         await self.async_request_refresh()
         
         # Create child sensors dynamically if async_add_entities is available
-        if hasattr(self, 'async_add_entities'):
-            from .sensor import ChildPointsSensor, ChildLevelSensor, ChildTasksCompletedTodaySensor
-            child_sensors = [
-                ChildPointsSensor(self, child.id),
-                ChildLevelSensor(self, child.id),
-                ChildTasksCompletedTodaySensor(self, child.id),
-            ]
-            await self.async_add_entities(child_sensors)
-            _LOGGER.info("Child sensors created dynamically for child: %s", child.id)
+        if hasattr(self, 'async_add_entities') and self.async_add_entities is not None:
+            try:
+                from .sensor import ChildPointsSensor, ChildLevelSensor, ChildTasksCompletedTodaySensor
+                child_sensors = [
+                    ChildPointsSensor(self, child.id),
+                    ChildLevelSensor(self, child.id),
+                    ChildTasksCompletedTodaySensor(self, child.id),
+                ]
+                await self.async_add_entities(child_sensors)
+                _LOGGER.info("Child sensors created dynamically for child: %s", child.id)
+            except Exception as e:
+                _LOGGER.warning("Could not create child sensors dynamically: %s", e)
+                # Continue without failing - sensors will be created on next restart
 
     async def async_update_child(self, child_id: str, updates: dict) -> None:
         """Update a child with new values."""
@@ -145,11 +149,15 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
             _LOGGER.info("Task addition completed successfully")
             
             # Create task sensor dynamically if async_add_entities is available
-            if hasattr(self, 'async_add_entities'):
-                from .sensor import TaskSensor
-                task_sensor = TaskSensor(self, task.id)
-                await self.async_add_entities([task_sensor])
-                _LOGGER.info("Task sensor created dynamically for task: %s", task.id)
+            if hasattr(self, 'async_add_entities') and self.async_add_entities is not None:
+                try:
+                    from .sensor import TaskSensor
+                    task_sensor = TaskSensor(self, task.id)
+                    await self.async_add_entities([task_sensor])
+                    _LOGGER.info("Task sensor created dynamically for task: %s", task.id)
+                except Exception as e:
+                    _LOGGER.warning("Could not create task sensor dynamically: %s", e)
+                    # Continue without failing - sensor will be created on next restart
         except Exception as e:
             _LOGGER.error("Failed to add task %s: %s", task.name, e)
             raise UpdateFailed(f"Error communicating with API: {e}") from e
@@ -260,11 +268,15 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
             _LOGGER.info("Reward addition completed successfully")
             
             # Create reward sensor dynamically if async_add_entities is available
-            if hasattr(self, 'async_add_entities'):
-                from .sensor import RewardSensor
-                reward_sensor = RewardSensor(self, reward.id)
-                await self.async_add_entities([reward_sensor])
-                _LOGGER.info("Reward sensor created dynamically for reward: %s", reward.id)
+            if hasattr(self, 'async_add_entities') and self.async_add_entities is not None:
+                try:
+                    from .sensor import RewardSensor
+                    reward_sensor = RewardSensor(self, reward.id)
+                    await self.async_add_entities([reward_sensor])
+                    _LOGGER.info("Reward sensor created dynamically for reward: %s", reward.id)
+                except Exception as e:
+                    _LOGGER.warning("Could not create reward sensor dynamically: %s", e)
+                    # Continue without failing - sensor will be created on next restart
         except Exception as e:
             _LOGGER.error("Failed to add reward %s: %s", reward.name, e)
             raise UpdateFailed(f"Error communicating with API: {e}") from e
