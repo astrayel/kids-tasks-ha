@@ -36,7 +36,7 @@ async def async_setup_entry(
     coordinator = hass.data[DOMAIN][config_entry.entry_id]["coordinator"]
     
     # Store the add_entities callback for dynamic entity creation
-    coordinator.async_add_entities = async_add_entities
+    hass.data[DOMAIN][config_entry.entry_id]["async_add_entities"] = async_add_entities
     
     entities = []
     
@@ -56,13 +56,11 @@ async def async_setup_entry(
     for reward_id, reward_data in coordinator.data.get("rewards", {}).items():
         entities.append(RewardSensor(coordinator, reward_id))
     
-    # Add general sensors
+    # Add only essential general sensors (keep for statistics)
     entities.extend([
         PendingValidationsSensor(coordinator),
         TotalTasksCompletedTodaySensor(coordinator),
         ActiveTasksSensor(coordinator),
-        AllTasksListSensor(coordinator),
-        AllRewardsListSensor(coordinator),
     ])
     
     async_add_entities(entities)
