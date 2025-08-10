@@ -47,13 +47,13 @@ SERVICE_CLEANUP_OLD_ENTITIES = "cleanup_old_entities"
 SERVICE_ADD_CHILD_SCHEMA = vol.Schema(
     {
         vol.Required("name"): cv.string,
-        vol.Optional("avatar"): cv.string,
+        vol.Optional("avatar"): vol.Any(cv.string, None),
         vol.Optional("initial_points", default=0): vol.Coerce(int),
-        vol.Optional("person_entity_id"): cv.string,
+        vol.Optional("person_entity_id"): vol.Any(cv.string, None),
         vol.Optional("avatar_type", default="emoji"): vol.In(["emoji", "url", "inline", "person_entity"]),
-        vol.Optional("avatar_data"): cv.string,
-        vol.Optional("card_gradient_start"): cv.string,
-        vol.Optional("card_gradient_end"): cv.string,
+        vol.Optional("avatar_data"): vol.Any(cv.string, None),
+        vol.Optional("card_gradient_start"): vol.Any(cv.string, None),
+        vol.Optional("card_gradient_end"): vol.Any(cv.string, None),
     }
 )
 
