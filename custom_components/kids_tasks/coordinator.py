@@ -95,10 +95,13 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
         # Trigger integration reload to add new child entities
         await self._async_reload_integration_for_new_child(child.id)
 
-    async def async_update_child(self, child: Child) -> None:
-        """Update a child."""
-        if child.id in self.children:
-            self.children[child.id] = child
+    async def async_update_child(self, child_id: str, updates: dict) -> None:
+        """Update a child with new values."""
+        if child_id in self.children:
+            child = self.children[child_id]
+            for key, value in updates.items():
+                if hasattr(child, key):
+                    setattr(child, key, value)
             await self.async_save_data()
             await self.async_request_refresh()
 
@@ -136,10 +139,13 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
             _LOGGER.error("Failed to add task %s: %s", task.name, e)
             raise UpdateFailed(f"Error communicating with API: {e}") from e
 
-    async def async_update_task(self, task: Task) -> None:
-        """Update a task."""
-        if task.id in self.tasks:
-            self.tasks[task.id] = task
+    async def async_update_task(self, task_id: str, updates: dict) -> None:
+        """Update a task with new values."""
+        if task_id in self.tasks:
+            task = self.tasks[task_id]
+            for key, value in updates.items():
+                if hasattr(task, key):
+                    setattr(task, key, value)
             await self.async_save_data()
             await self.async_request_refresh()
 

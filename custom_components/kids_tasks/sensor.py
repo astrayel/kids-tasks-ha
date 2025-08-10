@@ -60,6 +60,7 @@ class ChildPointsSensor(CoordinatorEntity, SensorEntity):
         super().__init__(coordinator)
         self.child_id = child_id
         self._attr_unique_id = f"KT_{child_id}_points"
+        self._attr_entity_id = f"sensor.kt_{child_id}_points"
         self._attr_device_class = None  # Remove problematic device class
         self._attr_state_class = SensorStateClass.TOTAL
         self._attr_icon = "mdi:star"
@@ -100,6 +101,7 @@ class ChildLevelSensor(CoordinatorEntity, SensorEntity):
         super().__init__(coordinator)
         self.child_id = child_id
         self._attr_unique_id = f"KT_{child_id}_level"
+        self._attr_entity_id = f"sensor.kt_{child_id}_level"
         self._attr_icon = "mdi:trophy"
 
     @property
@@ -122,6 +124,7 @@ class ChildTasksCompletedTodaySensor(CoordinatorEntity, SensorEntity):
         super().__init__(coordinator)
         self.child_id = child_id
         self._attr_unique_id = f"KT_{child_id}_tasks_today"
+        self._attr_entity_id = f"sensor.kt_{child_id}_tasks_today"
         self._attr_icon = "mdi:check-circle"
 
     @property
@@ -157,6 +160,7 @@ class PendingValidationsSensor(CoordinatorEntity, SensorEntity):
         """Initialize the sensor."""
         super().__init__(coordinator)
         self._attr_unique_id = f"KT_pending_validations"
+        self._attr_entity_id = "sensor.kt_pending_validations"
         self._attr_icon = "mdi:clock-alert"
 
     @property
@@ -201,6 +205,7 @@ class TotalTasksCompletedTodaySensor(CoordinatorEntity, SensorEntity):
         """Initialize the sensor."""
         super().__init__(coordinator)
         self._attr_unique_id = f"KT_total_tasks_today"
+        self._attr_entity_id = "sensor.kt_total_tasks_today"
         self._attr_icon = "mdi:check-all"
 
     @property
@@ -234,6 +239,7 @@ class ActiveTasksSensor(CoordinatorEntity, SensorEntity):
         """Initialize the sensor."""
         super().__init__(coordinator)
         self._attr_unique_id = f"KT_active_tasks"
+        self._attr_entity_id = "sensor.kt_active_tasks"
         self._attr_icon = "mdi:format-list-checks"
 
     @property
@@ -258,6 +264,7 @@ class AllTasksListSensor(CoordinatorEntity, SensorEntity):
         """Initialize the sensor."""
         super().__init__(coordinator)
         self._attr_unique_id = f"KT_all_tasks_list"
+        self._attr_entity_id = "sensor.kt_all_tasks_list"
         self._attr_icon = "mdi:format-list-bulleted"
 
     @property

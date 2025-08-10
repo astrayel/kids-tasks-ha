@@ -294,7 +294,7 @@ class KidsTasksOptionsFlow(config_entries.OptionsFlow):
                     selector.SelectSelectorConfig(
                         options=[
                             {"value": "fun", "label": "Fun"},
-                            {"value": "screen_time", "label": "Screen Time2"},
+                            {"value": "screen_time", "label": "Screen Time"},
                             {"value": "outing", "label": "Outing"},
                             {"value": "treat", "label": "Treat"},
                             {"value": "privilege", "label": "Privilege"},

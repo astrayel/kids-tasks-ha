@@ -40,6 +40,7 @@ class TaskPointsNumber(CoordinatorEntity, NumberEntity):
         super().__init__(coordinator)
         self.task_id = task_id
         self._attr_unique_id = f"KT_points_{task_id}"
+        self._attr_entity_id = f"number.kt_points_{task_id}"
         self._attr_native_min_value = 1
         self._attr_native_max_value = 100
         self._attr_native_step = 1
