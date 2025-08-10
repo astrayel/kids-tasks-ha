@@ -322,7 +322,12 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
 
     async def async_request_refresh(self) -> None:
         """Request a data refresh."""
-        await self.async_refresh()
+        try:
+            refresh_result = self.async_refresh()
+            if refresh_result is not None:
+                await refresh_result
+        except Exception as e:
+            _LOGGER.warning("Failed to refresh coordinator: %s", e)
 
     async def async_clear_all_data(self) -> None:
         """Clear all data from storage."""
