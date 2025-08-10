@@ -69,7 +69,7 @@ SERVICE_ADD_REWARD_SCHEMA = vol.Schema(
         vol.Optional("description"): cv.string,
         vol.Optional("cost", default=50): vol.Coerce(int),
         vol.Optional("category", default="fun"): cv.string,
-        vol.Optional("limited_quantity"): vol.Coerce(int),
+        vol.Optional("limited_quantity"): vol.Any(vol.Coerce(int), None),
     }
 )
 
@@ -164,8 +164,8 @@ SERVICE_UPDATE_REWARD_SCHEMA = vol.Schema(
         vol.Optional("description"): cv.string,
         vol.Optional("cost"): vol.Coerce(int),
         vol.Optional("category"): cv.string,
-        vol.Optional("limited_quantity"): vol.Coerce(int),
-        vol.Optional("remaining_quantity"): vol.Coerce(int),
+        vol.Optional("limited_quantity"): vol.Any(vol.Coerce(int), None),
+        vol.Optional("remaining_quantity"): vol.Any(vol.Coerce(int), None),
         vol.Optional("active"): cv.boolean,
     }
 )
