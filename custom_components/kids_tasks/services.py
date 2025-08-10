@@ -143,6 +143,9 @@ SERVICE_UPDATE_TASK_SCHEMA = vol.Schema(
         vol.Optional("description"): cv.string,
         vol.Optional("points"): vol.Coerce(int),
         vol.Optional("category"): vol.In(CATEGORIES),
+        vol.Optional("frequency"): vol.In(FREQUENCIES),
+        vol.Optional("assigned_child_id"): cv.string,
+        vol.Optional("validation_required"): cv.boolean,
         vol.Optional("active"): cv.boolean,
     }
 )
@@ -159,6 +162,9 @@ SERVICE_UPDATE_REWARD_SCHEMA = vol.Schema(
         vol.Optional("name"): cv.string,
         vol.Optional("description"): cv.string,
         vol.Optional("cost"): vol.Coerce(int),
+        vol.Optional("category"): cv.string,
+        vol.Optional("limited_quantity"): vol.Coerce(int),
+        vol.Optional("remaining_quantity"): vol.Coerce(int),
         vol.Optional("active"): cv.boolean,
     }
 )

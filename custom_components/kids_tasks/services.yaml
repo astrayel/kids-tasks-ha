@@ -382,6 +382,35 @@ update_task:
             - "outdoor"
             - "pets"
             - "other"
+    frequency:
+      name: New Frequency
+      description: Updated frequency for the task
+      required: false
+      selector:
+        select:
+          options:
+            - label: "Daily"
+              value: "daily"
+            - label: "Weekly"
+              value: "weekly"
+            - label: "Monthly"
+              value: "monthly"
+            - label: "Once"
+              value: "once"
+          mode: dropdown
+    assigned_child_id:
+      name: Assigned Child
+      description: ID of the child assigned to this task (leave empty to unassign)
+      required: false
+      selector:
+        text:
+          type: text
+    validation_required:
+      name: Requires Validation
+      description: Whether this task requires parental validation
+      required: false
+      selector:
+        boolean:
     active:
       name: Active Status
       description: Whether the task is active or not
@@ -431,6 +460,46 @@ update_reward:
         number:
           min: 1
           max: 1000
+          step: 1
+    category:
+      name: New Category
+      description: Updated category for the reward
+      required: false
+      selector:
+        select:
+          options:
+            - label: "Fun"
+              value: "fun"
+            - label: "Screen Time"
+              value: "screen_time"
+            - label: "Outing"
+              value: "outing"
+            - label: "Treat"
+              value: "treat"
+            - label: "Privilege"
+              value: "privilege"
+            - label: "Toy"
+              value: "toy"
+            - label: "Other"
+              value: "other"
+          mode: dropdown
+    limited_quantity:
+      name: Limited Quantity
+      description: Maximum number of times this reward can be claimed (leave empty for unlimited)
+      required: false
+      selector:
+        number:
+          min: 1
+          max: 100
+          step: 1
+    remaining_quantity:
+      name: Remaining Quantity
+      description: Current remaining quantity available
+      required: false
+      selector:
+        number:
+          min: 0
+          max: 100
           step: 1
     active:
       name: Active Status
