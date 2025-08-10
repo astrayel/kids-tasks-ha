@@ -277,7 +277,13 @@ async def async_setup_services(
     
     async def validate_task_service(call: ServiceCall) -> None:
         """Validate a task."""
-        await coordinator.async_validate_task(call.data["task_id"])
+        task_id = call.data["task_id"]
+        _LOGGER.info("🔧 Validating task: %s", task_id)
+        success = await coordinator.async_validate_task(task_id)
+        if success:
+            _LOGGER.info("✅ Task validation successful: %s", task_id)
+        else:
+            _LOGGER.warning("❌ Task validation failed: %s", task_id)
     
     async def claim_reward_service(call: ServiceCall) -> None:
         """Claim a reward."""
