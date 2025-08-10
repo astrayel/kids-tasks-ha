@@ -137,7 +137,9 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
             _LOGGER.info("Task addition completed successfully")
             
             # Trigger integration reload to add new task entities
+            _LOGGER.info("Triggering integration reload for new task entities...")
             await self._async_reload_integration_for_new_entities()
+            _LOGGER.info("Integration reload completed")
         except Exception as e:
             _LOGGER.error("Failed to add task %s: %s", task.name, e)
             raise UpdateFailed(f"Error communicating with API: {e}") from e

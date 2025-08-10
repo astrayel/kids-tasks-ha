@@ -557,3 +557,8 @@ list_tasks:
   name: List All Tasks
   description: List all tasks with their details (output will be shown in Home Assistant logs)
   fields: {}
+
+list_children:
+  name: List All Children
+  description: List all children with their details (output will be shown in Home Assistant logs)
+  fields: {}

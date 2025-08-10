@@ -41,6 +41,7 @@ SERVICE_BACKUP_DATA = "backup_data"
 SERVICE_RESTORE_DATA = "restore_data"
 SERVICE_CLEAR_ALL_DATA = "clear_all_data"
 SERVICE_LIST_TASKS = "list_tasks"
+SERVICE_LIST_CHILDREN = "list_children"
 
 SERVICE_ADD_CHILD_SCHEMA = vol.Schema(
     {
@@ -214,6 +215,10 @@ async def async_setup_services(
             assigned_child_id = call.data.get("assigned_child_id")
             if assigned_child_id and assigned_child_id not in coordinator.children:
                 _LOGGER.error("Assigned child ID %s does not exist", assigned_child_id)
+                available_children = list(coordinator.children.keys())
+                _LOGGER.error("Available child IDs: %s", available_children)
+                for child_id, child in coordinator.children.items():
+                    _LOGGER.error("Child: %s (ID: %s)", child.name, child_id)
                 raise ValueError(f"Child with ID {assigned_child_id} does not exist")
             
             task_id = str(uuid.uuid4())
@@ -348,9 +353,27 @@ async def async_setup_services(
     
     async def update_task_service(call: ServiceCall) -> None:
         """Update a task."""
-        task_id = call.data["task_id"]
-        updates = {k: v for k, v in call.data.items() if k != "task_id"}
-        await coordinator.async_update_task(task_id, updates)
+        try:
+            task_id = call.data["task_id"]
+            updates = {k: v for k, v in call.data.items() if k != "task_id"}
+            
+            _LOGGER.info("Updating task with ID: %s", task_id)
+            _LOGGER.info("Updates to apply: %s", updates)
+            
+            # Check if task exists
+            if task_id not in coordinator.tasks:
+                _LOGGER.error("Task with ID %s does not exist", task_id)
+                available_tasks = list(coordinator.tasks.keys())
+                _LOGGER.error("Available task IDs: %s", available_tasks)
+                raise ValueError(f"Task with ID {task_id} does not exist")
+            
+            await coordinator.async_update_task(task_id, updates)
+            _LOGGER.info("Task %s updated successfully", task_id)
+            
+        except Exception as e:
+            _LOGGER.error("Failed to update task: %s", e)
+            _LOGGER.error("Task data was: %s", call.data)
+            raise
     
     async def remove_task_service(call: ServiceCall) -> None:
         """Remove a task."""
@@ -479,4 +502,31 @@ async def async_setup_services(
     
     hass.services.async_register(
         DOMAIN, SERVICE_LIST_TASKS, list_tasks_service
+    )
+    
+    async def list_children_service(call: ServiceCall) -> None:
+        """List all children with details."""
+        try:
+            children_list = []
+            for child_id, child in coordinator.children.items():
+                children_list.append({
+                    "child_id": child_id,
+                    "name": child.name,
+                    "points": child.points,
+                    "level": child.level,
+                    "avatar": child.avatar
+                })
+            
+            _LOGGER.info("Children list retrieved: %d children found", len(children_list))
+            # Log each child for visibility in Home Assistant logs
+            for child in children_list:
+                _LOGGER.info("Child: %s | ID: %s | Points: %d | Level: %d", 
+                           child["name"], child["child_id"], child["points"], child["level"])
+                           
+        except Exception as e:
+            _LOGGER.error("Failed to list children: %s", e)
+            raise
+    
+    hass.services.async_register(
+        DOMAIN, SERVICE_LIST_CHILDREN, list_children_service
     )
