@@ -233,17 +233,28 @@ async def async_setup_services(
     
     async def add_reward_service(call: ServiceCall) -> None:
         """Add a new reward."""
-        reward_id = str(uuid.uuid4())
-        reward = Reward(
-            id=reward_id,
-            name=call.data["name"],
-            description=call.data.get("description", ""),
-            cost=call.data.get("cost", 50),
-            category=call.data.get("category", "fun"),
-            limited_quantity=call.data.get("limited_quantity"),
-            remaining_quantity=call.data.get("limited_quantity"),
-        )
-        await coordinator.async_add_reward(reward)
+        try:
+            _LOGGER.info("Creating new reward with data: %s", call.data)
+            
+            reward_id = str(uuid.uuid4())
+            reward = Reward(
+                id=reward_id,
+                name=call.data["name"],
+                description=call.data.get("description", ""),
+                cost=call.data.get("cost", 50),
+                category=call.data.get("category", "fun"),
+                limited_quantity=call.data.get("limited_quantity"),
+                remaining_quantity=call.data.get("limited_quantity"),
+            )
+            
+            _LOGGER.info("Reward object created: %s", reward.to_dict())
+            await coordinator.async_add_reward(reward)
+            _LOGGER.info("Reward successfully added with ID: %s", reward_id)
+            
+        except Exception as e:
+            _LOGGER.error("Failed to create reward: %s", e)
+            _LOGGER.error("Reward data was: %s", call.data)
+            raise
     
     async def complete_task_service(call: ServiceCall) -> None:
         """Complete a task."""

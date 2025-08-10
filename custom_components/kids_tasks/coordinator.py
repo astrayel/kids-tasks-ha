@@ -238,12 +238,20 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
     # Reward management methods
     async def async_add_reward(self, reward: Reward) -> None:
         """Add a new reward."""
-        self.rewards[reward.id] = reward
-        await self.async_save_data()
-        await self.async_request_refresh()
-        
-        # Trigger integration reload to add new reward entities
-        await self._async_reload_integration_for_new_entities()
+        try:
+            _LOGGER.info("Adding reward to coordinator: %s", reward.name)
+            self.rewards[reward.id] = reward
+            _LOGGER.info("Reward added to memory, saving data...")
+            await self.async_save_data()
+            _LOGGER.info("Data saved, requesting refresh...")
+            await self.async_request_refresh()
+            _LOGGER.info("Reward addition completed successfully")
+            
+            # Trigger integration reload to add new reward entities
+            await self._async_reload_integration_for_new_entities()
+        except Exception as e:
+            _LOGGER.error("Failed to add reward %s: %s", reward.name, e)
+            raise UpdateFailed(f"Error communicating with API: {e}") from e
 
     async def async_remove_reward(self, reward_id: str) -> None:
         """Remove a reward."""

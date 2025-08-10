@@ -47,6 +47,7 @@ async def async_setup_entry(
         TotalTasksCompletedTodaySensor(coordinator),
         ActiveTasksSensor(coordinator),
         AllTasksListSensor(coordinator),
+        AllRewardsListSensor(coordinator),
     ])
     
     async_add_entities(entities)
@@ -328,4 +329,52 @@ class AllTasksListSensor(CoordinatorEntity, SensorEntity):
                 if task["last_completed_at"] and 
                 task["last_completed_at"].startswith(datetime.now().strftime("%Y-%m-%d"))
             ])
+        }
+
+
+class AllRewardsListSensor(CoordinatorEntity, SensorEntity):
+    """Sensor that shows all rewards with their details."""
+
+    def __init__(self, coordinator: KidsTasksDataUpdateCoordinator) -> None:
+        """Initialize the sensor."""
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{DOMAIN}_all_rewards_list"
+        self._attr_icon = "mdi:gift"
+
+    @property
+    def name(self) -> str:
+        """Return the name of the sensor."""
+        return "Liste de Toutes les Récompenses"
+
+    @property
+    def native_value(self) -> int:
+        """Return the total number of rewards."""
+        return len(self.coordinator.data.get("rewards", {}))
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return the state attributes with all rewards details."""
+        all_rewards = []
+        
+        for reward_id, reward_data in self.coordinator.data.get("rewards", {}).items():
+            all_rewards.append({
+                "reward_id": reward_id,
+                "name": reward_data.get("name", "Récompense sans nom"),
+                "description": reward_data.get("description", ""),
+                "cost": reward_data.get("cost", 50),
+                "category": reward_data.get("category", "fun").title(),
+                "active": reward_data.get("active", True),
+                "limited_quantity": reward_data.get("limited_quantity"),
+                "remaining_quantity": reward_data.get("remaining_quantity"),
+                "is_available": reward_data.get("remaining_quantity") is None or reward_data.get("remaining_quantity", 0) > 0,
+            })
+        
+        # Sort by cost for logical display
+        all_rewards.sort(key=lambda x: x["cost"])
+        
+        return {
+            "rewards": all_rewards,
+            "total_count": len(all_rewards),
+            "active_count": sum(1 for reward in all_rewards if reward["active"]),
+            "available_count": sum(1 for reward in all_rewards if reward["is_available"] and reward["active"])
         }
