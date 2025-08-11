@@ -133,7 +133,12 @@ SERVICE_UPDATE_CHILD_SCHEMA = vol.Schema(
     {
         vol.Required("child_id"): cv.string,
         vol.Optional("name"): cv.string,
-        vol.Optional("avatar"): cv.string,
+        vol.Optional("avatar"): vol.Any(cv.string, None),
+        vol.Optional("person_entity_id"): vol.Any(cv.string, None),
+        vol.Optional("avatar_type"): vol.In(["emoji", "url", "inline", "person_entity"]),
+        vol.Optional("avatar_data"): vol.Any(cv.string, None),
+        vol.Optional("card_gradient_start"): vol.Any(cv.string, None),
+        vol.Optional("card_gradient_end"): vol.Any(cv.string, None),
     }
 )
 

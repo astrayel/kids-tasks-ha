@@ -50,7 +50,7 @@ class Child:
             return f"data:image/png;base64,{self.avatar_data}"
         elif self.avatar_type == "person_entity" and self.person_entity_id and hass:
             person_entity = hass.states.get(self.person_entity_id)
-            if person_entity and hasattr(person_entity.attributes, 'entity_picture'):
+            if person_entity and 'entity_picture' in person_entity.attributes:
                 return person_entity.attributes.get('entity_picture', self.avatar or "👶")
         return self.avatar or "👶"
     

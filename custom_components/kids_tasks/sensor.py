@@ -103,6 +103,11 @@ class ChildPointsSensor(CoordinatorEntity, SensorEntity):
             "child_id": self.child_id,
             "name": child_data.get("name", "Unknown"),
             "avatar": child_data.get("avatar", "👶"),
+            "person_entity_id": child_data.get("person_entity_id"),
+            "avatar_type": child_data.get("avatar_type", "emoji"),
+            "avatar_data": child_data.get("avatar_data"),
+            "card_gradient_start": child_data.get("card_gradient_start"),
+            "card_gradient_end": child_data.get("card_gradient_end")
         }
 
 
