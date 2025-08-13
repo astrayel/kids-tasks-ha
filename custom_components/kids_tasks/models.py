@@ -98,7 +98,8 @@ class Task:
     points: int = 10
     frequency: str = FREQUENCY_DAILY
     status: str = TASK_STATUS_TODO
-    assigned_child_id: str | None = None
+    assigned_child_ids: list[str] = field(default_factory=list)  # Liste des IDs d'enfants assignés
+    assigned_child_id: str | None = None  # Maintenu pour compatibilité descendante
     created_at: datetime = field(default_factory=datetime.now)
     last_completed_at: datetime | None = None
     due_date: datetime | None = None
@@ -130,6 +131,20 @@ class Task:
         """Reset task to todo status."""
         self.status = TASK_STATUS_TODO
     
+    def get_assigned_child_ids(self) -> list[str]:
+        """Get list of assigned child IDs, handling backward compatibility."""
+        if self.assigned_child_ids:
+            return self.assigned_child_ids
+        elif self.assigned_child_id:
+            return [self.assigned_child_id]
+        return []
+    
+    def set_assigned_child_ids(self, child_ids: list[str]) -> None:
+        """Set assigned child IDs and maintain backward compatibility."""
+        self.assigned_child_ids = child_ids
+        # Maintenir la compatibilité avec l'ancien champ
+        self.assigned_child_id = child_ids[0] if child_ids else None
+    
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
@@ -141,6 +156,7 @@ class Task:
             "frequency": self.frequency,
             "status": self.status,
             "assigned_child_id": self.assigned_child_id,
+            "assigned_child_ids": self.assigned_child_ids,
             "created_at": self.created_at.isoformat(),
             "last_completed_at": self.last_completed_at.isoformat() if self.last_completed_at else None,
             "due_date": self.due_date.isoformat() if self.due_date else None,
@@ -152,7 +168,7 @@ class Task:
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Task:
         """Create from dictionary."""
-        return cls(
+        task = cls(
             id=data["id"],
             name=data["name"],
             description=data.get("description", ""),
@@ -161,6 +177,7 @@ class Task:
             frequency=data.get("frequency", FREQUENCY_DAILY),
             status=data.get("status", TASK_STATUS_TODO),
             assigned_child_id=data.get("assigned_child_id"),
+            assigned_child_ids=data.get("assigned_child_ids", []),
             created_at=datetime.fromisoformat(data["created_at"]),
             last_completed_at=datetime.fromisoformat(data["last_completed_at"]) if data.get("last_completed_at") else None,
             due_date=datetime.fromisoformat(data["due_date"]) if data.get("due_date") else None,
@@ -168,6 +185,14 @@ class Task:
             active=data.get("active", True),
             weekly_days=data.get("weekly_days"),
         )
+        
+        # Assurer la compatibilité descendante
+        if not task.assigned_child_ids and task.assigned_child_id:
+            task.assigned_child_ids = [task.assigned_child_id]
+        elif task.assigned_child_ids and not task.assigned_child_id:
+            task.assigned_child_id = task.assigned_child_ids[0]
+        
+        return task
 
 
 @dataclass

@@ -102,10 +102,17 @@ add_task:
               value: "once"
           mode: dropdown
     assigned_child_id:
-      name: Assigned Child
-      description: ID of the child assigned to this task (leave empty for unassigned)
+      name: Assigned Child (Single - Legacy)
+      description: ID of the child assigned to this task (leave empty for unassigned). Use assigned_child_ids for multiple children.
       required: false
       example: "child-uuid-here"
+      selector:
+        text:
+    assigned_child_ids:
+      name: Assigned Children (Multiple)
+      description: List of child IDs assigned to this task (supports multiple children)
+      required: false
+      example: ["child-uuid-1", "child-uuid-2"]
       selector:
         text:
           type: text
@@ -398,12 +405,19 @@ update_task:
               value: "once"
           mode: dropdown
     assigned_child_id:
-      name: Assigned Child
-      description: ID of the child assigned to this task (leave empty to unassign)
+      name: Assigned Child (Single - Legacy)
+      description: ID of the child assigned to this task (leave empty to unassign). Use assigned_child_ids for multiple children.
       required: false
       selector:
         text:
           type: text
+    assigned_child_ids:
+      name: Assigned Children (Multiple)
+      description: List of child IDs assigned to this task (supports multiple children)
+      required: false
+      example: ["child-uuid-1", "child-uuid-2"]
+      selector:
+        object:
     validation_required:
       name: Requires Validation
       description: Whether this task requires parental validation
@@ -520,7 +534,17 @@ remove_reward:
 
 reset_all_daily_tasks:
   name: Reset All Daily Tasks
-  description: Reset all daily tasks to 'to do' status (typically run via automation)
+  description: Reset all daily tasks to 'to do' status and deduct points for uncompleted tasks (typically run via automation)
+  fields: {}
+
+reset_all_weekly_tasks:
+  name: Reset All Weekly Tasks
+  description: Reset all weekly tasks to 'to do' status and deduct points for uncompleted tasks (typically run via automation)
+  fields: {}
+
+reset_all_monthly_tasks:
+  name: Reset All Monthly Tasks
+  description: Reset all monthly tasks to 'to do' status and deduct points for uncompleted tasks (typically run via automation)
   fields: {}
 
 backup_data:

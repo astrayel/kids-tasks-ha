@@ -442,7 +442,8 @@ class TaskSensor(CoordinatorEntity, SensorEntity):
             "category": task_data.get("category", "other"),
             "points": task_data.get("points", 0),
             "frequency": task_data.get("frequency", "daily"),
-            "assigned_child_id": task_data.get("assigned_child_id"),
+            "assigned_child_id": task_data.get("assigned_child_id"),  # Compatibilité
+            "assigned_child_ids": task_data.get("assigned_child_ids", []),  # Nouveau
             "assigned_child_name": child_name,
             "validation_required": task_data.get("validation_required", False),
             "active": task_data.get("active", True),

@@ -37,6 +37,8 @@ SERVICE_REMOVE_TASK = "remove_task"
 SERVICE_UPDATE_REWARD = "update_reward"
 SERVICE_REMOVE_REWARD = "remove_reward"
 SERVICE_RESET_ALL_DAILY_TASKS = "reset_all_daily_tasks"
+SERVICE_RESET_ALL_WEEKLY_TASKS = "reset_all_weekly_tasks"
+SERVICE_RESET_ALL_MONTHLY_TASKS = "reset_all_monthly_tasks"
 SERVICE_BACKUP_DATA = "backup_data"
 SERVICE_RESTORE_DATA = "restore_data"
 SERVICE_CLEAR_ALL_DATA = "clear_all_data"
@@ -64,7 +66,8 @@ SERVICE_ADD_TASK_SCHEMA = vol.Schema(
         vol.Optional("category"): vol.In(CATEGORIES),
         vol.Optional("points", default=10): vol.Coerce(int),
         vol.Optional("frequency", default="daily"): vol.In(FREQUENCIES),
-        vol.Optional("assigned_child_id"): cv.string,
+        vol.Optional("assigned_child_id"): cv.string,  # Compatibilité descendante
+        vol.Optional("assigned_child_ids"): [cv.string],  # Nouvelle option multi-enfants
         vol.Optional("validation_required", default=True): cv.boolean,
         vol.Optional("weekly_days"): vol.Any([cv.string], None),
     }
@@ -157,7 +160,8 @@ SERVICE_UPDATE_TASK_SCHEMA = vol.Schema(
         vol.Optional("points"): vol.Coerce(int),
         vol.Optional("category"): vol.In(CATEGORIES),
         vol.Optional("frequency"): vol.In(FREQUENCIES),
-        vol.Optional("assigned_child_id"): cv.string,
+        vol.Optional("assigned_child_id"): cv.string,  # Compatibilité descendante
+        vol.Optional("assigned_child_ids"): [cv.string],  # Nouvelle option multi-enfants
         vol.Optional("validation_required"): cv.boolean,
         vol.Optional("active"): cv.boolean,
         vol.Optional("weekly_days"): vol.Any([cv.string], None),
@@ -229,15 +233,25 @@ async def async_setup_services(
         try:
             _LOGGER.info("🔧 NOUVELLE VERSION - Creating new task with data: %s", call.data)
             
-            # Validate assigned child exists if provided
-            assigned_child_id = call.data.get("assigned_child_id")
-            if assigned_child_id and assigned_child_id not in coordinator.children:
-                _LOGGER.error("Assigned child ID %s does not exist", assigned_child_id)
-                available_children = list(coordinator.children.keys())
-                _LOGGER.error("Available child IDs: %s", available_children)
-                for child_id, child in coordinator.children.items():
-                    _LOGGER.error("Child: %s (ID: %s)", child.name, child_id)
-                raise ValueError(f"Child with ID {assigned_child_id} does not exist")
+            # Gérer les assignations d'enfants (nouveau et ancien format)
+            assigned_child_ids = []
+            assigned_child_id = call.data.get("assigned_child_id")  # Ancien format
+            assigned_child_ids_new = call.data.get("assigned_child_ids", [])  # Nouveau format
+            
+            if assigned_child_ids_new:
+                assigned_child_ids = assigned_child_ids_new
+            elif assigned_child_id:
+                assigned_child_ids = [assigned_child_id]
+            
+            # Valider que tous les enfants assignés existent
+            for child_id in assigned_child_ids:
+                if child_id not in coordinator.children:
+                    _LOGGER.error("Assigned child ID %s does not exist", child_id)
+                    available_children = list(coordinator.children.keys())
+                    _LOGGER.error("Available child IDs: %s", available_children)
+                    for existing_child_id, child in coordinator.children.items():
+                        _LOGGER.error("Child: %s (ID: %s)", child.name, existing_child_id)
+                    raise ValueError(f"Child with ID {child_id} does not exist")
             
             task_id = str(uuid.uuid4())
             task = Task(
@@ -247,7 +261,8 @@ async def async_setup_services(
                 category=call.data.get("category", "other"),
                 points=call.data.get("points", 10),
                 frequency=call.data.get("frequency", "daily"),
-                assigned_child_id=assigned_child_id,
+                assigned_child_id=assigned_child_ids[0] if assigned_child_ids else None,
+                assigned_child_ids=assigned_child_ids,
                 validation_required=call.data.get("validation_required", True),
                 weekly_days=call.data.get("weekly_days"),
             )
@@ -382,6 +397,16 @@ async def async_setup_services(
             task_id = call.data["task_id"]
             updates = {k: v for k, v in call.data.items() if k != "task_id"}
             
+            # Gérer la mise à jour des assignations d'enfants
+            if "assigned_child_ids" in updates:
+                # Nouveau format : liste d'enfants
+                assigned_child_ids = updates["assigned_child_ids"]
+                updates["assigned_child_id"] = assigned_child_ids[0] if assigned_child_ids else None
+            elif "assigned_child_id" in updates:
+                # Ancien format : un seul enfant
+                assigned_child_id = updates["assigned_child_id"]
+                updates["assigned_child_ids"] = [assigned_child_id] if assigned_child_id else []
+            
             _LOGGER.info("Updating task with ID: %s", task_id)
             _LOGGER.info("Updates to apply: %s", updates)
             
@@ -417,6 +442,14 @@ async def async_setup_services(
     async def reset_all_daily_tasks_service(call: ServiceCall) -> None:
         """Reset all daily tasks."""
         await coordinator.async_reset_all_daily_tasks()
+    
+    async def reset_all_weekly_tasks_service(call: ServiceCall) -> None:
+        """Reset all weekly tasks."""
+        await coordinator.async_reset_all_weekly_tasks()
+    
+    async def reset_all_monthly_tasks_service(call: ServiceCall) -> None:
+        """Reset all monthly tasks."""
+        await coordinator.async_reset_all_monthly_tasks()
     
     async def backup_data_service(call: ServiceCall) -> None:
         """Backup data."""
@@ -468,6 +501,14 @@ async def async_setup_services(
     
     hass.services.async_register(
         DOMAIN, SERVICE_RESET_ALL_DAILY_TASKS, reset_all_daily_tasks_service
+    )
+    
+    hass.services.async_register(
+        DOMAIN, SERVICE_RESET_ALL_WEEKLY_TASKS, reset_all_weekly_tasks_service
+    )
+    
+    hass.services.async_register(
+        DOMAIN, SERVICE_RESET_ALL_MONTHLY_TASKS, reset_all_monthly_tasks_service
     )
     
     hass.services.async_register(

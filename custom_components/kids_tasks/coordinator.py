@@ -447,9 +447,114 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
         return True
 
     async def async_reset_all_daily_tasks(self) -> None:
-        """Reset all daily tasks to todo status."""
+        """Reset all daily tasks to todo status and deduct points for uncompleted recurring tasks."""
         for task in self.tasks.values():
             if task.frequency == "daily":
+                # Déduire des points si la tâche n'a pas été faite pour tous les enfants assignés
+                if task.status == "todo":
+                    assigned_children = task.get_assigned_child_ids()
+                    for child_id in assigned_children:
+                        if child_id in self.children:
+                            child = self.children[child_id]
+                            # Déduire la moitié des points de la tâche (minimum 1 point)
+                            penalty_points = max(1, task.points // 2)
+                            child.points = max(0, child.points - penalty_points)
+                            
+                            # Recalculer le niveau après déduction
+                            child.level = (child.points // 100) + 1
+                            
+                            # Envoyer un événement pour la pénalité
+                            self.hass.bus.async_fire(
+                                "kids_tasks_penalty_applied",
+                                {
+                                    "task_id": task.id,
+                                    "task_name": task.name,
+                                    "child_id": child_id,
+                                    "child_name": child.name,
+                                    "penalty_points": penalty_points,
+                                    "new_points": child.points,
+                                    "new_level": child.level,
+                                    "frequency": "daily",
+                                },
+                            )
+                
+                # Remettre la tâche à "todo" pour le nouveau cycle
+                task.status = "todo"
+        
+        await self.async_save_data()
+        await self.async_request_refresh()
+
+    async def async_reset_all_weekly_tasks(self) -> None:
+        """Reset all weekly tasks to todo status and deduct points for uncompleted tasks."""
+        for task in self.tasks.values():
+            if task.frequency == "weekly":
+                # Déduire des points si la tâche n'a pas été faite pour tous les enfants assignés
+                if task.status == "todo":
+                    assigned_children = task.get_assigned_child_ids()
+                    for child_id in assigned_children:
+                        if child_id in self.children:
+                            child = self.children[child_id]
+                            # Déduire la moitié des points de la tâche (minimum 1 point)
+                            penalty_points = max(1, task.points // 2)
+                            child.points = max(0, child.points - penalty_points)
+                            
+                            # Recalculer le niveau après déduction
+                            child.level = (child.points // 100) + 1
+                            
+                            # Envoyer un événement pour la pénalité
+                            self.hass.bus.async_fire(
+                                "kids_tasks_penalty_applied",
+                                {
+                                    "task_id": task.id,
+                                    "task_name": task.name,
+                                    "child_id": child_id,
+                                    "child_name": child.name,
+                                    "penalty_points": penalty_points,
+                                    "new_points": child.points,
+                                    "new_level": child.level,
+                                    "frequency": "weekly",
+                                },
+                            )
+                
+                # Remettre la tâche à "todo" pour le nouveau cycle
+                task.status = "todo"
+        
+        await self.async_save_data()
+        await self.async_request_refresh()
+
+    async def async_reset_all_monthly_tasks(self) -> None:
+        """Reset all monthly tasks to todo status and deduct points for uncompleted tasks."""
+        for task in self.tasks.values():
+            if task.frequency == "monthly":
+                # Déduire des points si la tâche n'a pas été faite pour tous les enfants assignés
+                if task.status == "todo":
+                    assigned_children = task.get_assigned_child_ids()
+                    for child_id in assigned_children:
+                        if child_id in self.children:
+                            child = self.children[child_id]
+                            # Déduire la moitié des points de la tâche (minimum 1 point)
+                            penalty_points = max(1, task.points // 2)
+                            child.points = max(0, child.points - penalty_points)
+                            
+                            # Recalculer le niveau après déduction
+                            child.level = (child.points // 100) + 1
+                            
+                            # Envoyer un événement pour la pénalité
+                            self.hass.bus.async_fire(
+                                "kids_tasks_penalty_applied",
+                                {
+                                    "task_id": task.id,
+                                    "task_name": task.name,
+                                    "child_id": child_id,
+                                    "child_name": child.name,
+                                    "penalty_points": penalty_points,
+                                    "new_points": child.points,
+                                    "new_level": child.level,
+                                    "frequency": "monthly",
+                                },
+                            )
+                
+                # Remettre la tâche à "todo" pour le nouveau cycle
                 task.status = "todo"
         
         await self.async_save_data()
