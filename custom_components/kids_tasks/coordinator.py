@@ -180,7 +180,35 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
     async def async_remove_task(self, task_id: str) -> None:
         """Remove a task."""
         if task_id in self.tasks:
+            # Remove task data
             del self.tasks[task_id]
+            
+            # Remove task entities from registry
+            try:
+                from homeassistant.helpers import entity_registry
+                er = entity_registry.async_get(self.hass)
+                
+                # Find all entities related to this task
+                entities_to_remove = []
+                safe_task_id = task_id.replace("-", "_")
+                
+                for entity_id, entity_entry in er.entities.items():
+                    # Look for task sensor entities
+                    if (entity_id.startswith(f'sensor.{DOMAIN}_task_{safe_task_id}') and
+                        entity_entry.config_entry_id and 
+                        entity_entry.config_entry_id in self.hass.data.get(DOMAIN, {})):
+                        entities_to_remove.append(entity_id)
+                
+                # Remove the entities
+                for entity_id in entities_to_remove:
+                    er.async_remove(entity_id)
+                    _LOGGER.info("Removed task entity: %s", entity_id)
+                
+                _LOGGER.info("Removed %d entities for task %s", len(entities_to_remove), task_id)
+                
+            except Exception as e:
+                _LOGGER.error("Failed to remove task entities for task %s: %s", task_id, e)
+            
             await self.async_save_data()
             await self.async_request_refresh()
 
@@ -292,7 +320,35 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
     async def async_remove_reward(self, reward_id: str) -> None:
         """Remove a reward."""
         if reward_id in self.rewards:
+            # Remove reward data
             del self.rewards[reward_id]
+            
+            # Remove reward entities from registry
+            try:
+                from homeassistant.helpers import entity_registry
+                er = entity_registry.async_get(self.hass)
+                
+                # Find all entities related to this reward
+                entities_to_remove = []
+                safe_reward_id = reward_id.replace("-", "_")
+                
+                for entity_id, entity_entry in er.entities.items():
+                    # Look for reward sensor entities
+                    if (entity_id.startswith(f'sensor.{DOMAIN}_reward_{safe_reward_id}') and
+                        entity_entry.config_entry_id and 
+                        entity_entry.config_entry_id in self.hass.data.get(DOMAIN, {})):
+                        entities_to_remove.append(entity_id)
+                
+                # Remove the entities
+                for entity_id in entities_to_remove:
+                    er.async_remove(entity_id)
+                    _LOGGER.info("Removed reward entity: %s", entity_id)
+                
+                _LOGGER.info("Removed %d entities for reward %s", len(entities_to_remove), reward_id)
+                
+            except Exception as e:
+                _LOGGER.error("Failed to remove reward entities for reward %s: %s", reward_id, e)
+            
             await self.async_save_data()
             await self.async_request_refresh()
 
