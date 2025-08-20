@@ -26,6 +26,17 @@ from .coordinator import KidsTasksDataUpdateCoordinator
 _LOGGER = logging.getLogger(__name__)
 
 
+def get_safe_child_name(coordinator, child_id: str) -> str:
+    """Get a safe name for entity_id from child data."""
+    import re
+    child_data = coordinator.children.get(child_id, {})
+    child_name = child_data.name if hasattr(child_data, 'name') else str(child_data.get('name', f'child_{child_id[:8]}'))
+    safe_child_name = child_name.lower().replace(' ', '_').replace('-', '_').replace('é', 'e').replace('è', 'e').replace('à', 'a').replace('ç', 'c')
+    # Remove special characters and keep only alphanumeric and underscores
+    safe_child_name = re.sub(r'[^a-z0-9_]', '', safe_child_name)
+    return safe_child_name
+
+
 async def async_setup_entry(
     hass: HomeAssistant,
     config_entry: ConfigEntry,
@@ -73,14 +84,14 @@ class ChildPointsSensor(CoordinatorEntity, SensorEntity):
         """Initialize the sensor."""
         super().__init__(coordinator)
         self.child_id = child_id
-        self._attr_unique_id = f"KidTasks_{child_id}_points"
+        # Use child name for both unique_id and entity_id (safe for HA compatibility)
+        safe_child_name = get_safe_child_name(coordinator, child_id)
+        self._attr_unique_id = f"KidTasks_{safe_child_name}_points"
         self._attr_device_class = None  # Remove problematic device class
         self._attr_state_class = SensorStateClass.TOTAL
         self._attr_icon = "mdi:star"
         self._attr_native_unit_of_measurement = "points"
-        # Force the entity_id format we want (replace hyphens with underscores for HA compatibility)
-        safe_child_id = child_id.replace("-", "_")
-        self.entity_id = f"sensor.KidTasks_{safe_child_id}_points"
+        self.entity_id = f"sensor.KidTasks_{safe_child_name}_points"
 
     @property
     def name(self) -> str:
@@ -121,11 +132,11 @@ class ChildLevelSensor(CoordinatorEntity, SensorEntity):
         """Initialize the sensor."""
         super().__init__(coordinator)
         self.child_id = child_id
-        self._attr_unique_id = f"KidTasks_{child_id}_level"
+        # Use child name for both unique_id and entity_id (safe for HA compatibility)
+        safe_child_name = get_safe_child_name(coordinator, child_id)
+        self._attr_unique_id = f"KidTasks_{safe_child_name}_level"
         self._attr_icon = "mdi:trophy"
-        # Force the entity_id format we want (replace hyphens with underscores for HA compatibility)
-        safe_child_id = child_id.replace("-", "_")
-        self.entity_id = f"sensor.KidTasks_{safe_child_id}_level"
+        self.entity_id = f"sensor.KidTasks_{safe_child_name}_level"
 
     @property
     def name(self) -> str:
@@ -146,11 +157,11 @@ class ChildTasksCompletedTodaySensor(CoordinatorEntity, SensorEntity):
         """Initialize the sensor."""
         super().__init__(coordinator)
         self.child_id = child_id
-        self._attr_unique_id = f"KidTasks_{child_id}_tasks_today"
+        # Use child name for both unique_id and entity_id (safe for HA compatibility)
+        safe_child_name = get_safe_child_name(coordinator, child_id)
+        self._attr_unique_id = f"KidTasks_{safe_child_name}_tasks_today"
         self._attr_icon = "mdi:check-circle"
-        # Force the entity_id format we want (replace hyphens with underscores for HA compatibility)
-        safe_child_id = child_id.replace("-", "_")
-        self.entity_id = f"sensor.KidTasks_{safe_child_id}_tasks_today"
+        self.entity_id = f"sensor.KidTasks_{safe_child_name}_tasks_today"
 
     @property
     def name(self) -> str:
