@@ -78,6 +78,9 @@ class ChildPointsSensor(CoordinatorEntity, SensorEntity):
         self._attr_state_class = SensorStateClass.TOTAL
         self._attr_icon = "mdi:star"
         self._attr_native_unit_of_measurement = "points"
+        # Force the entity_id format we want (replace hyphens with underscores for HA compatibility)
+        safe_child_id = child_id.replace("-", "_")
+        self.entity_id = f"sensor.KidTasks_{safe_child_id}_points"
 
     @property
     def name(self) -> str:
@@ -120,6 +123,9 @@ class ChildLevelSensor(CoordinatorEntity, SensorEntity):
         self.child_id = child_id
         self._attr_unique_id = f"KidTasks_{child_id}_level"
         self._attr_icon = "mdi:trophy"
+        # Force the entity_id format we want (replace hyphens with underscores for HA compatibility)
+        safe_child_id = child_id.replace("-", "_")
+        self.entity_id = f"sensor.KidTasks_{safe_child_id}_level"
 
     @property
     def name(self) -> str:
@@ -142,6 +148,9 @@ class ChildTasksCompletedTodaySensor(CoordinatorEntity, SensorEntity):
         self.child_id = child_id
         self._attr_unique_id = f"KidTasks_{child_id}_tasks_today"
         self._attr_icon = "mdi:check-circle"
+        # Force the entity_id format we want (replace hyphens with underscores for HA compatibility)
+        safe_child_id = child_id.replace("-", "_")
+        self.entity_id = f"sensor.KidTasks_{safe_child_id}_tasks_today"
 
     @property
     def name(self) -> str:
@@ -177,6 +186,7 @@ class PendingValidationsSensor(CoordinatorEntity, SensorEntity):
         super().__init__(coordinator)
         self._attr_unique_id = f"KidTasks_pending_validations"
         self._attr_icon = "mdi:clock-alert"
+        self.entity_id = f"sensor.KidTasks_pending_validations"
 
     @property
     def name(self) -> str:
@@ -221,6 +231,7 @@ class TotalTasksCompletedTodaySensor(CoordinatorEntity, SensorEntity):
         super().__init__(coordinator)
         self._attr_unique_id = f"KidTasks_total_tasks_today"
         self._attr_icon = "mdi:check-all"
+        self.entity_id = f"sensor.KidTasks_total_tasks_today"
 
     @property
     def name(self) -> str:
@@ -254,6 +265,7 @@ class ActiveTasksSensor(CoordinatorEntity, SensorEntity):
         super().__init__(coordinator)
         self._attr_unique_id = f"KidTasks_active_tasks"
         self._attr_icon = "mdi:format-list-checks"
+        self.entity_id = f"sensor.KidTasks_active_tasks"
 
     @property
     def name(self) -> str:
@@ -278,6 +290,7 @@ class AllTasksListSensor(CoordinatorEntity, SensorEntity):
         super().__init__(coordinator)
         self._attr_unique_id = f"KidTasks_all_tasks_list"
         self._attr_icon = "mdi:format-list-bulleted"
+        self.entity_id = f"sensor.KidTasks_all_tasks_list"
 
     @property
     def name(self) -> str:
@@ -358,6 +371,7 @@ class AllRewardsListSensor(CoordinatorEntity, SensorEntity):
         super().__init__(coordinator)
         self._attr_unique_id = f"KidTasks_all_rewards_list"
         self._attr_icon = "mdi:gift"
+        self.entity_id = f"sensor.KidTasks_all_rewards_list"
 
     @property
     def name(self) -> str:
