@@ -194,7 +194,7 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
                 
                 for entity_id, entity_entry in er.entities.items():
                     # Look for task sensor entities
-                    if (entity_id.startswith(f'sensor.{DOMAIN}_task_{safe_task_id}') and
+                    if (entity_id.startswith(f'sensor.KidTasks_task_{safe_task_id}') and
                         entity_entry.config_entry_id and 
                         entity_entry.config_entry_id in self.hass.data.get(DOMAIN, {})):
                         entities_to_remove.append(entity_id)
@@ -334,7 +334,7 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
                 
                 for entity_id, entity_entry in er.entities.items():
                     # Look for reward sensor entities
-                    if (entity_id.startswith(f'sensor.{DOMAIN}_reward_{safe_reward_id}') and
+                    if (entity_id.startswith(f'sensor.KidTasks_reward_{safe_reward_id}') and
                         entity_entry.config_entry_id and 
                         entity_entry.config_entry_id in self.hass.data.get(DOMAIN, {})):
                         entities_to_remove.append(entity_id)
