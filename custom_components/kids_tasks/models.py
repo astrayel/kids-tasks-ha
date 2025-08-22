@@ -106,6 +106,9 @@ class Task:
     validation_required: bool = True
     active: bool = True
     weekly_days: list[str] | None = None  # Jours de la semaine pour fréquence daily: ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
+    deadline_time: str | None = None  # Heure limite au format "HH:MM" (ex: "18:00")
+    penalty_points: int = 0  # Points déduits si la tâche n'est pas faite à l'heure limite
+    deadline_passed: bool = False  # Indique si l'heure limite est dépassée
     
     def complete(self, validation_required: bool = None) -> str:
         """Mark task as completed."""
@@ -130,6 +133,7 @@ class Task:
     def reset(self) -> None:
         """Reset task to todo status."""
         self.status = TASK_STATUS_TODO
+        self.deadline_passed = False  # Reset deadline flag
     
     def get_assigned_child_ids(self) -> list[str]:
         """Get list of assigned child IDs, handling backward compatibility."""
@@ -144,6 +148,31 @@ class Task:
         self.assigned_child_ids = child_ids
         # Maintenir la compatibilité avec l'ancien champ
         self.assigned_child_id = child_ids[0] if child_ids else None
+    
+    def check_deadline(self) -> bool:
+        """Check if deadline has passed and update deadline_passed flag."""
+        if not self.deadline_time or self.status != TASK_STATUS_TODO:
+            return False
+            
+        from datetime import datetime, time
+        now = datetime.now()
+        today = now.date()
+        
+        # Parse deadline time (format "HH:MM")
+        try:
+            deadline_hour, deadline_minute = map(int, self.deadline_time.split(':'))
+            deadline_datetime = datetime.combine(today, time(deadline_hour, deadline_minute))
+            
+            # Si l'heure limite est dépassée et que la tâche n'est pas encore marquée comme dépassée
+            if now > deadline_datetime and not self.deadline_passed:
+                self.deadline_passed = True
+                return True  # Deadline vient d'être dépassée
+                
+        except (ValueError, AttributeError):
+            # Format d'heure invalide
+            return False
+            
+        return False
     
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
@@ -163,6 +192,9 @@ class Task:
             "validation_required": self.validation_required,
             "active": self.active,
             "weekly_days": self.weekly_days,
+            "deadline_time": self.deadline_time,
+            "penalty_points": self.penalty_points,
+            "deadline_passed": self.deadline_passed,
         }
     
     @classmethod
@@ -184,6 +216,9 @@ class Task:
             validation_required=data.get("validation_required", True),
             active=data.get("active", True),
             weekly_days=data.get("weekly_days"),
+            deadline_time=data.get("deadline_time"),
+            penalty_points=data.get("penalty_points", 0),
+            deadline_passed=data.get("deadline_passed", False),
         )
         
         # Assurer la compatibilité descendante

@@ -43,6 +43,9 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
             # Load data from storage
             await self._load_data()
             
+            # Check for deadline violations
+            await self._check_task_deadlines()
+            
             # Return current state
             return {
                 "children": {child_id: child.to_dict() for child_id, child in self.children.items()},
@@ -76,6 +79,32 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
             reward_id: Reward.from_dict(reward_data)
             for reward_id, reward_data in rewards_data.items()
         }
+
+    async def _check_task_deadlines(self) -> None:
+        """Check for tasks that have passed their deadline and apply penalties."""
+        penalties_applied = False
+        
+        for task_id, task in self.tasks.items():
+            if task.check_deadline():  # Returns True if deadline just passed
+                _LOGGER.info(f"Task '{task.name}' (ID: {task_id}) deadline passed")
+                
+                # Apply penalties to assigned children
+                for child_id in task.get_assigned_child_ids():
+                    if child_id in self.children and task.penalty_points > 0:
+                        child = self.children[child_id]
+                        old_points = child.points
+                        child.points = max(0, child.points - task.penalty_points)  # Ne pas aller en négatif
+                        penalties_applied = True
+                        
+                        _LOGGER.info(
+                            f"Applied penalty of {task.penalty_points} points to {child.name} "
+                            f"for missing deadline of task '{task.name}' "
+                            f"(points: {old_points} -> {child.points})"
+                        )
+        
+        # Save data if penalties were applied
+        if penalties_applied:
+            await self.async_save_data()
 
     async def async_save_data(self) -> None:
         """Save data to storage."""
@@ -194,7 +223,7 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
                 
                 for entity_id, entity_entry in er.entities.items():
                     # Look for task sensor entities
-                    if (entity_id.startswith(f'sensor.KidTasks_task_{safe_task_id}') and
+                    if (entity_id.startswith(f'sensor.kidtasks_task_{safe_task_id}') and
                         entity_entry.config_entry_id and 
                         entity_entry.config_entry_id in self.hass.data.get(DOMAIN, {})):
                         entities_to_remove.append(entity_id)
@@ -334,7 +363,7 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
                 
                 for entity_id, entity_entry in er.entities.items():
                     # Look for reward sensor entities
-                    if (entity_id.startswith(f'sensor.KidTasks_reward_{safe_reward_id}') and
+                    if (entity_id.startswith(f'sensor.kidtasks_reward_{safe_reward_id}') and
                         entity_entry.config_entry_id and 
                         entity_entry.config_entry_id in self.hass.data.get(DOMAIN, {})):
                         entities_to_remove.append(entity_id)

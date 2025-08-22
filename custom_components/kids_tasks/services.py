@@ -70,6 +70,8 @@ SERVICE_ADD_TASK_SCHEMA = vol.Schema(
         vol.Optional("assigned_child_ids"): [cv.string],  # Nouvelle option multi-enfants
         vol.Optional("validation_required", default=True): cv.boolean,
         vol.Optional("weekly_days"): vol.Any([cv.string], None),
+        vol.Optional("deadline_time"): cv.string,  # Format "HH:MM" pour l'heure limite
+        vol.Optional("penalty_points", default=0): vol.Coerce(int),  # Points déduits si deadline dépassée
     }
 )
 
@@ -165,6 +167,8 @@ SERVICE_UPDATE_TASK_SCHEMA = vol.Schema(
         vol.Optional("validation_required"): cv.boolean,
         vol.Optional("active"): cv.boolean,
         vol.Optional("weekly_days"): vol.Any([cv.string], None),
+        vol.Optional("deadline_time"): cv.string,  # Format "HH:MM" pour l'heure limite
+        vol.Optional("penalty_points"): vol.Coerce(int),  # Points déduits si deadline dépassée
     }
 )
 
@@ -265,6 +269,8 @@ async def async_setup_services(
                 assigned_child_ids=assigned_child_ids,
                 validation_required=call.data.get("validation_required", True),
                 weekly_days=call.data.get("weekly_days"),
+                deadline_time=call.data.get("deadline_time"),
+                penalty_points=call.data.get("penalty_points", 0),
             )
             
             _LOGGER.info("Task object created: %s", task.to_dict())
