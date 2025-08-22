@@ -86,12 +86,12 @@ class ChildPointsSensor(CoordinatorEntity, SensorEntity):
         self.child_id = child_id
         # Use child name for both unique_id and entity_id (safe for HA compatibility)
         safe_child_name = get_safe_child_name(coordinator, child_id)
-        self._attr_unique_id = f"KidTasks_{safe_child_name}_points"
+        self._attr_unique_id = f"kidtasks_{safe_child_name}_points"
         self._attr_device_class = None  # Remove problematic device class
         self._attr_state_class = SensorStateClass.TOTAL
         self._attr_icon = "mdi:star"
         self._attr_native_unit_of_measurement = "points"
-        self.entity_id = f"sensor.KidTasks_{safe_child_name}_points"
+        self.entity_id = f"sensor.kidtasks_{safe_child_name}_points"
 
     @property
     def name(self) -> str:
@@ -134,9 +134,9 @@ class ChildLevelSensor(CoordinatorEntity, SensorEntity):
         self.child_id = child_id
         # Use child name for both unique_id and entity_id (safe for HA compatibility)
         safe_child_name = get_safe_child_name(coordinator, child_id)
-        self._attr_unique_id = f"KidTasks_{safe_child_name}_level"
+        self._attr_unique_id = f"kidtasks_{safe_child_name}_level"
         self._attr_icon = "mdi:trophy"
-        self.entity_id = f"sensor.KidTasks_{safe_child_name}_level"
+        self.entity_id = f"sensor.kidtasks_{safe_child_name}_level"
 
     @property
     def name(self) -> str:
@@ -159,9 +159,9 @@ class ChildTasksCompletedTodaySensor(CoordinatorEntity, SensorEntity):
         self.child_id = child_id
         # Use child name for both unique_id and entity_id (safe for HA compatibility)
         safe_child_name = get_safe_child_name(coordinator, child_id)
-        self._attr_unique_id = f"KidTasks_{safe_child_name}_tasks_today"
+        self._attr_unique_id = f"kidtasks_{safe_child_name}_tasks_today"
         self._attr_icon = "mdi:check-circle"
-        self.entity_id = f"sensor.KidTasks_{safe_child_name}_tasks_today"
+        self.entity_id = f"sensor.kidtasks_{safe_child_name}_tasks_today"
 
     @property
     def name(self) -> str:
@@ -195,9 +195,9 @@ class PendingValidationsSensor(CoordinatorEntity, SensorEntity):
     def __init__(self, coordinator: KidsTasksDataUpdateCoordinator) -> None:
         """Initialize the sensor."""
         super().__init__(coordinator)
-        self._attr_unique_id = f"KidTasks_pending_validations"
+        self._attr_unique_id = f"kidtasks_pending_validations"
         self._attr_icon = "mdi:clock-alert"
-        self.entity_id = f"sensor.KidTasks_pending_validations"
+        self.entity_id = f"sensor.kidtasks_pending_validations"
 
     @property
     def name(self) -> str:
@@ -240,9 +240,9 @@ class TotalTasksCompletedTodaySensor(CoordinatorEntity, SensorEntity):
     def __init__(self, coordinator: KidsTasksDataUpdateCoordinator) -> None:
         """Initialize the sensor."""
         super().__init__(coordinator)
-        self._attr_unique_id = f"KidTasks_total_tasks_today"
+        self._attr_unique_id = f"kidtasks_total_tasks_today"
         self._attr_icon = "mdi:check-all"
-        self.entity_id = f"sensor.KidTasks_total_tasks_today"
+        self.entity_id = f"sensor.kidtasks_total_tasks_today"
 
     @property
     def name(self) -> str:
@@ -274,9 +274,9 @@ class ActiveTasksSensor(CoordinatorEntity, SensorEntity):
     def __init__(self, coordinator: KidsTasksDataUpdateCoordinator) -> None:
         """Initialize the sensor."""
         super().__init__(coordinator)
-        self._attr_unique_id = f"KidTasks_active_tasks"
+        self._attr_unique_id = f"kidtasks_active_tasks"
         self._attr_icon = "mdi:format-list-checks"
-        self.entity_id = f"sensor.KidTasks_active_tasks"
+        self.entity_id = f"sensor.kidtasks_active_tasks"
 
     @property
     def name(self) -> str:
@@ -299,9 +299,9 @@ class AllTasksListSensor(CoordinatorEntity, SensorEntity):
     def __init__(self, coordinator: KidsTasksDataUpdateCoordinator) -> None:
         """Initialize the sensor."""
         super().__init__(coordinator)
-        self._attr_unique_id = f"KidTasks_all_tasks_list"
+        self._attr_unique_id = f"kidtasks_all_tasks_list"
         self._attr_icon = "mdi:format-list-bulleted"
-        self.entity_id = f"sensor.KidTasks_all_tasks_list"
+        self.entity_id = f"sensor.kidtasks_all_tasks_list"
 
     @property
     def name(self) -> str:
@@ -380,9 +380,9 @@ class AllRewardsListSensor(CoordinatorEntity, SensorEntity):
     def __init__(self, coordinator: KidsTasksDataUpdateCoordinator) -> None:
         """Initialize the sensor."""
         super().__init__(coordinator)
-        self._attr_unique_id = f"KidTasks_all_rewards_list"
+        self._attr_unique_id = f"kidtasks_all_rewards_list"
         self._attr_icon = "mdi:gift"
-        self.entity_id = f"sensor.KidTasks_all_rewards_list"
+        self.entity_id = f"sensor.kidtasks_all_rewards_list"
 
     @property
     def name(self) -> str:
@@ -430,11 +430,11 @@ class TaskSensor(CoordinatorEntity, SensorEntity):
         """Initialize the sensor."""
         super().__init__(coordinator)
         self.task_id = task_id
-        self._attr_unique_id = f"KidTasks_task_{task_id}"
+        self._attr_unique_id = f"kidtasks_task_{task_id}"
         self._attr_icon = "mdi:clipboard-check"
         # Force the entity_id format we want (replace hyphens with underscores for HA compatibility)
         safe_task_id = task_id.replace("-", "_")
-        self.entity_id = f"sensor.KidTasks_task_{safe_task_id}"
+        self.entity_id = f"sensor.kidtasks_task_{safe_task_id}"
 
     @property
     def name(self) -> str:
@@ -489,11 +489,11 @@ class RewardSensor(CoordinatorEntity, SensorEntity):
         """Initialize the sensor."""
         super().__init__(coordinator)
         self.reward_id = reward_id
-        self._attr_unique_id = f"KidTasks_reward_{reward_id}"
+        self._attr_unique_id = f"kidtasks_reward_{reward_id}"
         self._attr_icon = "mdi:gift"
         # Force the entity_id format we want (replace hyphens with underscores for HA compatibility)
         safe_reward_id = reward_id.replace("-", "_")
-        self.entity_id = f"sensor.KidTasks_reward_{safe_reward_id}"
+        self.entity_id = f"sensor.kidtasks_reward_{safe_reward_id}"
 
     @property
     def name(self) -> str:
