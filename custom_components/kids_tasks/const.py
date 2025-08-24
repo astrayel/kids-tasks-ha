@@ -57,21 +57,21 @@ CATEGORIES = [
 # Task categories metadata
 CATEGORY_LABELS = {
     "bedroom": "🛏️ Chambre",
-    "bathroom": "🛁 Salle de bain",
+    "hygiene": "🛁 Hygiène",
     "kitchen": "🍽️ Cuisine",
     "homework": "📚 Devoirs",
+    "music": "🎵 Musique",
     "outdoor": "🌳 Extérieur",
-    "pets": "🐕 Animaux",
     "other": "📦 Autre",
 }
 
 CATEGORY_ICONS = {
     "bedroom": "🛏️",
-    "bathroom": "🛁",
+    "hygiene": "🛁",
     "kitchen": "🍽️",
     "homework": "📚",
+    "music": "🎵",
     "outdoor": "🌳",
-    "pets": "🐕",
     "other": "📋",
 }
 
