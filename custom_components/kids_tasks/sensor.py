@@ -488,6 +488,7 @@ class TaskSensor(CoordinatorEntity, SensorEntity):
             "active": task_data.get("active", True),
             "created_at": task_data.get("created_at"),
             "last_completed_at": task_data.get("last_completed_at"),
+            "weekly_days": task_data.get("weekly_days"),
             "deadline_time": task_data.get("deadline_time"),
             "deadline_passed": task_data.get("deadline_passed", False),
             "penalty_points": task_data.get("penalty_points", 0),
