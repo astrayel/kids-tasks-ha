@@ -231,7 +231,21 @@ class PendingValidationsSensor(CoordinatorEntity, SensorEntity):
                     "points": task_data.get("points", 0),
                 })
         
-        return {"pending_tasks": pending_tasks}
+        from .const import (
+            CATEGORIES, FREQUENCIES, CATEGORY_LABELS, CATEGORY_ICONS,
+            REWARD_CATEGORIES, REWARD_CATEGORY_LABELS, REWARD_CATEGORY_ICONS
+        )
+        
+        return {
+            "pending_tasks": pending_tasks,
+            "available_categories": CATEGORIES,
+            "available_frequencies": FREQUENCIES,
+            "category_labels": CATEGORY_LABELS,
+            "category_icons": CATEGORY_ICONS,
+            "available_reward_categories": REWARD_CATEGORIES,
+            "reward_category_labels": REWARD_CATEGORY_LABELS,
+            "reward_category_icons": REWARD_CATEGORY_ICONS
+        }
 
 
 class TotalTasksCompletedTodaySensor(CoordinatorEntity, SensorEntity):
@@ -467,8 +481,7 @@ class TaskSensor(CoordinatorEntity, SensorEntity):
             "category": task_data.get("category", "other"),
             "points": task_data.get("points", 0),
             "frequency": task_data.get("frequency", "daily"),
-            "assigned_child_id": task_data.get("assigned_child_id"),  # Compatibilité
-            "assigned_child_ids": task_data.get("assigned_child_ids", []),  # Nouveau
+            "assigned_child_ids": task_data.get("assigned_child_ids", []),
             "assigned_child_name": child_name,
             "validation_required": task_data.get("validation_required", False),
             "active": task_data.get("active", True),

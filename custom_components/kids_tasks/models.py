@@ -99,7 +99,6 @@ class Task:
     frequency: str = FREQUENCY_DAILY
     status: str = TASK_STATUS_TODO
     assigned_child_ids: list[str] = field(default_factory=list)  # Liste des IDs d'enfants assignés
-    assigned_child_id: str | None = None  # Maintenu pour compatibilité descendante
     created_at: datetime = field(default_factory=datetime.now)
     last_completed_at: datetime | None = None
     due_date: datetime | None = None
@@ -136,18 +135,12 @@ class Task:
         self.deadline_passed = False  # Reset deadline flag
     
     def get_assigned_child_ids(self) -> list[str]:
-        """Get list of assigned child IDs, handling backward compatibility."""
-        if self.assigned_child_ids:
-            return self.assigned_child_ids
-        elif self.assigned_child_id:
-            return [self.assigned_child_id]
-        return []
+        """Get list of assigned child IDs."""
+        return self.assigned_child_ids
     
     def set_assigned_child_ids(self, child_ids: list[str]) -> None:
-        """Set assigned child IDs and maintain backward compatibility."""
+        """Set assigned child IDs."""
         self.assigned_child_ids = child_ids
-        # Maintenir la compatibilité avec l'ancien champ
-        self.assigned_child_id = child_ids[0] if child_ids else None
     
     def check_deadline(self) -> bool:
         """Check if deadline has passed and update deadline_passed flag."""
@@ -184,7 +177,6 @@ class Task:
             "points": self.points,
             "frequency": self.frequency,
             "status": self.status,
-            "assigned_child_id": self.assigned_child_id,
             "assigned_child_ids": self.assigned_child_ids,
             "created_at": self.created_at.isoformat(),
             "last_completed_at": self.last_completed_at.isoformat() if self.last_completed_at else None,
@@ -208,7 +200,6 @@ class Task:
             points=data.get("points", 10),
             frequency=data.get("frequency", FREQUENCY_DAILY),
             status=data.get("status", TASK_STATUS_TODO),
-            assigned_child_id=data.get("assigned_child_id"),
             assigned_child_ids=data.get("assigned_child_ids", []),
             created_at=datetime.fromisoformat(data["created_at"]),
             last_completed_at=datetime.fromisoformat(data["last_completed_at"]) if data.get("last_completed_at") else None,
@@ -220,12 +211,6 @@ class Task:
             penalty_points=data.get("penalty_points", 0),
             deadline_passed=data.get("deadline_passed", False),
         )
-        
-        # Assurer la compatibilité descendante
-        if not task.assigned_child_ids and task.assigned_child_id:
-            task.assigned_child_ids = [task.assigned_child_id]
-        elif task.assigned_child_ids and not task.assigned_child_id:
-            task.assigned_child_id = task.assigned_child_ids[0]
         
         return task
 

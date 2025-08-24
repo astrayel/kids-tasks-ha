@@ -54,6 +54,56 @@ CATEGORIES = [
     "other",
 ]
 
+# Task categories metadata
+CATEGORY_LABELS = {
+    "bedroom": "🛏️ Chambre",
+    "bathroom": "🛁 Salle de bain",
+    "kitchen": "🍽️ Cuisine",
+    "homework": "📚 Devoirs",
+    "outdoor": "🌳 Extérieur",
+    "pets": "🐕 Animaux",
+    "other": "📦 Autre",
+}
+
+CATEGORY_ICONS = {
+    "bedroom": "🛏️",
+    "bathroom": "🛁",
+    "kitchen": "🍽️",
+    "homework": "📚",
+    "outdoor": "🌳",
+    "pets": "🐕",
+    "other": "📋",
+}
+
+# Reward categories
+REWARD_CATEGORIES = [
+    "fun",
+    "screen_time",
+    "outing",
+    "privilege",
+    "toy",
+    "treat",
+]
+
+# Reward categories metadata
+REWARD_CATEGORY_LABELS = {
+    "fun": "🎉 Amusement",
+    "screen_time": "📱 Écran",
+    "outing": "🚗 Sortie",
+    "privilege": "👑 Privilège",
+    "toy": "🧸 Jouet",
+    "treat": "🍭 Friandise",
+}
+
+REWARD_CATEGORY_ICONS = {
+    "fun": "🎉",
+    "screen_time": "📱",
+    "outing": "🚗",
+    "privilege": "👑",
+    "toy": "🧸",
+    "treat": "🍭",
+}
+
 # Events
 EVENT_TASK_COMPLETED = f"{DOMAIN}_task_completed"
 EVENT_TASK_VALIDATED = f"{DOMAIN}_task_validated"

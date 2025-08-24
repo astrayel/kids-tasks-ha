@@ -66,8 +66,7 @@ SERVICE_ADD_TASK_SCHEMA = vol.Schema(
         vol.Optional("category"): vol.In(CATEGORIES),
         vol.Optional("points", default=10): vol.Coerce(int),
         vol.Optional("frequency", default="daily"): vol.In(FREQUENCIES),
-        vol.Optional("assigned_child_id"): cv.string,  # Compatibilité descendante
-        vol.Optional("assigned_child_ids"): [cv.string],  # Nouvelle option multi-enfants
+        vol.Optional("assigned_child_ids"): [cv.string],  # Multi-enfants
         vol.Optional("validation_required", default=True): cv.boolean,
         vol.Optional("weekly_days"): vol.Any([cv.string], None),
         vol.Optional("deadline_time"): cv.string,  # Format "HH:MM" pour l'heure limite
@@ -162,8 +161,7 @@ SERVICE_UPDATE_TASK_SCHEMA = vol.Schema(
         vol.Optional("points"): vol.Coerce(int),
         vol.Optional("category"): vol.In(CATEGORIES),
         vol.Optional("frequency"): vol.In(FREQUENCIES),
-        vol.Optional("assigned_child_id"): cv.string,  # Compatibilité descendante
-        vol.Optional("assigned_child_ids"): [cv.string],  # Nouvelle option multi-enfants
+        vol.Optional("assigned_child_ids"): [cv.string],  # Multi-enfants
         vol.Optional("validation_required"): cv.boolean,
         vol.Optional("active"): cv.boolean,
         vol.Optional("weekly_days"): vol.Any([cv.string], None),
@@ -237,15 +235,8 @@ async def async_setup_services(
         try:
             _LOGGER.info("🔧 NOUVELLE VERSION - Creating new task with data: %s", call.data)
             
-            # Gérer les assignations d'enfants (nouveau et ancien format)
-            assigned_child_ids = []
-            assigned_child_id = call.data.get("assigned_child_id")  # Ancien format
-            assigned_child_ids_new = call.data.get("assigned_child_ids", [])  # Nouveau format
-            
-            if assigned_child_ids_new:
-                assigned_child_ids = assigned_child_ids_new
-            elif assigned_child_id:
-                assigned_child_ids = [assigned_child_id]
+            # Gérer les assignations d'enfants
+            assigned_child_ids = call.data.get("assigned_child_ids", [])
             
             # Valider que tous les enfants assignés existent
             for child_id in assigned_child_ids:
@@ -265,7 +256,6 @@ async def async_setup_services(
                 category=call.data.get("category", "other"),
                 points=call.data.get("points", 10),
                 frequency=call.data.get("frequency", "daily"),
-                assigned_child_id=assigned_child_ids[0] if assigned_child_ids else None,
                 assigned_child_ids=assigned_child_ids,
                 validation_required=call.data.get("validation_required", True),
                 weekly_days=call.data.get("weekly_days"),
@@ -403,15 +393,6 @@ async def async_setup_services(
             task_id = call.data["task_id"]
             updates = {k: v for k, v in call.data.items() if k != "task_id"}
             
-            # Gérer la mise à jour des assignations d'enfants
-            if "assigned_child_ids" in updates:
-                # Nouveau format : liste d'enfants
-                assigned_child_ids = updates["assigned_child_ids"]
-                updates["assigned_child_id"] = assigned_child_ids[0] if assigned_child_ids else None
-            elif "assigned_child_id" in updates:
-                # Ancien format : un seul enfant
-                assigned_child_id = updates["assigned_child_id"]
-                updates["assigned_child_ids"] = [assigned_child_id] if assigned_child_id else []
             
             _LOGGER.info("Updating task with ID: %s", task_id)
             _LOGGER.info("Updates to apply: %s", updates)
@@ -544,10 +525,12 @@ async def async_setup_services(
         try:
             tasks_list = []
             for task_id, task in coordinator.tasks.items():
-                # Get child name if assigned
-                child_name = "Non assigné"
-                if task.assigned_child_id and task.assigned_child_id in coordinator.children:
-                    child_name = coordinator.children[task.assigned_child_id].name
+                # Get child names if assigned
+                child_names = []
+                for child_id in task.assigned_child_ids:
+                    if child_id in coordinator.children:
+                        child_names.append(coordinator.children[child_id].name)
+                child_name = ", ".join(child_names) if child_names else "Non assigné"
                 
                 tasks_list.append({
                     "task_id": task_id,
