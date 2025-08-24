@@ -95,6 +95,7 @@ class Task:
     name: str
     description: str = ""
     category: str = "other"
+    icon: str | None = None  # Icône personnalisée (emoji ou caractère)
     points: int = 10
     frequency: str = FREQUENCY_DAILY
     status: str = TASK_STATUS_TODO
@@ -174,6 +175,7 @@ class Task:
             "name": self.name,
             "description": self.description,
             "category": self.category,
+            "icon": self.icon,
             "points": self.points,
             "frequency": self.frequency,
             "status": self.status,
@@ -197,6 +199,7 @@ class Task:
             name=data["name"],
             description=data.get("description", ""),
             category=data.get("category", "other"),
+            icon=data.get("icon"),
             points=data.get("points", 10),
             frequency=data.get("frequency", FREQUENCY_DAILY),
             status=data.get("status", TASK_STATUS_TODO),
@@ -223,6 +226,7 @@ class Reward:
     description: str = ""
     cost: int = 50
     category: str = "fun"
+    icon: str | None = None  # Icône personnalisée (emoji ou caractère)
     active: bool = True
     limited_quantity: int | None = None
     remaining_quantity: int | None = None
@@ -254,6 +258,7 @@ class Reward:
             "description": self.description,
             "cost": self.cost,
             "category": self.category,
+            "icon": self.icon,
             "active": self.active,
             "limited_quantity": self.limited_quantity,
             "remaining_quantity": self.remaining_quantity,
@@ -268,6 +273,7 @@ class Reward:
             description=data.get("description", ""),
             cost=data.get("cost", 50),
             category=data.get("category", "fun"),
+            icon=data.get("icon"),
             active=data.get("active", True),
             limited_quantity=data.get("limited_quantity"),
             remaining_quantity=data.get("remaining_quantity"),
