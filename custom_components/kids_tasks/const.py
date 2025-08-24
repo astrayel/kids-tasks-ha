@@ -46,11 +46,11 @@ FREQUENCIES = [
 # Task categories
 CATEGORIES = [
     "bedroom",
-    "bathroom",
+    "hygiene",
     "kitchen",
     "homework",
     "outdoor",
-    "pets",
+    "music",
     "other",
 ]
 
