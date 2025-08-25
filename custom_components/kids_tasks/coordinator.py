@@ -68,6 +68,11 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
         
         # Load tasks
         tasks_data = data.get("tasks", {})
+        # Debug: Log task icons being loaded
+        for task_id, task_data in tasks_data.items():
+            if 'icon' in task_data and task_data['icon'] is not None:
+                _LOGGER.info("Loading task %s with icon: %s", task_id, task_data['icon'])
+        
         self.tasks = {
             task_id: Task.from_dict(task_data)
             for task_id, task_data in tasks_data.items()
@@ -113,6 +118,11 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
             "tasks": {task_id: task.to_dict() for task_id, task in self.tasks.items()},
             "rewards": {reward_id: reward.to_dict() for reward_id, reward in self.rewards.items()},
         }
+        # Debug: Log task icons being saved
+        for task_id, task_dict in data["tasks"].items():
+            if 'icon' in task_dict and task_dict['icon'] is not None:
+                _LOGGER.info("Saving task %s with icon: %s", task_id, task_dict['icon'])
+        
         await self.store.async_save(data)
 
     # Child management methods
@@ -196,15 +206,6 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
             _LOGGER.error("Failed to add task %s: %s", task.name, e)
             raise UpdateFailed(f"Error communicating with API: {e}") from e
 
-    async def async_update_task(self, task_id: str, updates: dict) -> None:
-        """Update a task with new values."""
-        if task_id in self.tasks:
-            task = self.tasks[task_id]
-            for key, value in updates.items():
-                if hasattr(task, key):
-                    setattr(task, key, value)
-            await self.async_save_data()
-            await self.async_request_refresh()
 
     async def async_remove_task(self, task_id: str) -> None:
         """Remove a task."""
@@ -521,9 +522,17 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
             return False
         
         task = self.tasks[task_id]
+        _LOGGER.info("Updating task %s with updates: %s", task_id, updates)
+        _LOGGER.info("Task before update - icon: %s", getattr(task, 'icon', 'NO_ICON_ATTR'))
+        
         for key, value in updates.items():
             if hasattr(task, key):
+                _LOGGER.info("Setting %s = %s on task", key, value)
                 setattr(task, key, value)
+            else:
+                _LOGGER.warning("Task does not have attribute: %s", key)
+        
+        _LOGGER.info("Task after update - icon: %s", getattr(task, 'icon', 'NO_ICON_ATTR'))
         
         await self.async_save_data()
         await self.async_request_refresh()
