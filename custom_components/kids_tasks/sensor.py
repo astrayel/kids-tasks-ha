@@ -492,6 +492,7 @@ class TaskSensor(CoordinatorEntity, SensorEntity):
             "deadline_time": task_data.get("deadline_time"),
             "deadline_passed": task_data.get("deadline_passed", False),
             "penalty_points": task_data.get("penalty_points", 0),
+            "completed_by_child_id": task_data.get("completed_by_child_id"),
         }
 
     @property

@@ -62,7 +62,10 @@ class TaskCompleteButton(CoordinatorEntity, ButtonEntity):
 
     async def async_press(self) -> None:
         """Handle the button press."""
-        await self.coordinator.async_complete_task(self.task_id)
+        # DEPRECATED: Generic task completion buttons are disabled
+        # Task completion now requires specifying which child completed the task
+        # Use the service with child_id parameter instead
+        pass
 
 
 class TaskValidateButton(CoordinatorEntity, ButtonEntity):

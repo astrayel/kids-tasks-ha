@@ -156,7 +156,7 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
             
             # Remove tasks assigned to this child
             tasks_to_remove = [task_id for task_id, task in self.tasks.items() 
-                             if task.assigned_child_id == child_id]
+                             if child_id in task.assigned_child_ids]
             for task_id in tasks_to_remove:
                 del self.tasks[task_id]
             
@@ -241,18 +241,30 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
             await self.async_save_data()
             await self.async_request_refresh()
 
-    async def async_complete_task(self, task_id: str, validation_required: bool = None) -> bool:
+    async def async_complete_task(self, task_id: str, child_id: str, validation_required: bool = None) -> bool:
         """Complete a task."""
         if task_id not in self.tasks:
             return False
         
+        # Vérifier que l'enfant existe et est assigné à cette tâche
         task = self.tasks[task_id]
+        if child_id not in self.children:
+            _LOGGER.error("Child %s does not exist", child_id)
+            return False
+            
+        if child_id not in task.assigned_child_ids:
+            _LOGGER.error("Child %s is not assigned to task %s", child_id, task_id)
+            return False
+        
         old_status = task.status
         new_status = task.complete(validation_required)
         
-        if new_status == "validated" and task.assigned_child_id:
-            # Award points to child
-            child = self.children.get(task.assigned_child_id)
+        # Stocker l'ID de l'enfant qui a complété la tâche
+        task.completed_by_child_id = child_id
+        
+        if new_status == "validated" and task.completed_by_child_id:
+            # Award points only to the child who completed the task
+            child = self.children.get(task.completed_by_child_id)
             if child:
                 level_up = child.add_points(task.points)
                 
@@ -288,9 +300,9 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
         if not task.validate():
             return False
         
-        if task.assigned_child_id:
-            # Award points to child
-            child = self.children.get(task.assigned_child_id)
+        if task.completed_by_child_id:
+            # Award points only to the child who completed the task
+            child = self.children.get(task.completed_by_child_id)
             if child:
                 level_up = child.add_points(task.points)
                 

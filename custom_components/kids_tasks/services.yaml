@@ -186,6 +186,13 @@ complete_task:
       required: true
       selector:
         text:
+    child_id:
+      name: Child ID
+      description: Unique identifier of the child completing the task
+      required: true
+      example: "child-uuid-here"
+      selector:
+        text:
     validation_required:
       name: Force Validation
       description: Override the task's validation setting for this completion

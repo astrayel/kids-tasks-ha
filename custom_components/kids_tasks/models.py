@@ -109,6 +109,7 @@ class Task:
     deadline_time: str | None = None  # Heure limite au format "HH:MM" (ex: "18:00")
     penalty_points: int = 0  # Points déduits si la tâche n'est pas faite à l'heure limite
     deadline_passed: bool = False  # Indique si l'heure limite est dépassée
+    completed_by_child_id: str | None = None  # ID de l'enfant qui a complété la tâche
     
     def complete(self, validation_required: bool = None) -> str:
         """Mark task as completed."""
@@ -134,6 +135,7 @@ class Task:
         """Reset task to todo status."""
         self.status = TASK_STATUS_TODO
         self.deadline_passed = False  # Reset deadline flag
+        self.completed_by_child_id = None  # Reset completion info
     
     def get_assigned_child_ids(self) -> list[str]:
         """Get list of assigned child IDs."""
@@ -189,6 +191,7 @@ class Task:
             "deadline_time": self.deadline_time,
             "penalty_points": self.penalty_points,
             "deadline_passed": self.deadline_passed,
+            "completed_by_child_id": self.completed_by_child_id,
         }
     
     @classmethod
@@ -213,6 +216,7 @@ class Task:
             deadline_time=data.get("deadline_time"),
             penalty_points=data.get("penalty_points", 0),
             deadline_passed=data.get("deadline_passed", False),
+            completed_by_child_id=data.get("completed_by_child_id"),
         )
         
         return task

@@ -89,6 +89,7 @@ SERVICE_ADD_REWARD_SCHEMA = vol.Schema(
 SERVICE_COMPLETE_TASK_SCHEMA = vol.Schema(
     {
         vol.Required("task_id"): cv.string,
+        vol.Required("child_id"): cv.string,  # ID de l'enfant qui complète la tâche
         vol.Optional("validation_required"): cv.boolean,
     }
 )
@@ -307,6 +308,7 @@ async def async_setup_services(
         """Complete a task."""
         await coordinator.async_complete_task(
             call.data["task_id"],
+            call.data["child_id"],
             call.data.get("validation_required")
         )
     
