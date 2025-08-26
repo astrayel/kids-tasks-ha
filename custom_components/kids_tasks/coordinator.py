@@ -30,6 +30,11 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
         self.tasks: dict[str, Task] = {}
         self.rewards: dict[str, Reward] = {}
         
+        # Suivi des dernières réinitialisations pour automatisation
+        self.last_daily_reset = None
+        self.last_weekly_reset = None
+        self.last_monthly_reset = None
+        
         super().__init__(
             hass,
             _LOGGER,
@@ -45,6 +50,9 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
             
             # Check for deadline violations
             await self._check_task_deadlines()
+            
+            # Check for automatic task resets
+            await self._check_automatic_resets()
             
             # Return current state
             return {
@@ -79,6 +87,29 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
             reward_id: Reward.from_dict(reward_data)
             for reward_id, reward_data in rewards_data.items()
         }
+        
+        # Load system data (reset dates)
+        system_data = data.get("system", {})
+        from datetime import date, datetime
+        
+        # Parse reset dates
+        if system_data.get("last_daily_reset"):
+            try:
+                self.last_daily_reset = datetime.fromisoformat(system_data["last_daily_reset"]).date()
+            except ValueError:
+                self.last_daily_reset = None
+        
+        if system_data.get("last_weekly_reset"):
+            try:
+                self.last_weekly_reset = datetime.fromisoformat(system_data["last_weekly_reset"]).date()
+            except ValueError:
+                self.last_weekly_reset = None
+        
+        if system_data.get("last_monthly_reset"):
+            try:
+                self.last_monthly_reset = datetime.fromisoformat(system_data["last_monthly_reset"]).date()
+            except ValueError:
+                self.last_monthly_reset = None
 
     async def _check_task_deadlines(self) -> None:
         """Check for tasks that have passed their deadline and apply penalties."""
@@ -106,12 +137,118 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
         if penalties_applied:
             await self.async_save_data()
 
+    async def _check_automatic_resets(self) -> None:
+        """Check if tasks need to be automatically reset based on frequency."""
+        from datetime import datetime, date
+        now = datetime.now()
+        today = now.date()
+        
+        # Check daily tasks (reset at midnight)
+        if self.last_daily_reset is None or self.last_daily_reset < today:
+            daily_tasks = [task for task in self.tasks.values() if task.frequency == "daily"]
+            if daily_tasks:
+                penalty_tasks = [t for t in daily_tasks if t.penalty_points > 0]
+                _LOGGER.info("Auto-resetting %d daily tasks (%d with penalties)", len(daily_tasks), len(penalty_tasks))
+                await self._reset_tasks_with_penalty(daily_tasks, "daily")
+                self.last_daily_reset = today
+        
+        # Check weekly tasks (reset on Monday)
+        if now.weekday() == 0:  # Monday
+            week_start = today
+            if self.last_weekly_reset is None or self.last_weekly_reset < week_start:
+                weekly_tasks = [task for task in self.tasks.values() if task.frequency == "weekly"]
+                if weekly_tasks:
+                    penalty_tasks = [t for t in weekly_tasks if t.penalty_points > 0]
+                    _LOGGER.info("Auto-resetting %d weekly tasks (%d with penalties)", len(weekly_tasks), len(penalty_tasks))
+                    await self._reset_tasks_with_penalty(weekly_tasks, "weekly")
+                    self.last_weekly_reset = week_start
+        
+        # Check monthly tasks (reset on 1st of month)
+        if now.day == 1:
+            month_start = today
+            if self.last_monthly_reset is None or self.last_monthly_reset < month_start:
+                monthly_tasks = [task for task in self.tasks.values() if task.frequency == "monthly"]
+                if monthly_tasks:
+                    penalty_tasks = [t for t in monthly_tasks if t.penalty_points > 0]
+                    _LOGGER.info("Auto-resetting %d monthly tasks (%d with penalties)", len(monthly_tasks), len(penalty_tasks))
+                    await self._reset_tasks_with_penalty(monthly_tasks, "monthly")
+                    self.last_monthly_reset = month_start
+
+    async def _reset_tasks_with_penalty(self, tasks: list, frequency: str) -> None:
+        """Reset a list of tasks and apply penalties for uncompleted ones."""
+        penalties_applied = False
+        
+        for task in tasks:
+            # Apply penalty if task was not completed
+            if task.status == "todo":
+                # Only apply penalty for active tasks that have penalty_points defined
+                if task.active and task.penalty_points > 0:
+                    assigned_children = task.get_assigned_child_ids()
+                    for child_id in assigned_children:
+                        if child_id in self.children:
+                            child = self.children[child_id]
+                            
+                            # Use penalty_points (no default penalty)
+                            penalty_points = task.penalty_points
+                            old_points = child.points
+                            child.points = max(0, child.points - penalty_points)
+                            
+                            # Recalculate level after penalty
+                            old_level = child.level
+                            child.level = (child.points // 100) + 1 if child.points > 0 else 1
+                            
+                            penalties_applied = True
+                            
+                            _LOGGER.info(
+                                "Applied %s penalty of %d points to %s for uncompleted task '%s' "
+                                "(points: %d -> %d, level: %d -> %d)", 
+                                frequency, penalty_points, child.name, task.name, 
+                                old_points, child.points, old_level, child.level
+                            )
+                            
+                            # Fire penalty event
+                            self.hass.bus.async_fire(
+                                "kids_tasks_penalty_applied",
+                                {
+                                    "task_id": task.id,
+                                    "task_name": task.name,
+                                    "child_id": child_id,
+                                    "child_name": child.name,
+                                    "penalty_points": penalty_points,
+                                    "old_points": old_points,
+                                    "new_points": child.points,
+                                    "old_level": old_level,
+                                    "new_level": child.level,
+                                    "frequency": frequency,
+                                    "reset_type": "automatic"
+                                },
+                            )
+            
+            # Reset task status for next period
+            task.reset()
+            
+            # For tasks with weekly_days, only reset if it matches the current day
+            if frequency == "daily" and task.weekly_days:
+                from datetime import datetime
+                current_day = datetime.now().strftime('%a').lower()
+                if current_day not in task.weekly_days:
+                    # Skip this task today
+                    task.status = "validated"  # Mark as done so it doesn't show up
+        
+        if penalties_applied:
+            await self.async_save_data()
+
     async def async_save_data(self) -> None:
         """Save data to storage."""
         data = {
             "children": {child_id: child.to_dict() for child_id, child in self.children.items()},
             "tasks": {task_id: task.to_dict() for task_id, task in self.tasks.items()},
             "rewards": {reward_id: reward.to_dict() for reward_id, reward in self.rewards.items()},
+            "system": {
+                "last_daily_reset": self.last_daily_reset.isoformat() if self.last_daily_reset else None,
+                "last_weekly_reset": self.last_weekly_reset.isoformat() if self.last_weekly_reset else None,
+                "last_monthly_reset": self.last_monthly_reset.isoformat() if self.last_monthly_reset else None,
+            }
         }
         
         await self.store.async_save(data)
@@ -548,12 +685,14 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
                     for child_id in assigned_children:
                         if child_id in self.children:
                             child = self.children[child_id]
-                            # Déduire la moitié des points de la tâche (minimum 1 point)
-                            penalty_points = max(1, task.points // 2)
+                            # Pour reset manuel: utiliser penalty_points si défini, sinon moitié des points (minimum 1)
+                            penalty_points = task.penalty_points if task.penalty_points > 0 else max(1, task.points // 2)
+                            old_points = child.points
                             child.points = max(0, child.points - penalty_points)
                             
                             # Recalculer le niveau après déduction
-                            child.level = (child.points // 100) + 1
+                            old_level = child.level
+                            child.level = (child.points // 100) + 1 if child.points > 0 else 1
                             
                             # Envoyer un événement pour la pénalité
                             self.hass.bus.async_fire(
@@ -564,9 +703,12 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
                                     "child_id": child_id,
                                     "child_name": child.name,
                                     "penalty_points": penalty_points,
+                                    "old_points": old_points,
                                     "new_points": child.points,
+                                    "old_level": old_level,
                                     "new_level": child.level,
                                     "frequency": "daily",
+                                    "reset_type": "manual"
                                 },
                             )
                 
@@ -586,12 +728,14 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
                     for child_id in assigned_children:
                         if child_id in self.children:
                             child = self.children[child_id]
-                            # Déduire la moitié des points de la tâche (minimum 1 point)
-                            penalty_points = max(1, task.points // 2)
+                            # Pour reset manuel: utiliser penalty_points si défini, sinon moitié des points (minimum 1)
+                            penalty_points = task.penalty_points if task.penalty_points > 0 else max(1, task.points // 2)
+                            old_points = child.points
                             child.points = max(0, child.points - penalty_points)
                             
                             # Recalculer le niveau après déduction
-                            child.level = (child.points // 100) + 1
+                            old_level = child.level
+                            child.level = (child.points // 100) + 1 if child.points > 0 else 1
                             
                             # Envoyer un événement pour la pénalité
                             self.hass.bus.async_fire(
@@ -602,9 +746,12 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
                                     "child_id": child_id,
                                     "child_name": child.name,
                                     "penalty_points": penalty_points,
+                                    "old_points": old_points,
                                     "new_points": child.points,
+                                    "old_level": old_level,
                                     "new_level": child.level,
                                     "frequency": "weekly",
+                                    "reset_type": "manual"
                                 },
                             )
                 
@@ -624,12 +771,14 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
                     for child_id in assigned_children:
                         if child_id in self.children:
                             child = self.children[child_id]
-                            # Déduire la moitié des points de la tâche (minimum 1 point)
-                            penalty_points = max(1, task.points // 2)
+                            # Pour reset manuel: utiliser penalty_points si défini, sinon moitié des points (minimum 1)
+                            penalty_points = task.penalty_points if task.penalty_points > 0 else max(1, task.points // 2)
+                            old_points = child.points
                             child.points = max(0, child.points - penalty_points)
                             
                             # Recalculer le niveau après déduction
-                            child.level = (child.points // 100) + 1
+                            old_level = child.level
+                            child.level = (child.points // 100) + 1 if child.points > 0 else 1
                             
                             # Envoyer un événement pour la pénalité
                             self.hass.bus.async_fire(
@@ -640,9 +789,12 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
                                     "child_id": child_id,
                                     "child_name": child.name,
                                     "penalty_points": penalty_points,
+                                    "old_points": old_points,
                                     "new_points": child.points,
+                                    "old_level": old_level,
                                     "new_level": child.level,
                                     "frequency": "monthly",
+                                    "reset_type": "manual"
                                 },
                             )
                 
