@@ -445,7 +445,7 @@ class TaskSensor(CoordinatorEntity, SensorEntity):
         super().__init__(coordinator)
         self.task_id = task_id
         self._attr_unique_id = f"kidtasks_task_{task_id}"
-        self._attr_icon = "mdi:clipboard-check"
+        # L'icône sera définie dynamiquement dans la propriété icon
         # Force the entity_id format we want (replace hyphens with underscores for HA compatibility)
         safe_task_id = task_id.replace("-", "_")
         self.entity_id = f"sensor.kidtasks_task_{safe_task_id}"
@@ -456,6 +456,16 @@ class TaskSensor(CoordinatorEntity, SensorEntity):
         task_data = self.coordinator.data["tasks"].get(self.task_id, {})
         task_name = task_data.get("name", "Tâche inconnue")
         return f"Tâche: {task_name}"
+
+    @property
+    def icon(self) -> str:
+        """Return the icon of the sensor."""
+        task_data = self.coordinator.data["tasks"].get(self.task_id, {})
+        custom_icon = task_data.get("icon")
+        if custom_icon:
+            return custom_icon
+        # Fallback vers l'icône par défaut
+        return "mdi:clipboard-check"
 
     @property
     def native_value(self) -> str:
@@ -509,7 +519,7 @@ class RewardSensor(CoordinatorEntity, SensorEntity):
         super().__init__(coordinator)
         self.reward_id = reward_id
         self._attr_unique_id = f"kidtasks_reward_{reward_id}"
-        self._attr_icon = "mdi:gift"
+        # L'icône sera définie dynamiquement dans la propriété icon
         # Force the entity_id format we want (replace hyphens with underscores for HA compatibility)
         safe_reward_id = reward_id.replace("-", "_")
         self.entity_id = f"sensor.kidtasks_reward_{safe_reward_id}"
@@ -520,6 +530,16 @@ class RewardSensor(CoordinatorEntity, SensorEntity):
         reward_data = self.coordinator.data["rewards"].get(self.reward_id, {})
         reward_name = reward_data.get("name", "Récompense inconnue")
         return f"Récompense: {reward_name}"
+
+    @property
+    def icon(self) -> str:
+        """Return the icon of the sensor."""
+        reward_data = self.coordinator.data["rewards"].get(self.reward_id, {})
+        custom_icon = reward_data.get("icon")
+        if custom_icon:
+            return custom_icon
+        # Fallback vers l'icône par défaut
+        return "mdi:gift"
 
     @property
     def native_value(self) -> int:
