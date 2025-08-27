@@ -176,15 +176,21 @@ class ChildTasksCompletedTodaySensor(CoordinatorEntity, SensorEntity):
         count = 0
         
         for task_data in self.coordinator.data.get("tasks", {}).values():
-            if (task_data.get("assigned_child_id") == self.child_id and 
-                task_data.get("status") == "validated" and
-                task_data.get("last_completed_at")):
-                try:
-                    completed_date = datetime.fromisoformat(task_data["last_completed_at"]).date()
-                    if completed_date == today:
-                        count += 1
-                except (ValueError, TypeError):
-                    continue
+            # Check if this child is assigned to the task
+            assigned_child_ids = task_data.get("assigned_child_ids", [])
+            if self.child_id in assigned_child_ids:
+                # Check the child's individual status
+                child_statuses = task_data.get("child_statuses", {})
+                if self.child_id in child_statuses:
+                    child_status = child_statuses[self.child_id]
+                    if (child_status.get("status") == "validated" and 
+                        child_status.get("validated_at")):
+                        try:
+                            validated_date = datetime.fromisoformat(child_status["validated_at"]).date()
+                            if validated_date == today:
+                                count += 1
+                        except (ValueError, TypeError):
+                            continue
         
         return count
 
@@ -270,14 +276,17 @@ class TotalTasksCompletedTodaySensor(CoordinatorEntity, SensorEntity):
         count = 0
         
         for task_data in self.coordinator.data.get("tasks", {}).values():
-            if (task_data.get("status") == "validated" and
-                task_data.get("last_completed_at")):
-                try:
-                    completed_date = datetime.fromisoformat(task_data["last_completed_at"]).date()
-                    if completed_date == today:
-                        count += 1
-                except (ValueError, TypeError):
-                    continue
+            # Count individual child validations, not global task status
+            child_statuses = task_data.get("child_statuses", {})
+            for child_id, child_status in child_statuses.items():
+                if (child_status.get("status") == "validated" and 
+                    child_status.get("validated_at")):
+                    try:
+                        validated_date = datetime.fromisoformat(child_status["validated_at"]).date()
+                        if validated_date == today:
+                            count += 1
+                    except (ValueError, TypeError):
+                        continue
         
         return count
 

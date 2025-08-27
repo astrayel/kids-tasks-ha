@@ -119,19 +119,51 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
             if task.check_deadline():  # Returns True if deadline just passed
                 _LOGGER.info(f"Task '{task.name}' (ID: {task_id}) deadline passed")
                 
-                # Apply penalties to assigned children
+                # Apply penalties only to assigned children who haven't completed the task
                 for child_id in task.get_assigned_child_ids():
                     if child_id in self.children and task.penalty_points > 0:
-                        child = self.children[child_id]
-                        old_points = child.points
-                        child.points = max(0, child.points - task.penalty_points)  # Ne pas aller en négatif
-                        penalties_applied = True
+                        child_status = task.get_status_for_child(child_id)
                         
-                        _LOGGER.info(
-                            f"Applied penalty of {task.penalty_points} points to {child.name} "
-                            f"for missing deadline of task '{task.name}' "
-                            f"(points: {old_points} -> {child.points})"
-                        )
+                        # Only apply penalty if the child hasn't completed/validated the task
+                        if child_status not in ["validated", "pending_validation"]:
+                            child = self.children[child_id]
+                            old_points = child.points
+                            old_level = child.level
+                            child.points = max(0, child.points - task.penalty_points)
+                            
+                            # Recalculate level after penalty
+                            child.level = (child.points // 100) + 1 if child.points > 0 else 1
+                            
+                            # Mark penalty in child status
+                            if child_id in task.child_statuses:
+                                task.child_statuses[child_id].penalty_applied = True
+                                task.child_statuses[child_id].penalty_applied_at = datetime.now()
+                            
+                            penalties_applied = True
+                            
+                            _LOGGER.info(
+                                f"Applied deadline penalty of {task.penalty_points} points to {child.name} "
+                                f"for missing deadline of task '{task.name}' "
+                                f"(points: {old_points} -> {child.points}, level: {old_level} -> {child.level})"
+                            )
+                            
+                            # Fire penalty event
+                            self.hass.bus.async_fire(
+                                "kids_tasks_penalty_applied",
+                                {
+                                    "task_id": task.id,
+                                    "task_name": task.name,
+                                    "child_id": child_id,
+                                    "child_name": child.name,
+                                    "penalty_points": task.penalty_points,
+                                    "old_points": old_points,
+                                    "new_points": child.points,
+                                    "old_level": old_level,
+                                    "new_level": child.level,
+                                    "penalty_type": "deadline",
+                                    "frequency": task.frequency
+                                },
+                            )
         
         # Save data if penalties were applied
         if penalties_applied:
@@ -238,8 +270,13 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
                 from datetime import datetime
                 current_day = datetime.now().strftime('%a').lower()
                 if current_day not in task.weekly_days:
-                    # Skip this task today
-                    task.status = "validated"  # Mark as done so it doesn't show up
+                    # Skip this task today - mark all assigned children as validated
+                    # so the task doesn't appear as active today
+                    for child_id in task.get_assigned_child_ids():
+                        if child_id in task.child_statuses:
+                            task.child_statuses[child_id].status = "validated"
+                            task.child_statuses[child_id].validated_at = datetime.now()
+                    task._update_global_status()
         
         if penalties_applied:
             await self.async_save_data()
@@ -602,12 +639,15 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
         _LOGGER.info("All data cleared and refresh requested")
 
     async def async_reject_task(self, task_id: str) -> bool:
-        """Reject a task and reset it to todo."""
+        """Reject a task and reset it to todo for all assigned children."""
         if task_id not in self.tasks:
             return False
         
         task = self.tasks[task_id]
-        task.status = "todo"
+        _LOGGER.debug(f"Rejecting task: {task.name} (ID: {task_id})")
+        
+        # Use the task's reset method to properly reset all child statuses
+        task.reset()
         
         await self.async_save_data()
         await self.async_request_refresh()
@@ -675,6 +715,14 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
                 setattr(task, key, value)
             else:
                 _LOGGER.warning("Task does not have attribute: %s", key)
+        
+        # If assigned_child_ids was updated, ensure all assigned children have child_statuses
+        if "assigned_child_ids" in updates:
+            from .models import TaskChildStatus
+            for child_id in task.assigned_child_ids:
+                if child_id not in task.child_statuses:
+                    task.child_statuses[child_id] = TaskChildStatus(child_id=child_id)
+                    _LOGGER.debug(f"Initialized child_status for {child_id} in task {task.name}")
         
         await self.async_save_data()
         await self.async_request_refresh()
