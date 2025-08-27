@@ -385,12 +385,6 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
             _LOGGER.error("Child %s is not assigned to task %s", child_id, task_id)
             return False
         
-        # Migration automatique : initialiser child_statuses pour tous les enfants assignés si pas déjà fait
-        if not task.child_statuses:
-            from .models import TaskChildStatus
-            _LOGGER.info("Migrating task %s to new individual status system", task_id)
-            for assigned_child_id in task.assigned_child_ids:
-                task.child_statuses[assigned_child_id] = TaskChildStatus(child_id=assigned_child_id)
         
         old_status = task.get_status_for_child(child_id)
         new_status = task.complete_for_child(child_id, validation_required)

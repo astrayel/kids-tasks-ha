@@ -269,6 +269,11 @@ async def async_setup_services(
                 penalty_points=call.data.get("penalty_points", 0),
             )
             
+            # Initialiser automatiquement les child_statuses pour tous les enfants assignés
+            from .models import TaskChildStatus
+            for child_id in assigned_child_ids:
+                task.child_statuses[child_id] = TaskChildStatus(child_id=child_id)
+            
             _LOGGER.info("Task object created: %s", task.to_dict())
             await coordinator.async_add_task(task)
             _LOGGER.info("Task successfully added with ID: %s", task_id)
