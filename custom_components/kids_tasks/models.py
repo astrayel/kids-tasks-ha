@@ -216,25 +216,6 @@ class Task:
         else:
             self.status = TASK_STATUS_TODO
     
-    def complete(self, validation_required: bool = None) -> str:
-        """Mark task as completed (legacy method for compatibility)."""
-        if validation_required is None:
-            validation_required = self.validation_required
-            
-        if validation_required:
-            self.status = "pending_validation"
-        else:
-            self.status = "validated"
-            self.last_completed_at = datetime.now()
-        return self.status
-    
-    def validate(self) -> bool:
-        """Validate a completed task (legacy method for compatibility)."""
-        if self.status == "pending_validation":
-            self.status = "validated"
-            self.last_completed_at = datetime.now()
-            return True
-        return False
     
     def reset(self) -> None:
         """Reset task to todo status for all children."""

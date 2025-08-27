@@ -385,6 +385,13 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
             _LOGGER.error("Child %s is not assigned to task %s", child_id, task_id)
             return False
         
+        # Migration automatique : initialiser child_statuses pour tous les enfants assignés si pas déjà fait
+        if not task.child_statuses:
+            from .models import TaskChildStatus
+            _LOGGER.info("Migrating task %s to new individual status system", task_id)
+            for assigned_child_id in task.assigned_child_ids:
+                task.child_statuses[assigned_child_id] = TaskChildStatus(child_id=assigned_child_id)
+        
         old_status = task.get_status_for_child(child_id)
         new_status = task.complete_for_child(child_id, validation_required)
         
@@ -431,27 +438,14 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
         _LOGGER.info("DEBUG VALIDATION: Task %s has child_statuses: %s", task_id, list(task.child_statuses.keys()))
         _LOGGER.info("DEBUG VALIDATION: Global task status: %s", task.status)
         
-        # Check if we have individual child statuses or need to use legacy system
-        if not task.child_statuses:
-            _LOGGER.warning("DEBUG VALIDATION: No child_statuses found, falling back to legacy validation")
-            # Fallback to old system
-            if task.validate():
-                validated_any = True
-                if task.completed_by_child_id:
-                    child = self.children.get(task.completed_by_child_id)
-                    if child:
-                        level_up = child.add_points(task.points)
-                        _LOGGER.info("DEBUG VALIDATION: Legacy validation - awarded points to %s", task.completed_by_child_id)
-        else:
-            # Use new system with individual child statuses
-            # Validate all children who have pending validation
-            for child_id, child_status in task.child_statuses.items():
-                _LOGGER.info("DEBUG VALIDATION: Child %s has status: %s", child_id, child_status.status)
-                if child_status.status == "pending_validation":
-                    _LOGGER.info("DEBUG VALIDATION: Validating for child %s", child_id)
-                    if task.validate_for_child(child_id):
-                        validated_any = True
-                        _LOGGER.info("DEBUG VALIDATION: Successfully validated for child %s", child_id)
+        # Use new system with individual child statuses only
+        for child_id, child_status in task.child_statuses.items():
+            _LOGGER.info("DEBUG VALIDATION: Child %s has status: %s", child_id, child_status.status)
+            if child_status.status == "pending_validation":
+                _LOGGER.info("DEBUG VALIDATION: Validating for child %s", child_id)
+                if task.validate_for_child(child_id):
+                    validated_any = True
+                    _LOGGER.info("DEBUG VALIDATION: Successfully validated for child %s", child_id)
                     
                     # Award points to the child who completed the task
                     child = self.children.get(child_id)
