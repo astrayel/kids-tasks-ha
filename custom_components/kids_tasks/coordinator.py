@@ -419,17 +419,39 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
 
     async def async_validate_task(self, task_id: str) -> bool:
         """Validate a pending task for all children who completed it."""
+        _LOGGER.info("DEBUG VALIDATION: Starting validation for task %s", task_id)
+        
         if task_id not in self.tasks:
+            _LOGGER.error("DEBUG VALIDATION: Task %s not found", task_id)
             return False
         
         task = self.tasks[task_id]
         validated_any = False
         
-        # Validate all children who have pending validation
-        for child_id, child_status in task.child_statuses.items():
-            if child_status.status == "pending_validation":
-                if task.validate_for_child(child_id):
-                    validated_any = True
+        _LOGGER.info("DEBUG VALIDATION: Task %s has child_statuses: %s", task_id, list(task.child_statuses.keys()))
+        _LOGGER.info("DEBUG VALIDATION: Global task status: %s", task.status)
+        
+        # Check if we have individual child statuses or need to use legacy system
+        if not task.child_statuses:
+            _LOGGER.warning("DEBUG VALIDATION: No child_statuses found, falling back to legacy validation")
+            # Fallback to old system
+            if task.validate():
+                validated_any = True
+                if task.completed_by_child_id:
+                    child = self.children.get(task.completed_by_child_id)
+                    if child:
+                        level_up = child.add_points(task.points)
+                        _LOGGER.info("DEBUG VALIDATION: Legacy validation - awarded points to %s", task.completed_by_child_id)
+        else:
+            # Use new system with individual child statuses
+            # Validate all children who have pending validation
+            for child_id, child_status in task.child_statuses.items():
+                _LOGGER.info("DEBUG VALIDATION: Child %s has status: %s", child_id, child_status.status)
+                if child_status.status == "pending_validation":
+                    _LOGGER.info("DEBUG VALIDATION: Validating for child %s", child_id)
+                    if task.validate_for_child(child_id):
+                        validated_any = True
+                        _LOGGER.info("DEBUG VALIDATION: Successfully validated for child %s", child_id)
                     
                     # Award points to the child who completed the task
                     child = self.children.get(child_id)
