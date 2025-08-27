@@ -179,15 +179,16 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
         penalties_applied = False
         
         for task in tasks:
-            # Apply penalty if task was not completed
-            if task.status == "todo":
-                # Only apply penalty for active tasks that have penalty_points defined
-                if task.active and task.penalty_points > 0:
-                    assigned_children = task.get_assigned_child_ids()
-                    for child_id in assigned_children:
-                        if child_id in self.children:
-                            child = self.children[child_id]
-                            
+            # Only apply penalty for active tasks that have penalty_points defined
+            if task.active and task.penalty_points > 0:
+                assigned_children = task.get_assigned_child_ids()
+                for child_id in assigned_children:
+                    if child_id in self.children:
+                        child = self.children[child_id]
+                        child_status = task.get_status_for_child(child_id)
+                        
+                        # Apply penalty if task was not validated by this child
+                        if child_status != "validated":
                             # Use penalty_points (no default penalty)
                             penalty_points = task.penalty_points
                             old_points = child.points
@@ -196,6 +197,11 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
                             # Recalculate level after penalty
                             old_level = child.level
                             child.level = (child.points // 100) + 1 if child.points > 0 else 1
+                            
+                            # Mark penalty in child status
+                            if child_id in task.child_statuses:
+                                task.child_statuses[child_id].penalty_applied = True
+                                task.child_statuses[child_id].penalty_applied_at = datetime.now()
                             
                             penalties_applied = True
                             
@@ -690,14 +696,21 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
 
     async def async_reset_all_daily_tasks(self) -> None:
         """Reset all daily tasks to todo status and deduct points for uncompleted recurring tasks."""
+        _LOGGER.debug("Starting manual reset of all daily tasks")
+        
         for task in self.tasks.values():
             if task.frequency == "daily":
-                # Déduire des points si la tâche n'a pas été faite pour tous les enfants assignés
-                if task.status == "todo":
-                    assigned_children = task.get_assigned_child_ids()
-                    for child_id in assigned_children:
-                        if child_id in self.children:
-                            child = self.children[child_id]
+                _LOGGER.debug(f"Resetting daily task: {task.name} (ID: {task.id})")
+                
+                # Vérifier chaque enfant assigné pour appliquer des pénalités
+                assigned_children = task.get_assigned_child_ids()
+                for child_id in assigned_children:
+                    if child_id in self.children:
+                        child = self.children[child_id]
+                        child_status = task.get_status_for_child(child_id)
+                        
+                        # Si l'enfant n'a pas validé la tâche, appliquer une pénalité
+                        if child_status != "validated":
                             # Pour reset manuel: utiliser penalty_points si défini, sinon moitié des points (minimum 1)
                             penalty_points = task.penalty_points if task.penalty_points > 0 else max(1, task.points // 2)
                             old_points = child.points
@@ -706,6 +719,13 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
                             # Recalculer le niveau après déduction
                             old_level = child.level
                             child.level = (child.points // 100) + 1 if child.points > 0 else 1
+                            
+                            # Marquer la pénalité dans le statut de l'enfant
+                            if child_id in task.child_statuses:
+                                task.child_statuses[child_id].penalty_applied = True
+                                task.child_statuses[child_id].penalty_applied_at = datetime.now()
+                            
+                            _LOGGER.debug(f"Applied penalty to {child.name} for task {task.name}: -{penalty_points} points")
                             
                             # Envoyer un événement pour la pénalité
                             self.hass.bus.async_fire(
@@ -725,22 +745,30 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
                                 },
                             )
                 
-                # Remettre la tâche à "todo" pour le nouveau cycle
-                task.status = "todo"
+                # Utiliser la méthode reset() du modèle pour remettre la tâche à zéro
+                task.reset()
+                _LOGGER.debug(f"Task {task.name} reset to todo status")
         
         await self.async_save_data()
         await self.async_request_refresh()
 
     async def async_reset_all_weekly_tasks(self) -> None:
         """Reset all weekly tasks to todo status and deduct points for uncompleted tasks."""
+        _LOGGER.debug("Starting manual reset of all weekly tasks")
+        
         for task in self.tasks.values():
             if task.frequency == "weekly":
-                # Déduire des points si la tâche n'a pas été faite pour tous les enfants assignés
-                if task.status == "todo":
-                    assigned_children = task.get_assigned_child_ids()
-                    for child_id in assigned_children:
-                        if child_id in self.children:
-                            child = self.children[child_id]
+                _LOGGER.debug(f"Resetting weekly task: {task.name} (ID: {task.id})")
+                
+                # Vérifier chaque enfant assigné pour appliquer des pénalités
+                assigned_children = task.get_assigned_child_ids()
+                for child_id in assigned_children:
+                    if child_id in self.children:
+                        child = self.children[child_id]
+                        child_status = task.get_status_for_child(child_id)
+                        
+                        # Si l'enfant n'a pas validé la tâche, appliquer une pénalité
+                        if child_status != "validated":
                             # Pour reset manuel: utiliser penalty_points si défini, sinon moitié des points (minimum 1)
                             penalty_points = task.penalty_points if task.penalty_points > 0 else max(1, task.points // 2)
                             old_points = child.points
@@ -749,6 +777,13 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
                             # Recalculer le niveau après déduction
                             old_level = child.level
                             child.level = (child.points // 100) + 1 if child.points > 0 else 1
+                            
+                            # Marquer la pénalité dans le statut de l'enfant
+                            if child_id in task.child_statuses:
+                                task.child_statuses[child_id].penalty_applied = True
+                                task.child_statuses[child_id].penalty_applied_at = datetime.now()
+                            
+                            _LOGGER.debug(f"Applied penalty to {child.name} for task {task.name}: -{penalty_points} points")
                             
                             # Envoyer un événement pour la pénalité
                             self.hass.bus.async_fire(
@@ -768,22 +803,30 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
                                 },
                             )
                 
-                # Remettre la tâche à "todo" pour le nouveau cycle
-                task.status = "todo"
+                # Utiliser la méthode reset() du modèle pour remettre la tâche à zéro
+                task.reset()
+                _LOGGER.debug(f"Task {task.name} reset to todo status")
         
         await self.async_save_data()
         await self.async_request_refresh()
 
     async def async_reset_all_monthly_tasks(self) -> None:
         """Reset all monthly tasks to todo status and deduct points for uncompleted tasks."""
+        _LOGGER.debug("Starting manual reset of all monthly tasks")
+        
         for task in self.tasks.values():
             if task.frequency == "monthly":
-                # Déduire des points si la tâche n'a pas été faite pour tous les enfants assignés
-                if task.status == "todo":
-                    assigned_children = task.get_assigned_child_ids()
-                    for child_id in assigned_children:
-                        if child_id in self.children:
-                            child = self.children[child_id]
+                _LOGGER.debug(f"Resetting monthly task: {task.name} (ID: {task.id})")
+                
+                # Vérifier chaque enfant assigné pour appliquer des pénalités
+                assigned_children = task.get_assigned_child_ids()
+                for child_id in assigned_children:
+                    if child_id in self.children:
+                        child = self.children[child_id]
+                        child_status = task.get_status_for_child(child_id)
+                        
+                        # Si l'enfant n'a pas validé la tâche, appliquer une pénalité
+                        if child_status != "validated":
                             # Pour reset manuel: utiliser penalty_points si défini, sinon moitié des points (minimum 1)
                             penalty_points = task.penalty_points if task.penalty_points > 0 else max(1, task.points // 2)
                             old_points = child.points
@@ -792,6 +835,13 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
                             # Recalculer le niveau après déduction
                             old_level = child.level
                             child.level = (child.points // 100) + 1 if child.points > 0 else 1
+                            
+                            # Marquer la pénalité dans le statut de l'enfant
+                            if child_id in task.child_statuses:
+                                task.child_statuses[child_id].penalty_applied = True
+                                task.child_statuses[child_id].penalty_applied_at = datetime.now()
+                            
+                            _LOGGER.debug(f"Applied penalty to {child.name} for task {task.name}: -{penalty_points} points")
                             
                             # Envoyer un événement pour la pénalité
                             self.hass.bus.async_fire(
@@ -811,8 +861,9 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
                                 },
                             )
                 
-                # Remettre la tâche à "todo" pour le nouveau cycle
-                task.status = "todo"
+                # Utiliser la méthode reset() du modèle pour remettre la tâche à zéro
+                task.reset()
+                _LOGGER.debug(f"Task {task.name} reset to todo status")
         
         await self.async_save_data()
         await self.async_request_refresh()
