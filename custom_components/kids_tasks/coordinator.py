@@ -371,7 +371,7 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
             await self.async_request_refresh()
 
     async def async_complete_task(self, task_id: str, child_id: str, validation_required: bool = None) -> bool:
-        """Complete a task."""
+        """Complete a task for a specific child."""
         if task_id not in self.tasks:
             return False
         
@@ -385,15 +385,12 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
             _LOGGER.error("Child %s is not assigned to task %s", child_id, task_id)
             return False
         
-        old_status = task.status
-        new_status = task.complete(validation_required)
+        old_status = task.get_status_for_child(child_id)
+        new_status = task.complete_for_child(child_id, validation_required)
         
-        # Stocker l'ID de l'enfant qui a complété la tâche
-        task.completed_by_child_id = child_id
-        
-        if new_status == "validated" and task.completed_by_child_id:
+        if new_status == "validated":
             # Award points only to the child who completed the task
-            child = self.children.get(task.completed_by_child_id)
+            child = self.children.get(child_id)
             if child:
                 level_up = child.add_points(task.points)
                 
@@ -421,42 +418,48 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
         return True
 
     async def async_validate_task(self, task_id: str) -> bool:
-        """Validate a pending task."""
+        """Validate a pending task for all children who completed it."""
         if task_id not in self.tasks:
             return False
         
         task = self.tasks[task_id]
-        if not task.validate():
-            return False
+        validated_any = False
         
-        if task.completed_by_child_id:
-            # Award points only to the child who completed the task
-            child = self.children.get(task.completed_by_child_id)
-            if child:
-                level_up = child.add_points(task.points)
-                
-                # Fire events
-                self.hass.bus.async_fire(
-                    f"{DOMAIN}_task_validated",
-                    {
-                        "task_id": task_id,
-                        "child_id": child.id,
-                        "points_awarded": task.points,
-                    }
-                )
-                
-                if level_up:
-                    self.hass.bus.async_fire(
-                        f"{DOMAIN}_level_up",
-                        {
-                            "child_id": child.id,
-                            "new_level": child.level,
-                        }
-                    )
+        # Validate all children who have pending validation
+        for child_id, child_status in task.child_statuses.items():
+            if child_status.status == "pending_validation":
+                if task.validate_for_child(child_id):
+                    validated_any = True
+                    
+                    # Award points to the child who completed the task
+                    child = self.children.get(child_id)
+                    if child:
+                        level_up = child.add_points(task.points)
+                        
+                        # Fire events
+                        self.hass.bus.async_fire(
+                            f"{DOMAIN}_task_validated",
+                            {
+                                "task_id": task_id,
+                                "child_id": child.id,
+                                "points_awarded": task.points,
+                            }
+                        )
+                        
+                        if level_up:
+                            self.hass.bus.async_fire(
+                                f"{DOMAIN}_level_up",
+                                {
+                                    "child_id": child.id,
+                                    "new_level": child.level,
+                                }
+                            )
         
-        await self.async_save_data()
-        await self.async_request_refresh()
-        return True
+        if validated_any:
+            await self.async_save_data()
+            await self.async_request_refresh()
+        
+        return validated_any
 
     # Reward management methods
     async def async_add_reward(self, reward: Reward) -> None:

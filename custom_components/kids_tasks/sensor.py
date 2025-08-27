@@ -484,6 +484,23 @@ class TaskSensor(CoordinatorEntity, SensorEntity):
             child_data = self.coordinator.data.get("children", {}).get(task_data["assigned_child_id"], {})
             child_name = child_data.get("name", "Enfant inconnu")
         
+        # Prepare child statuses for frontend
+        child_statuses_for_frontend = {}
+        child_statuses = task_data.get("child_statuses", {})
+        
+        # Convert child statuses to a simple format for frontend
+        for child_id, status_data in child_statuses.items():
+            child_data = self.coordinator.data.get("children", {}).get(child_id, {})
+            child_name = child_data.get("name", "Enfant inconnu")
+            child_statuses_for_frontend[child_id] = {
+                "child_name": child_name,
+                "status": status_data.get("status", "todo"),
+                "completed_at": status_data.get("completed_at"),
+                "validated_at": status_data.get("validated_at"),
+                "penalty_applied_at": status_data.get("penalty_applied_at"),
+                "penalty_applied": status_data.get("penalty_applied", False),
+            }
+
         return {
             "task_id": self.task_id,
             "task_name": task_data.get("name", ""),
@@ -503,6 +520,7 @@ class TaskSensor(CoordinatorEntity, SensorEntity):
             "deadline_passed": task_data.get("deadline_passed", False),
             "penalty_points": task_data.get("penalty_points", 0),
             "completed_by_child_id": task_data.get("completed_by_child_id"),
+            "child_statuses": child_statuses_for_frontend,  # Nouveaux statuts individuels
         }
 
     @property
