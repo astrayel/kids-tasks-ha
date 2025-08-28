@@ -45,42 +45,22 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
     async def _async_update_data(self) -> dict[str, Any]:
         """Update data via library."""
         try:
-            _LOGGER.debug("Starting coordinator data update")
-            
             # Load data from storage
             await self._load_data()
-            _LOGGER.debug("Data loaded successfully")
             
             # Check for deadline violations
             await self._check_task_deadlines()
-            _LOGGER.debug("Deadline checks completed")
             
             # Check for automatic task resets
             await self._check_automatic_resets()
-            _LOGGER.debug("Automatic reset checks completed")
             
             # Return current state
-            try:
-                children_dict = {child_id: child.to_dict() for child_id, child in self.children.items()}
-                _LOGGER.debug("Children serialization successful")
-                
-                tasks_dict = {task_id: task.to_dict() for task_id, task in self.tasks.items()}
-                _LOGGER.debug("Tasks serialization successful")
-                
-                rewards_dict = {reward_id: reward.to_dict() for reward_id, reward in self.rewards.items()}
-                _LOGGER.debug("Rewards serialization successful")
-                
-                return {
-                    "children": children_dict,
-                    "tasks": tasks_dict,
-                    "rewards": rewards_dict,
-                }
-            except Exception as serialization_err:
-                _LOGGER.error("Error during data serialization: %s", serialization_err)
-                raise
-                
+            return {
+                "children": {child_id: child.to_dict() for child_id, child in self.children.items()},
+                "tasks": {task_id: task.to_dict() for task_id, task in self.tasks.items()},
+                "rewards": {reward_id: reward.to_dict() for reward_id, reward in self.rewards.items()},
+            }
         except Exception as err:
-            _LOGGER.error("Error in coordinator update: %s", err, exc_info=True)
             raise UpdateFailed(f"Error communicating with API: {err}") from err
 
     async def _load_data(self) -> None:
@@ -187,12 +167,7 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
         
         # Save data if penalties were applied
         if penalties_applied:
-            try:
-                await self.async_save_data()
-                _LOGGER.debug("Successfully saved data after applying deadline penalties")
-            except Exception as e:
-                _LOGGER.error("Failed to save data after applying deadline penalties: %s", e)
-                raise
+            await self.async_save_data()
 
     async def _check_automatic_resets(self) -> None:
         """Check if tasks need to be automatically reset based on frequency."""
@@ -302,12 +277,7 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
                     task._update_global_status()
         
         if penalties_applied:
-            try:
-                await self.async_save_data()
-                _LOGGER.debug("Successfully saved data after applying %s penalties", frequency)
-            except Exception as e:
-                _LOGGER.error("Failed to save data after applying %s penalties: %s", frequency, e)
-                raise
+            await self.async_save_data()
 
     async def async_save_data(self) -> None:
         """Save data to storage."""
@@ -672,7 +642,6 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
             return False
         
         task = self.tasks[task_id]
-        _LOGGER.debug(f"Rejecting task: {task.name} (ID: {task_id})")
         
         # Use the task's reset method to properly reset all child statuses
         task.reset()
@@ -750,7 +719,6 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
             for child_id in task.assigned_child_ids:
                 if child_id not in task.child_statuses:
                     task.child_statuses[child_id] = TaskChildStatus(child_id=child_id)
-                    _LOGGER.debug(f"Initialized child_status for {child_id} in task {task.name}")
         
         await self.async_save_data()
         await self.async_request_refresh()
@@ -772,12 +740,10 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
 
     async def async_reset_all_daily_tasks(self) -> None:
         """Reset all daily tasks to todo status and deduct points for uncompleted recurring tasks."""
-        _LOGGER.debug("Starting manual reset of all daily tasks")
         
         for task in self.tasks.values():
             if task.frequency == "daily":
-                _LOGGER.debug(f"Resetting daily task: {task.name} (ID: {task.id})")
-                
+                        
                 # Vérifier chaque enfant assigné pour appliquer des pénalités
                 assigned_children = task.get_assigned_child_ids()
                 for child_id in assigned_children:
@@ -801,7 +767,6 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
                                 task.child_statuses[child_id].penalty_applied = True
                                 task.child_statuses[child_id].penalty_applied_at = datetime.now()
                             
-                            _LOGGER.debug(f"Applied penalty to {child.name} for task {task.name}: -{penalty_points} points")
                             
                             # Envoyer un événement pour la pénalité
                             self.hass.bus.async_fire(
@@ -823,14 +788,12 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
                 
                 # Utiliser la méthode reset() du modèle pour remettre la tâche à zéro
                 task.reset()
-                _LOGGER.debug(f"Task {task.name} reset to todo status")
         
         await self.async_save_data()
         await self.async_request_refresh()
 
     async def async_reset_all_weekly_tasks(self) -> None:
         """Reset all weekly tasks to todo status and deduct points for uncompleted tasks."""
-        _LOGGER.debug("Starting manual reset of all weekly tasks")
         
         for task in self.tasks.values():
             if task.frequency == "weekly":
@@ -859,7 +822,6 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
                                 task.child_statuses[child_id].penalty_applied = True
                                 task.child_statuses[child_id].penalty_applied_at = datetime.now()
                             
-                            _LOGGER.debug(f"Applied penalty to {child.name} for task {task.name}: -{penalty_points} points")
                             
                             # Envoyer un événement pour la pénalité
                             self.hass.bus.async_fire(
@@ -881,14 +843,12 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
                 
                 # Utiliser la méthode reset() du modèle pour remettre la tâche à zéro
                 task.reset()
-                _LOGGER.debug(f"Task {task.name} reset to todo status")
         
         await self.async_save_data()
         await self.async_request_refresh()
 
     async def async_reset_all_monthly_tasks(self) -> None:
         """Reset all monthly tasks to todo status and deduct points for uncompleted tasks."""
-        _LOGGER.debug("Starting manual reset of all monthly tasks")
         
         for task in self.tasks.values():
             if task.frequency == "monthly":
@@ -917,7 +877,6 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
                                 task.child_statuses[child_id].penalty_applied = True
                                 task.child_statuses[child_id].penalty_applied_at = datetime.now()
                             
-                            _LOGGER.debug(f"Applied penalty to {child.name} for task {task.name}: -{penalty_points} points")
                             
                             # Envoyer un événement pour la pénalité
                             self.hass.bus.async_fire(
@@ -939,7 +898,6 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
                 
                 # Utiliser la méthode reset() du modèle pour remettre la tâche à zéro
                 task.reset()
-                _LOGGER.debug(f"Task {task.name} reset to todo status")
         
         await self.async_save_data()
         await self.async_request_refresh()
