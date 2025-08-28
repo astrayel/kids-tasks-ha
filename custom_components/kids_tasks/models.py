@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, time
 from typing import Any
 
-from .const import TASK_STATUS_TODO, FREQUENCY_DAILY
+from .const import TASK_STATUS_TODO, FREQUENCY_DAILY, FREQUENCY_NONE
 
 
 @dataclass
@@ -156,6 +156,12 @@ class Task:
             self.child_statuses[child_id] = TaskChildStatus(child_id=child_id)
         
         child_status = self.child_statuses[child_id]
+        
+        # For bonus tasks (frequency = "none"), allow completion even if already validated
+        if self.frequency == FREQUENCY_NONE and child_status.status == "validated":
+            child_status.status = "todo"  # Reset first
+            child_status.completed_at = None
+            child_status.validated_at = None
         
         if validation_required:
             child_status.status = "pending_validation"

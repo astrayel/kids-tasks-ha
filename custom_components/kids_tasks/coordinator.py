@@ -116,6 +116,10 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
         penalties_applied = False
         
         for task_id, task in self.tasks.items():
+            # Skip bonus tasks (frequency = "none") - they don't have deadlines
+            if task.frequency == "none":
+                continue
+                
             if task.check_deadline():  # Returns True if deadline just passed
                 _LOGGER.info(f"Task '{task.name}' (ID: {task_id}) deadline passed")
                 
