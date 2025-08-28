@@ -158,11 +158,11 @@ add_reward:
       name: Cost
       description: Point cost of the reward
       required: false
-      default: 50
+      default: 1
       selector:
         number:
           min: 0
-          max: 1000
+          max: 1000000
           step: 1
     coin_cost:
       name: Coin Cost
@@ -172,7 +172,7 @@ add_reward:
       selector:
         number:
           min: 0
-          max: 100
+          max: 1000000
           step: 1
     reward_type:
       name: Reward Type
