@@ -255,7 +255,7 @@ class KidsTasksOptionsFlow(config_entries.OptionsFlow):
                     id=reward_id,
                     name=user_input["name"],
                     description=user_input.get("description", ""),
-                    cost=user_input.get("cost", 50),
+                    cost=user_input.get("cost", 0),
                     category=user_input.get("category", "fun"),
                     limited_quantity=user_input.get("limited_quantity"),
                     remaining_quantity=user_input.get("limited_quantity"),
@@ -282,9 +282,9 @@ class KidsTasksOptionsFlow(config_entries.OptionsFlow):
                         multiline=True,
                     )
                 ),
-                vol.Optional("cost", default=50): selector.NumberSelector(
+                vol.Optional("cost", default=0): selector.NumberSelector(
                     selector.NumberSelectorConfig(
-                        min=1,
+                        min=0,
                         max=1000,
                         step=1,
                         mode=selector.NumberSelectorMode.BOX,

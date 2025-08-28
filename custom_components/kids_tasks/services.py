@@ -361,7 +361,7 @@ async def async_setup_services(
                 id=reward_id,
                 name=call.data["name"],
                 description=call.data.get("description", ""),
-                cost=call.data.get("cost", 50),
+                cost=call.data.get("cost", 0),
                 coin_cost=call.data.get("coin_cost", 0),
                 category=call.data.get("category", "fun"),
                 icon=call.data.get("icon"),
