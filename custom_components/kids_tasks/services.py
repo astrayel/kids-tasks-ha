@@ -172,6 +172,7 @@ SERVICE_UPDATE_TASK_SCHEMA = vol.Schema(
         vol.Optional("name"): cv.string,
         vol.Optional("description"): cv.string,
         vol.Optional("points"): vol.Coerce(int),
+        vol.Optional("coins"): vol.Coerce(int),
         vol.Optional("category"): vol.In(CATEGORIES),
         vol.Optional("icon"): cv.string,  # Icône personnalisée
         vol.Optional("frequency"): vol.In(FREQUENCIES),
@@ -242,6 +243,7 @@ SERVICE_UPDATE_REWARD_SCHEMA = vol.Schema(
         vol.Optional("name"): cv.string,
         vol.Optional("description"): cv.string,
         vol.Optional("cost"): vol.Coerce(int),
+        vol.Optional("coin_cost"): vol.Coerce(int),
         vol.Optional("category"): cv.string,
         vol.Optional("icon"): cv.string,  # Icône personnalisée
         vol.Optional("limited_quantity"): vol.Any(vol.Coerce(int), None),

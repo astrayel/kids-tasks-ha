@@ -544,6 +544,15 @@ update_task:
           min: 1
           max: 100
           step: 1
+    coins:
+      name: New Coins
+      description: Updated coin value for the task (bonus currency)
+      required: false
+      selector:
+        number:
+          min: 0
+          max: 50
+          step: 1
     category:
       name: New Category
       description: Updated category for the task
@@ -673,6 +682,15 @@ update_reward:
         number:
           min: 1
           max: 1000
+          step: 1
+    coin_cost:
+      name: New Coin Cost
+      description: Updated coin cost for the reward (bonus currency)
+      required: false
+      selector:
+        number:
+          min: 0
+          max: 100
           step: 1
     category:
       name: New Category
