@@ -70,7 +70,7 @@ SERVICE_ADD_TASK_SCHEMA = vol.Schema(
         vol.Required("name"): cv.string,
         vol.Optional("description"): cv.string,
         vol.Optional("category"): vol.In(CATEGORIES),
-        vol.Optional("icon"): cv.string,  # Icône personnalisée
+        vol.Optional("icon"): vol.Any(cv.string, None),  # Icône personnalisée
         vol.Optional("points", default=10): vol.Coerce(int),
         vol.Optional("coins", default=0): vol.Coerce(int),
         vol.Optional("frequency", default="daily"): vol.In(FREQUENCIES),
@@ -89,7 +89,7 @@ SERVICE_ADD_REWARD_SCHEMA = vol.Schema(
         vol.Optional("cost", default=0): vol.Coerce(int),
         vol.Optional("coin_cost", default=0): vol.Coerce(int),
         vol.Optional("category", default="fun"): cv.string,
-        vol.Optional("icon"): cv.string,  # Icône personnalisée
+        vol.Optional("icon"): vol.Any(cv.string, None),  # Icône personnalisée
         vol.Optional("limited_quantity"): vol.Any(vol.Coerce(int), None),
         vol.Optional("reward_type", default="real"): vol.In(["real", "cosmetic"]),
         vol.Optional("cosmetic_data"): vol.Any(dict, cv.string, None),
@@ -174,7 +174,7 @@ SERVICE_UPDATE_TASK_SCHEMA = vol.Schema(
         vol.Optional("points"): vol.Coerce(int),
         vol.Optional("coins"): vol.Coerce(int),
         vol.Optional("category"): vol.In(CATEGORIES),
-        vol.Optional("icon"): cv.string,  # Icône personnalisée
+        vol.Optional("icon"): vol.Any(cv.string, None),  # Icône personnalisée
         vol.Optional("frequency"): vol.In(FREQUENCIES),
         vol.Optional("assigned_child_ids"): [cv.string],  # Multi-enfants
         vol.Optional("validation_required"): cv.boolean,
@@ -245,7 +245,7 @@ SERVICE_UPDATE_REWARD_SCHEMA = vol.Schema(
         vol.Optional("cost"): vol.Coerce(int),
         vol.Optional("coin_cost"): vol.Coerce(int),
         vol.Optional("category"): cv.string,
-        vol.Optional("icon"): cv.string,  # Icône personnalisée
+        vol.Optional("icon"): vol.Any(cv.string, None),  # Icône personnalisée
         vol.Optional("limited_quantity"): vol.Any(vol.Coerce(int), None),
         vol.Optional("remaining_quantity"): vol.Any(vol.Coerce(int), None),
         vol.Optional("active"): cv.boolean,
