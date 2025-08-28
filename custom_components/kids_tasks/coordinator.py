@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from typing import Any
 
 from homeassistant.core import HomeAssistant
@@ -45,22 +45,42 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
     async def _async_update_data(self) -> dict[str, Any]:
         """Update data via library."""
         try:
+            _LOGGER.debug("Starting coordinator data update")
+            
             # Load data from storage
             await self._load_data()
+            _LOGGER.debug("Data loaded successfully")
             
             # Check for deadline violations
             await self._check_task_deadlines()
+            _LOGGER.debug("Deadline checks completed")
             
             # Check for automatic task resets
             await self._check_automatic_resets()
+            _LOGGER.debug("Automatic reset checks completed")
             
             # Return current state
-            return {
-                "children": {child_id: child.to_dict() for child_id, child in self.children.items()},
-                "tasks": {task_id: task.to_dict() for task_id, task in self.tasks.items()},
-                "rewards": {reward_id: reward.to_dict() for reward_id, reward in self.rewards.items()},
-            }
+            try:
+                children_dict = {child_id: child.to_dict() for child_id, child in self.children.items()}
+                _LOGGER.debug("Children serialization successful")
+                
+                tasks_dict = {task_id: task.to_dict() for task_id, task in self.tasks.items()}
+                _LOGGER.debug("Tasks serialization successful")
+                
+                rewards_dict = {reward_id: reward.to_dict() for reward_id, reward in self.rewards.items()}
+                _LOGGER.debug("Rewards serialization successful")
+                
+                return {
+                    "children": children_dict,
+                    "tasks": tasks_dict,
+                    "rewards": rewards_dict,
+                }
+            except Exception as serialization_err:
+                _LOGGER.error("Error during data serialization: %s", serialization_err)
+                raise
+                
         except Exception as err:
+            _LOGGER.error("Error in coordinator update: %s", err, exc_info=True)
             raise UpdateFailed(f"Error communicating with API: {err}") from err
 
     async def _load_data(self) -> None:
@@ -167,11 +187,15 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
         
         # Save data if penalties were applied
         if penalties_applied:
-            await self.async_save_data()
+            try:
+                await self.async_save_data()
+                _LOGGER.debug("Successfully saved data after applying deadline penalties")
+            except Exception as e:
+                _LOGGER.error("Failed to save data after applying deadline penalties: %s", e)
+                raise
 
     async def _check_automatic_resets(self) -> None:
         """Check if tasks need to be automatically reset based on frequency."""
-        from datetime import datetime, date
         now = datetime.now()
         today = now.date()
         
@@ -267,7 +291,6 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
             
             # For tasks with weekly_days, only reset if it matches the current day
             if frequency == "daily" and task.weekly_days:
-                from datetime import datetime
                 current_day = datetime.now().strftime('%a').lower()
                 if current_day not in task.weekly_days:
                     # Skip this task today - mark all assigned children as validated
@@ -279,7 +302,12 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
                     task._update_global_status()
         
         if penalties_applied:
-            await self.async_save_data()
+            try:
+                await self.async_save_data()
+                _LOGGER.debug("Successfully saved data after applying %s penalties", frequency)
+            except Exception as e:
+                _LOGGER.error("Failed to save data after applying %s penalties: %s", frequency, e)
+                raise
 
     async def async_save_data(self) -> None:
         """Save data to storage."""

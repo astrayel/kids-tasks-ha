@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, time
 from typing import Any
 
 from .const import TASK_STATUS_TODO, FREQUENCY_DAILY
@@ -243,7 +243,6 @@ class Task:
         if not self.deadline_time or self.status != TASK_STATUS_TODO:
             return False
             
-        from datetime import datetime, time
         now = datetime.now()
         today = now.date()
         
