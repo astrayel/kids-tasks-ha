@@ -161,7 +161,7 @@ add_reward:
       default: 50
       selector:
         number:
-          min: 1
+          min: 0
           max: 1000
           step: 1
     coin_cost:
@@ -187,6 +187,12 @@ add_reward:
             - label: "Cosmetic Item"
               value: "cosmetic"
           mode: dropdown
+    icon:
+      name: Icon
+      description: Custom icon for the reward (emoji, mdi:icon, URL, or base64 image)
+      required: false
+      selector:
+        text:
     cosmetic_data:
       name: Cosmetic Data
       description: JSON data for cosmetic items (e.g., {"type":"avatar","emoji":"🎯"} or {"type":"theme","gradient_start":"#ff6b6b","gradient_end":"#feca57"})
@@ -680,7 +686,7 @@ update_reward:
       required: false
       selector:
         number:
-          min: 1
+          min: 0
           max: 1000
           step: 1
     coin_cost:
@@ -692,6 +698,12 @@ update_reward:
           min: 0
           max: 100
           step: 1
+    icon:
+      name: New Icon
+      description: Updated icon for the reward
+      required: false
+      selector:
+        text:
     category:
       name: New Category
       description: Updated category for the reward
