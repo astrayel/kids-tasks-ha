@@ -432,7 +432,7 @@ class Reward:
     id: str
     name: str
     description: str = ""
-    cost: int = 50
+    cost: int = 0
     coin_cost: int = 0
     category: str = "fun"
     icon: str | None = None  # Icône personnalisée (emoji ou caractère)
@@ -487,7 +487,7 @@ class Reward:
             id=data["id"],
             name=data["name"],
             description=data.get("description", ""),
-            cost=data.get("cost", 50),
+            cost=data.get("cost", 0),
             coin_cost=data.get("coin_cost", 0),
             category=data.get("category", "fun"),
             icon=data.get("icon"),

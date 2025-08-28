@@ -86,7 +86,7 @@ SERVICE_ADD_REWARD_SCHEMA = vol.Schema(
     {
         vol.Required("name"): cv.string,
         vol.Optional("description"): cv.string,
-        vol.Optional("cost", default=50): vol.Coerce(int),
+        vol.Optional("cost", default=0): vol.Coerce(int),
         vol.Optional("coin_cost", default=0): vol.Coerce(int),
         vol.Optional("category", default="fun"): cv.string,
         vol.Optional("icon"): cv.string,  # Icône personnalisée

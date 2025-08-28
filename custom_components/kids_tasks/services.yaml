@@ -158,7 +158,7 @@ add_reward:
       name: Cost
       description: Point cost of the reward
       required: false
-      default: 1
+      default: 0
       selector:
         number:
           min: 0
