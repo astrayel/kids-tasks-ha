@@ -34,6 +34,12 @@ SERVICE_UPDATE_CHILD = "update_child"
 SERVICE_REMOVE_CHILD = "remove_child"
 SERVICE_UPDATE_TASK = "update_task"
 SERVICE_REMOVE_TASK = "remove_task"
+SERVICE_SUSPEND_TASK = "suspend_task"
+SERVICE_RESUME_TASK = "resume_task"
+SERVICE_ADD_CURRENCY = "add_currency"
+SERVICE_ADD_COINS = "add_coins"
+SERVICE_REMOVE_COINS = "remove_coins"
+SERVICE_ACTIVATE_COSMETIC = "activate_cosmetic"
 SERVICE_UPDATE_REWARD = "update_reward"
 SERVICE_REMOVE_REWARD = "remove_reward"
 SERVICE_RESET_ALL_DAILY_TASKS = "reset_all_daily_tasks"
@@ -66,6 +72,7 @@ SERVICE_ADD_TASK_SCHEMA = vol.Schema(
         vol.Optional("category"): vol.In(CATEGORIES),
         vol.Optional("icon"): cv.string,  # Icône personnalisée
         vol.Optional("points", default=10): vol.Coerce(int),
+        vol.Optional("coins", default=0): vol.Coerce(int),
         vol.Optional("frequency", default="daily"): vol.In(FREQUENCIES),
         vol.Optional("assigned_child_ids"): [cv.string],  # Multi-enfants
         vol.Optional("validation_required", default=True): cv.boolean,
@@ -80,9 +87,12 @@ SERVICE_ADD_REWARD_SCHEMA = vol.Schema(
         vol.Required("name"): cv.string,
         vol.Optional("description"): cv.string,
         vol.Optional("cost", default=50): vol.Coerce(int),
+        vol.Optional("coin_cost", default=0): vol.Coerce(int),
         vol.Optional("category", default="fun"): cv.string,
         vol.Optional("icon"): cv.string,  # Icône personnalisée
         vol.Optional("limited_quantity"): vol.Any(vol.Coerce(int), None),
+        vol.Optional("reward_type", default="real"): vol.In(["real", "cosmetic"]),
+        vol.Optional("cosmetic_data"): vol.Any(dict, cv.string, None),
     }
 )
 
@@ -177,6 +187,52 @@ SERVICE_UPDATE_TASK_SCHEMA = vol.Schema(
 SERVICE_REMOVE_TASK_SCHEMA = vol.Schema(
     {
         vol.Required("task_id"): cv.string,
+    }
+)
+
+SERVICE_SUSPEND_TASK_SCHEMA = vol.Schema(
+    {
+        vol.Required("task_id"): cv.string,
+        vol.Optional("until_date"): cv.string,
+    }
+)
+
+SERVICE_RESUME_TASK_SCHEMA = vol.Schema(
+    {
+        vol.Required("task_id"): cv.string,
+    }
+)
+
+SERVICE_ADD_CURRENCY_SCHEMA = vol.Schema(
+    {
+        vol.Required("child_id"): cv.string,
+        vol.Optional("points", default=0): vol.Coerce(int),
+        vol.Optional("coins", default=0): vol.Coerce(int),
+        vol.Optional("reason"): cv.string,
+    }
+)
+
+SERVICE_ADD_COINS_SCHEMA = vol.Schema(
+    {
+        vol.Required("child_id"): cv.string,
+        vol.Required("coins"): vol.Coerce(int),
+        vol.Optional("reason"): cv.string,
+    }
+)
+
+SERVICE_REMOVE_COINS_SCHEMA = vol.Schema(
+    {
+        vol.Required("child_id"): cv.string,
+        vol.Required("coins"): vol.Coerce(int),
+        vol.Optional("reason"): cv.string,
+    }
+)
+
+SERVICE_ACTIVATE_COSMETIC_SCHEMA = vol.Schema(
+    {
+        vol.Required("child_id"): cv.string,
+        vol.Required("cosmetic_type"): vol.In(["avatar", "theme", "badge"]),
+        vol.Required("reward_id"): cv.string,
     }
 )
 
@@ -288,16 +344,29 @@ async def async_setup_services(
         try:
             _LOGGER.info("Creating new reward with data: %s", call.data)
             
+            # Parse cosmetic data if it's a string
+            cosmetic_data = call.data.get("cosmetic_data")
+            if cosmetic_data and isinstance(cosmetic_data, str):
+                try:
+                    import json
+                    cosmetic_data = json.loads(cosmetic_data)
+                except json.JSONDecodeError:
+                    _LOGGER.warning("Invalid JSON in cosmetic_data: %s", cosmetic_data)
+                    cosmetic_data = None
+            
             reward_id = str(uuid.uuid4())
             reward = Reward(
                 id=reward_id,
                 name=call.data["name"],
                 description=call.data.get("description", ""),
                 cost=call.data.get("cost", 50),
+                coin_cost=call.data.get("coin_cost", 0),
                 category=call.data.get("category", "fun"),
                 icon=call.data.get("icon"),
                 limited_quantity=call.data.get("limited_quantity"),
                 remaining_quantity=call.data.get("limited_quantity"),
+                reward_type=call.data.get("reward_type", "real"),
+                cosmetic_data=cosmetic_data,
             )
             
             _LOGGER.info("Reward object created: %s", reward.to_dict())
@@ -429,6 +498,49 @@ async def async_setup_services(
         """Remove a task."""
         await coordinator.async_remove_task(call.data["task_id"])
     
+    async def suspend_task_service(call: ServiceCall) -> None:
+        """Suspend a task."""
+        task_id = call.data["task_id"]
+        until_date_str = call.data.get("until_date")
+        
+        until_date = None
+        if until_date_str:
+            try:
+                from datetime import datetime
+                until_date = datetime.fromisoformat(until_date_str)
+            except ValueError:
+                _LOGGER.error("Invalid date format for until_date: %s", until_date_str)
+                return
+        
+        await coordinator.async_suspend_task(task_id, until_date)
+    
+    async def resume_task_service(call: ServiceCall) -> None:
+        """Resume a suspended task."""
+        await coordinator.async_resume_task(call.data["task_id"])
+    
+    async def add_currency_service(call: ServiceCall) -> None:
+        """Add points and/or coins to a child."""
+        child_id = call.data["child_id"]
+        points = call.data.get("points", 0)
+        coins = call.data.get("coins", 0)
+        await coordinator.async_add_currency(child_id, points, coins)
+    
+    async def add_coins_service(call: ServiceCall) -> None:
+        """Add bonus coins to a child."""
+        await coordinator.async_add_coins(call.data["child_id"], call.data["coins"])
+    
+    async def remove_coins_service(call: ServiceCall) -> None:
+        """Remove coins from a child."""
+        await coordinator.async_remove_coins(call.data["child_id"], call.data["coins"])
+    
+    async def activate_cosmetic_service(call: ServiceCall) -> None:
+        """Activate a cosmetic item for a child."""
+        await coordinator.async_activate_cosmetic(
+            call.data["child_id"], 
+            call.data["cosmetic_type"], 
+            call.data["reward_id"]
+        )
+    
     async def update_reward_service(call: ServiceCall) -> None:
         """Update a reward."""
         reward_id = call.data["reward_id"]
@@ -489,6 +601,30 @@ async def async_setup_services(
     
     hass.services.async_register(
         DOMAIN, SERVICE_REMOVE_TASK, remove_task_service, schema=SERVICE_REMOVE_TASK_SCHEMA
+    )
+    
+    hass.services.async_register(
+        DOMAIN, SERVICE_SUSPEND_TASK, suspend_task_service, schema=SERVICE_SUSPEND_TASK_SCHEMA
+    )
+    
+    hass.services.async_register(
+        DOMAIN, SERVICE_RESUME_TASK, resume_task_service, schema=SERVICE_RESUME_TASK_SCHEMA
+    )
+    
+    hass.services.async_register(
+        DOMAIN, SERVICE_ADD_CURRENCY, add_currency_service, schema=SERVICE_ADD_CURRENCY_SCHEMA
+    )
+    
+    hass.services.async_register(
+        DOMAIN, SERVICE_ADD_COINS, add_coins_service, schema=SERVICE_ADD_COINS_SCHEMA
+    )
+    
+    hass.services.async_register(
+        DOMAIN, SERVICE_REMOVE_COINS, remove_coins_service, schema=SERVICE_REMOVE_COINS_SCHEMA
+    )
+    
+    hass.services.async_register(
+        DOMAIN, SERVICE_ACTIVATE_COSMETIC, activate_cosmetic_service, schema=SERVICE_ACTIVATE_COSMETIC_SCHEMA
     )
     
     hass.services.async_register(

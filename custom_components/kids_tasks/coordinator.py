@@ -214,8 +214,8 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
         penalties_applied = False
         
         for task in tasks:
-            # Only apply penalty for active tasks that have penalty_points defined
-            if task.active and task.penalty_points > 0:
+            # Only apply penalty for available tasks that have penalty_points defined
+            if task.is_available() and task.penalty_points > 0:
                 assigned_children = task.get_assigned_child_ids()
                 for child_id in assigned_children:
                     if child_id in self.children:
@@ -435,10 +435,10 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
         new_status = task.complete_for_child(child_id, validation_required)
         
         if new_status == "validated":
-            # Award points only to the child who completed the task
+            # Award points and coins only to the child who completed the task
             child = self.children.get(child_id)
             if child:
-                level_up = child.add_points(task.points)
+                level_up = child.add_currency(task.points, task.coins)
                 
                 # Fire events
                 self.hass.bus.async_fire(
@@ -447,6 +447,7 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
                         "task_id": task_id,
                         "child_id": child.id,
                         "points_awarded": task.points,
+                        "coins_awarded": task.coins,
                     }
                 )
                 
@@ -486,10 +487,10 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
                     validated_any = True
                     _LOGGER.info("DEBUG VALIDATION: Successfully validated for child %s", child_id)
                     
-                    # Award points to the child who completed the task
+                    # Award points and coins to the child who completed the task
                     child = self.children.get(child_id)
                     if child:
-                        level_up = child.add_points(task.points)
+                        level_up = child.add_currency(task.points, task.coins)
                         
                         # Fire events
                         self.hass.bus.async_fire(
@@ -498,6 +499,7 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
                                 "task_id": task_id,
                                 "child_id": child.id,
                                 "points_awarded": task.points,
+                                "coins_awarded": task.coins,
                             }
                         )
                         
@@ -588,15 +590,21 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
         reward = self.rewards[reward_id]
         child = self.children[child_id]
         
-        if not reward.can_claim(child.points):
+        if not reward.can_claim(child.points, child.coins):
             return False
         
         if not reward.claim():
             return False
         
-        # Deduct points from child
-        child.points -= reward.cost
-        child.level = (child.points // 100) + 1
+        # Handle different reward types
+        if reward.reward_type == "cosmetic":
+            # For cosmetic rewards, add to collection instead of consuming
+            child.add_cosmetic_item(reward_id)
+        else:
+            # For real rewards, deduct currency and consume
+            child.points -= reward.cost
+            child.coins -= reward.coin_cost
+            child.level = (child.points // 100) + 1
         
         # Fire event
         self.hass.bus.async_fire(
@@ -605,12 +613,35 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
                 "reward_id": reward_id,
                 "child_id": child_id,
                 "cost": reward.cost,
+                "coin_cost": reward.coin_cost,
+                "reward_type": reward.reward_type,
             }
         )
         
         await self.async_save_data()
         await self.async_request_refresh()
         return True
+
+    async def async_activate_cosmetic(self, child_id: str, cosmetic_type: str, reward_id: str) -> bool:
+        """Activate a cosmetic item for a child."""
+        if child_id not in self.children or reward_id not in self.rewards:
+            return False
+        
+        child = self.children[child_id]
+        reward = self.rewards[reward_id]
+        
+        # Check if it's a cosmetic reward
+        if reward.reward_type != "cosmetic":
+            return False
+        
+        # Activate the cosmetic
+        success = child.activate_cosmetic(cosmetic_type, reward_id)
+        
+        if success:
+            await self.async_save_data()
+            await self.async_request_refresh()
+        
+        return success
 
     async def async_request_refresh(self) -> None:
         """Request a data refresh."""
@@ -655,16 +686,20 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
         return True
 
     async def async_add_points(self, child_id: str, points: int) -> bool:
-        """Add bonus points to a child."""
+        """Add bonus points to a child (legacy method)."""
+        return await self.async_add_currency(child_id, points=points)
+
+    async def async_add_currency(self, child_id: str, points: int = 0, coins: int = 0) -> bool:
+        """Add points and/or coins to a child."""
         if child_id not in self.children:
             return False
         
         child = self.children[child_id]
         old_level = child.level
-        child.add_points(points)
+        level_up = child.add_currency(points, coins)
         
         # Check for level up
-        if child.level > old_level:
+        if level_up:
             self.hass.bus.async_fire(
                 f"{DOMAIN}_level_up",
                 {
@@ -676,6 +711,10 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
         await self.async_save_data()
         await self.async_request_refresh()
         return True
+
+    async def async_add_coins(self, child_id: str, coins: int) -> bool:
+        """Add bonus coins to a child."""
+        return await self.async_add_currency(child_id, coins=coins)
 
     async def async_remove_points(self, child_id: str, points: int) -> bool:
         """Remove points from a child."""
@@ -689,6 +728,20 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
         await self.async_save_data()
         await self.async_request_refresh()
         return True
+
+    async def async_remove_coins(self, child_id: str, coins: int) -> bool:
+        """Remove coins from a child."""
+        if child_id not in self.children:
+            return False
+        
+        child = self.children[child_id]
+        success = child.remove_coins(coins)
+        
+        if success:
+            await self.async_save_data()
+            await self.async_request_refresh()
+        
+        return success
 
     async def async_update_child(self, child_id: str, updates: dict) -> bool:
         """Update a child's information."""
@@ -723,6 +776,30 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
             for child_id in task.assigned_child_ids:
                 if child_id not in task.child_statuses:
                     task.child_statuses[child_id] = TaskChildStatus(child_id=child_id)
+        
+        await self.async_save_data()
+        await self.async_request_refresh()
+        return True
+
+    async def async_suspend_task(self, task_id: str, until_date: datetime | None = None) -> bool:
+        """Suspend a task temporarily."""
+        if task_id not in self.tasks:
+            return False
+        
+        task = self.tasks[task_id]
+        task.suspend(until_date)
+        
+        await self.async_save_data()
+        await self.async_request_refresh()
+        return True
+
+    async def async_resume_task(self, task_id: str) -> bool:
+        """Resume a suspended task."""
+        if task_id not in self.tasks:
+            return False
+        
+        task = self.tasks[task_id]
+        task.resume()
         
         await self.async_save_data()
         await self.async_request_refresh()

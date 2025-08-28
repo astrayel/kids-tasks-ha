@@ -84,6 +84,17 @@ add_task:
           max: 100
           step: 1
           mode: box
+    coins:
+      name: Coins
+      description: Coins awarded for completing this task (bonus currency)
+      required: false
+      default: 0
+      selector:
+        number:
+          min: 0
+          max: 50
+          step: 1
+          mode: box
     frequency:
       name: Frequency
       description: How often this task repeats
@@ -153,6 +164,36 @@ add_reward:
           min: 1
           max: 1000
           step: 1
+    coin_cost:
+      name: Coin Cost
+      description: Coin cost of the reward (bonus currency)
+      required: false
+      default: 0
+      selector:
+        number:
+          min: 0
+          max: 100
+          step: 1
+    reward_type:
+      name: Reward Type
+      description: Type of reward (real or cosmetic)
+      required: false
+      default: "real"
+      selector:
+        select:
+          options:
+            - label: "Real Reward"
+              value: "real"
+            - label: "Cosmetic Item"
+              value: "cosmetic"
+          mode: dropdown
+    cosmetic_data:
+      name: Cosmetic Data
+      description: JSON data for cosmetic items (e.g., {"type":"avatar","emoji":"🎯"} or {"type":"theme","gradient_start":"#ff6b6b","gradient_end":"#feca57"})
+      required: false
+      selector:
+        text:
+          multiline: true
     category:
       name: Category
       description: Category of the reward
@@ -310,6 +351,126 @@ remove_points:
       selector:
         text:
 
+add_currency:
+  name: Add Currency (Points + Coins)
+  description: Add points and/or coins to a child
+  fields:
+    child_id:
+      name: Child ID
+      description: Unique identifier of the child
+      required: true
+      selector:
+        text:
+    points:
+      name: Points
+      description: Number of points to add
+      required: false
+      default: 0
+      selector:
+        number:
+          min: 0
+          max: 100
+          step: 1
+    coins:
+      name: Coins
+      description: Number of coins to add
+      required: false
+      default: 0
+      selector:
+        number:
+          min: 0
+          max: 50
+          step: 1
+    reason:
+      name: Reason
+      description: Reason for awarding currency
+      required: false
+      selector:
+        text:
+
+add_coins:
+  name: Add Bonus Coins
+  description: Add bonus coins to a child
+  fields:
+    child_id:
+      name: Child ID
+      description: Unique identifier of the child
+      required: true
+      selector:
+        text:
+    coins:
+      name: Coins
+      description: Number of coins to add
+      required: true
+      selector:
+        number:
+          min: 1
+          max: 50
+          step: 1
+    reason:
+      name: Reason
+      description: Reason for awarding bonus coins
+      required: false
+      selector:
+        text:
+
+remove_coins:
+  name: Remove Coins (Penalty)
+  description: Remove coins from a child as a penalty
+  fields:
+    child_id:
+      name: Child ID
+      description: Unique identifier of the child
+      required: true
+      selector:
+        text:
+    coins:
+      name: Coins
+      description: Number of coins to remove
+      required: true
+      selector:
+        number:
+          min: 1
+          max: 50
+          step: 1
+    reason:
+      name: Reason
+      description: Reason for the coin penalty
+      required: false
+      selector:
+        text:
+
+activate_cosmetic:
+  name: Activate Cosmetic
+  description: Activate a cosmetic item for a child (avatar, theme, etc.)
+  fields:
+    child_id:
+      name: Child ID
+      description: Unique identifier of the child
+      required: true
+      selector:
+        text:
+    cosmetic_type:
+      name: Cosmetic Type
+      description: Type of cosmetic to activate
+      required: true
+      selector:
+        select:
+          options:
+            - label: "Avatar"
+              value: "avatar"
+            - label: "Card Theme"
+              value: "theme"
+            - label: "Badge"
+              value: "badge"
+          mode: dropdown
+    reward_id:
+      name: Reward ID
+      description: ID of the cosmetic reward to activate
+      required: true
+      selector:
+        text:
+
 update_child:
   name: Update Child
   description: Update child information
@@ -449,6 +610,34 @@ remove_task:
     task_id:
       name: Task ID
       description: Unique identifier of the task to remove
+      required: true
+      selector:
+        text:
+
+suspend_task:
+  name: Suspend Task
+  description: Temporarily suspend a task (it will not appear in active tasks)
+  fields:
+    task_id:
+      name: Task ID
+      description: Unique identifier of the task to suspend
+      required: true
+      selector:
+        text:
+    until_date:
+      name: Resume Date (Optional)
+      description: Date when the task should automatically resume (ISO format YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS)
+      required: false
+      selector:
+        text:
+
+resume_task:
+  name: Resume Task
+  description: Resume a previously suspended task
+  fields:
+    task_id:
+      name: Task ID
+      description: Unique identifier of the task to resume
       required: true
       selector:
         text:

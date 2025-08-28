@@ -63,6 +63,7 @@ class Child:
     id: str
     name: str
     points: int = 0
+    coins: int = 0
     level: int = 1
     avatar: str | None = None
     person_entity_id: str | None = None  # ID de l'entité personne HA (optionnel)
@@ -70,6 +71,8 @@ class Child:
     avatar_data: str | None = None  # Données selon le type (URL, base64, etc.)
     card_gradient_start: str | None = None  # Couleur début dégradé
     card_gradient_end: str | None = None    # Couleur fin dégradé
+    cosmetic_items: list[str] = field(default_factory=list)  # IDs des cosmétiques possédés
+    active_cosmetics: dict[str, str] = field(default_factory=dict)  # Cosmétiques actifs {"type": "reward_id"}
     created_at: datetime = field(default_factory=datetime.now)
     
     @property
@@ -84,6 +87,42 @@ class Child:
         # Corrected level calculation: level 1 = 0-99 points, level 2 = 100-199 points, etc.
         self.level = (self.points // 100) + 1
         return self.level > old_level
+    
+    def add_coins(self, coins: int) -> None:
+        """Add coins to the child."""
+        self.coins += coins
+    
+    def remove_coins(self, coins: int) -> bool:
+        """Remove coins from the child. Returns False if not enough coins."""
+        if self.coins >= coins:
+            self.coins -= coins
+            return True
+        return False
+    
+    def add_currency(self, points: int = 0, coins: int = 0) -> bool:
+        """Add points and/or coins. Returns True if level up occurred."""
+        level_up = False
+        if points > 0:
+            level_up = self.add_points(points)
+        if coins > 0:
+            self.add_coins(coins)
+        return level_up
+    
+    def add_cosmetic_item(self, reward_id: str) -> None:
+        """Add a cosmetic item to the child's collection."""
+        if reward_id not in self.cosmetic_items:
+            self.cosmetic_items.append(reward_id)
+    
+    def activate_cosmetic(self, cosmetic_type: str, reward_id: str) -> bool:
+        """Activate a cosmetic item if owned."""
+        if reward_id in self.cosmetic_items:
+            self.active_cosmetics[cosmetic_type] = reward_id
+            return True
+        return False
+    
+    def get_active_cosmetics(self) -> dict[str, str]:
+        """Get active cosmetics."""
+        return self.active_cosmetics.copy()
 
     def get_effective_avatar(self, hass=None) -> str:
         """Get the effective avatar based on avatar_type."""
@@ -105,6 +144,7 @@ class Child:
             "id": self.id,
             "name": self.name,
             "points": self.points,
+            "coins": self.coins,
             "level": self.level,
             "avatar": self.avatar,
             "person_entity_id": self.person_entity_id,
@@ -112,6 +152,8 @@ class Child:
             "avatar_data": self.avatar_data,
             "card_gradient_start": self.card_gradient_start,
             "card_gradient_end": self.card_gradient_end,
+            "cosmetic_items": self.cosmetic_items,
+            "active_cosmetics": self.active_cosmetics,
             "created_at": self.created_at.isoformat(),
         }
     
@@ -122,6 +164,7 @@ class Child:
             id=data["id"],
             name=data["name"],
             points=data.get("points", 0),
+            coins=data.get("coins", 0),
             level=data.get("level", 1),
             avatar=data.get("avatar"),
             person_entity_id=data.get("person_entity_id"),
@@ -129,6 +172,8 @@ class Child:
             avatar_data=data.get("avatar_data"),
             card_gradient_start=data.get("card_gradient_start"),
             card_gradient_end=data.get("card_gradient_end"),
+            cosmetic_items=data.get("cosmetic_items", []),
+            active_cosmetics=data.get("active_cosmetics", {}),
             created_at=datetime.fromisoformat(data.get("created_at", datetime.now().isoformat())),
         )
 
@@ -142,6 +187,7 @@ class Task:
     category: str = "other"
     icon: str | None = None  # Icône personnalisée (emoji ou caractère)
     points: int = 10
+    coins: int = 0  # Coins attribués en plus des points
     frequency: str = FREQUENCY_DAILY
     status: str = TASK_STATUS_TODO  # Statut global pour compatibilité (sera calculé automatiquement)
     assigned_child_ids: list[str] = field(default_factory=list)  # Liste des IDs d'enfants assignés
@@ -151,6 +197,8 @@ class Task:
     due_date: datetime | None = None
     validation_required: bool = True
     active: bool = True
+    suspended: bool = False  # Tâche temporairement désactivée
+    suspended_until: datetime | None = None  # Date de fin de suspension (optionnel)
     weekly_days: list[str] | None = None  # Jours de la semaine pour fréquence daily: ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
     deadline_time: str | None = None  # Heure limite au format "HH:MM" (ex: "18:00")
     penalty_points: int = 0  # Points déduits si la tâche n'est pas faite à l'heure limite
@@ -288,6 +336,30 @@ class Task:
             
         return False
     
+    def suspend(self, until_date: datetime | None = None) -> None:
+        """Suspend the task temporarily."""
+        self.suspended = True
+        self.suspended_until = until_date
+    
+    def resume(self) -> None:
+        """Resume a suspended task."""
+        self.suspended = False
+        self.suspended_until = None
+    
+    def check_suspension_expiry(self) -> bool:
+        """Check if suspension has expired and auto-resume if needed."""
+        if self.suspended and self.suspended_until:
+            if datetime.now() >= self.suspended_until:
+                self.resume()
+                return True  # Task was auto-resumed
+        return False
+    
+    def is_available(self) -> bool:
+        """Check if task is available (active and not suspended)."""
+        # Auto-check suspension expiry
+        self.check_suspension_expiry()
+        return self.active and not self.suspended
+    
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
@@ -297,6 +369,7 @@ class Task:
             "category": self.category,
             "icon": self.icon,
             "points": self.points,
+            "coins": self.coins,
             "frequency": self.frequency,
             "status": self.status,
             "assigned_child_ids": self.assigned_child_ids,
@@ -306,6 +379,8 @@ class Task:
             "due_date": self.due_date.isoformat() if self.due_date else None,
             "validation_required": self.validation_required,
             "active": self.active,
+            "suspended": self.suspended,
+            "suspended_until": self.suspended_until.isoformat() if self.suspended_until else None,
             "weekly_days": self.weekly_days,
             "deadline_time": self.deadline_time,
             "penalty_points": self.penalty_points,
@@ -329,6 +404,7 @@ class Task:
             category=data.get("category", "other"),
             icon=data.get("icon"),
             points=data.get("points", 10),
+            coins=data.get("coins", 0),
             frequency=data.get("frequency", FREQUENCY_DAILY),
             status=data.get("status", TASK_STATUS_TODO),
             assigned_child_ids=data.get("assigned_child_ids", []),
@@ -338,6 +414,8 @@ class Task:
             due_date=datetime.fromisoformat(data["due_date"]) if data.get("due_date") else None,
             validation_required=data.get("validation_required", True),
             active=data.get("active", True),
+            suspended=data.get("suspended", False),
+            suspended_until=datetime.fromisoformat(data["suspended_until"]) if data.get("suspended_until") else None,
             weekly_days=data.get("weekly_days"),
             deadline_time=data.get("deadline_time"),
             penalty_points=data.get("penalty_points", 0),
@@ -355,17 +433,22 @@ class Reward:
     name: str
     description: str = ""
     cost: int = 50
+    coin_cost: int = 0
     category: str = "fun"
     icon: str | None = None  # Icône personnalisée (emoji ou caractère)
     active: bool = True
     limited_quantity: int | None = None
     remaining_quantity: int | None = None
+    reward_type: str = "real"  # "real" ou "cosmetic"
+    cosmetic_data: dict[str, Any] | None = field(default=None)  # Données pour cosmétiques
     
-    def can_claim(self, child_points: int) -> bool:
+    def can_claim(self, child_points: int, child_coins: int = 0) -> bool:
         """Check if reward can be claimed."""
         if not self.active:
             return False
         if child_points < self.cost:
+            return False
+        if child_coins < self.coin_cost:
             return False
         if self.remaining_quantity is not None and self.remaining_quantity <= 0:
             return False
@@ -387,11 +470,14 @@ class Reward:
             "name": self.name,
             "description": self.description,
             "cost": self.cost,
+            "coin_cost": self.coin_cost,
             "category": self.category,
             "icon": self.icon,
             "active": self.active,
             "limited_quantity": self.limited_quantity,
             "remaining_quantity": self.remaining_quantity,
+            "reward_type": self.reward_type,
+            "cosmetic_data": self.cosmetic_data,
         }
     
     @classmethod
@@ -402,9 +488,12 @@ class Reward:
             name=data["name"],
             description=data.get("description", ""),
             cost=data.get("cost", 50),
+            coin_cost=data.get("coin_cost", 0),
             category=data.get("category", "fun"),
             icon=data.get("icon"),
             active=data.get("active", True),
             limited_quantity=data.get("limited_quantity"),
             remaining_quantity=data.get("remaining_quantity"),
+            reward_type=data.get("reward_type", "real"),
+            cosmetic_data=data.get("cosmetic_data"),
         )
