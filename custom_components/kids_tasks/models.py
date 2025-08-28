@@ -21,6 +21,7 @@ class TaskChildStatus:
     validated_at: datetime | None = None
     penalty_applied_at: datetime | None = None
     penalty_applied: bool = False
+    validation_history: list[dict[str, Any]] = field(default_factory=list)  # Historique des validations multiples
     
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
@@ -31,6 +32,7 @@ class TaskChildStatus:
             "validated_at": self.validated_at.isoformat() if self.validated_at else None,
             "penalty_applied_at": self.penalty_applied_at.isoformat() if self.penalty_applied_at else None,
             "penalty_applied": self.penalty_applied,
+            "validation_history": self.validation_history,
         }
     
     @classmethod
@@ -43,7 +45,16 @@ class TaskChildStatus:
             validated_at=datetime.fromisoformat(data["validated_at"]) if data.get("validated_at") else None,
             penalty_applied_at=datetime.fromisoformat(data["penalty_applied_at"]) if data.get("penalty_applied_at") else None,
             penalty_applied=data.get("penalty_applied", False),
+            validation_history=data.get("validation_history", []),
         )
+    
+    def add_validation_to_history(self, completed_at: datetime, validated_at: datetime) -> None:
+        """Add a validation entry to the history (for bonus tasks)."""
+        validation_entry = {
+            "completed_at": completed_at.isoformat(),
+            "validated_at": validated_at.isoformat()
+        }
+        self.validation_history.append(validation_entry)
 
 
 @dataclass
@@ -184,8 +195,17 @@ class Task:
         
         child_status = self.child_statuses[child_id]
         if child_status.status == "pending_validation":
+            validation_time = datetime.now()
             child_status.status = "validated"
-            child_status.validated_at = datetime.now()
+            child_status.validated_at = validation_time
+            
+            # Pour les tâches bonus (frequency="none"), ajouter à l'historique
+            if self.frequency == FREQUENCY_NONE:
+                child_status.add_validation_to_history(
+                    child_status.completed_at or validation_time,
+                    validation_time
+                )
+            
             self._update_global_status()
             return True
         return False
