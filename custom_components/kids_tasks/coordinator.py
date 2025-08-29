@@ -434,6 +434,25 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
         old_status = task.get_status_for_child(child_id)
         new_status = task.complete_for_child(child_id, validation_required)
         
+        # Fire notification event if task needs validation
+        if new_status == "pending_validation":
+            child = self.children.get(child_id)
+            self.hass.bus.async_fire(
+                f"{DOMAIN}_task_pending_validation",
+                {
+                    "task_id": task_id,
+                    "task_name": task.name,
+                    "child_id": child.id if child else child_id,
+                    "child_name": child.name if child else "Unknown",
+                    "points": task.points,
+                    "coins": task.coins,
+                }
+            )
+            
+            # Send Home Assistant notification if enabled
+            if self.config_entry and self.config_entry.data.get("notifications_enabled", True):
+                await self._send_validation_notification(task, child)
+        
         if new_status == "validated":
             # Award points and coins only to the child who completed the task
             child = self.children.get(child_id)
@@ -513,6 +532,18 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
                             )
         
         if validated_any:
+            # Clear any persistent notification for this task
+            try:
+                await self.hass.services.async_call(
+                    "persistent_notification",
+                    "dismiss",
+                    {
+                        "notification_id": f"kids_tasks_validation_{task_id}",
+                    }
+                )
+            except Exception as e:
+                _LOGGER.debug("Could not dismiss notification (may not exist): %s", e)
+            
             await self.async_save_data()
             await self.async_request_refresh()
         
@@ -598,13 +629,15 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
         
         # Handle different reward types
         if reward.reward_type == "cosmetic":
-            # For cosmetic rewards, add to collection instead of consuming
-            child.add_cosmetic_item(reward_id)
+            # For cosmetic rewards, add to collection instead of consuming currency
+            cosmetic_type = reward.cosmetic_data.get("type") if reward.cosmetic_data else "avatar"
+            cosmetic_id = reward.cosmetic_data.get("cosmetic_id", reward_id) if reward.cosmetic_data else reward_id
+            child.add_cosmetic_item(cosmetic_id, cosmetic_type)
         else:
             # For real rewards, deduct currency and consume
             child.points -= reward.cost
             child.coins -= reward.coin_cost
-            child.level = (child.points // 100) + 1
+            child.level = (child.points // 100) + 1 if child.points > 0 else 1
         
         # Fire event
         self.hass.bus.async_fire(
@@ -1029,6 +1062,38 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
             _LOGGER.error("Failed to restore backup: %s", e)
             return False
     
+    async def _send_validation_notification(self, task, child) -> None:
+        """Send a Home Assistant notification for task validation."""
+        try:
+            message = f"🎯 Tâche à valider !\n\n"
+            message += f"👤 {child.name if child else 'Enfant inconnu'} a terminé la tâche :\n"
+            message += f"📋 {task.name}\n\n"
+            
+            if task.points > 0 or task.coins > 0:
+                message += f"🏆 Récompense en attente :\n"
+                if task.points > 0:
+                    message += f"• {task.points} points\n"
+                if task.coins > 0:
+                    message += f"• {task.coins} coins\n"
+            
+            message += f"\n✅ Validez depuis l'onglet Validation de votre tableau de bord Kids Tasks"
+            
+            # Send persistent notification
+            await self.hass.services.async_call(
+                "persistent_notification",
+                "create",
+                {
+                    "title": "Kids Tasks - Validation requise",
+                    "message": message,
+                    "notification_id": f"kids_tasks_validation_{task.id}",
+                }
+            )
+            
+            _LOGGER.info("Notification sent for task validation: %s by %s", task.name, child.name if child else 'Unknown')
+            
+        except Exception as e:
+            _LOGGER.error("Failed to send validation notification: %s", e)
+    
     # Removed heavy reload methods - now using events for better performance
 
     async def _async_force_remove_child_entities(self, child_id: str) -> None:
@@ -1057,3 +1122,172 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
             
         except Exception as e:
             _LOGGER.error("Failed to force remove entities for child %s: %s", child_id, e)
+
+    # Cosmetic system methods
+    async def async_load_cosmetics_catalog(self) -> dict:
+        """Load cosmetics catalog from files."""
+        import os
+        import json
+        
+        try:
+            # Define cosmetics directory path
+            cosmetics_dir = os.path.join(self.hass.config.config_dir, "custom_components", "kids_tasks", "cosmetics")
+            
+            catalog = {
+                "avatars": [],
+                "backgrounds": [],
+                "outfits": [],
+                "themes": []
+            }
+            
+            # Load each cosmetic type
+            for cosmetic_type in catalog.keys():
+                type_dir = os.path.join(cosmetics_dir, cosmetic_type)
+                if os.path.exists(type_dir):
+                    # Load catalog.json for this type
+                    catalog_file = os.path.join(type_dir, "catalog.json")
+                    if os.path.exists(catalog_file):
+                        with open(catalog_file, 'r', encoding='utf-8') as f:
+                            type_catalog = json.load(f)
+                            catalog[cosmetic_type] = type_catalog.get("items", [])
+                            _LOGGER.info("Loaded %d %s from catalog", len(catalog[cosmetic_type]), cosmetic_type)
+            
+            # Fire event with loaded catalog
+            self.hass.bus.async_fire(
+                f"{DOMAIN}_cosmetics_loaded",
+                {
+                    "catalog": catalog,
+                    "total_items": sum(len(items) for items in catalog.values())
+                }
+            )
+            
+            _LOGGER.info("Cosmetics catalog loaded successfully: %d total items", sum(len(items) for items in catalog.values()))
+            return catalog
+            
+        except Exception as e:
+            _LOGGER.error("Failed to load cosmetics catalog: %s", e)
+            return {"avatars": [], "backgrounds": [], "outfits": [], "themes": []}
+
+    async def async_activate_cosmetic(self, child_id: str, cosmetic_id: str, cosmetic_type: str) -> bool:
+        """Activate a cosmetic item for a child."""
+        if child_id not in self.children:
+            _LOGGER.error("Child %s not found", child_id)
+            return False
+        
+        child = self.children[child_id]
+        
+        # Check if child owns this cosmetic (from rewards or default)
+        if not self._child_owns_cosmetic(child, cosmetic_id, cosmetic_type):
+            _LOGGER.error("Child %s does not own cosmetic %s of type %s", child_id, cosmetic_id, cosmetic_type)
+            return False
+        
+        # Activate the cosmetic
+        if not hasattr(child, 'active_cosmetics'):
+            child.active_cosmetics = {}
+        
+        child.active_cosmetics[cosmetic_type] = cosmetic_id
+        
+        # Fire event
+        self.hass.bus.async_fire(
+            f"{DOMAIN}_cosmetic_activated",
+            {
+                "child_id": child_id,
+                "child_name": child.name,
+                "cosmetic_id": cosmetic_id,
+                "cosmetic_type": cosmetic_type,
+            }
+        )
+        
+        await self.async_save_data()
+        await self.async_request_refresh()
+        
+        _LOGGER.info("Activated %s cosmetic %s for child %s", cosmetic_type, cosmetic_id, child.name)
+        return True
+    
+    def _child_owns_cosmetic(self, child, cosmetic_id: str, cosmetic_type: str) -> bool:
+        """Check if a child owns a specific cosmetic item."""
+        # Check if it's a default cosmetic (starts with "default_")
+        if cosmetic_id.startswith("default_"):
+            return True
+        
+        # Check if child has this cosmetic in their organized collection
+        if hasattr(child, 'cosmetic_collection') and child.cosmetic_collection:
+            type_collection = child.cosmetic_collection.get(cosmetic_type, [])
+            if cosmetic_id in type_collection:
+                return True
+        
+        # Fallback: check legacy cosmetic_items list
+        if hasattr(child, 'cosmetic_items') and child.cosmetic_items:
+            if cosmetic_id in child.cosmetic_items:
+                return True
+        
+        return False
+    
+    async def async_create_cosmetic_rewards_from_catalog(self) -> int:
+        """Create cosmetic rewards from the catalog for items that don't have rewards yet."""
+        catalog = await self.async_load_cosmetics_catalog()
+        created_count = 0
+        
+        from .models import Reward
+        import uuid
+        
+        for cosmetic_type, items in catalog.items():
+            for item in items:
+                # Skip default items
+                if item.get("unlocked_by_default", False):
+                    continue
+                
+                cosmetic_id = item.get("id")
+                if not cosmetic_id:
+                    continue
+                
+                # Check if a reward already exists for this cosmetic
+                existing_reward = None
+                for reward in self.rewards.values():
+                    if (reward.reward_type == "cosmetic" and 
+                        reward.cosmetic_data and 
+                        reward.cosmetic_data.get("cosmetic_id") == cosmetic_id):
+                        existing_reward = reward
+                        break
+                
+                if existing_reward:
+                    continue  # Skip if reward already exists
+                
+                # Create new cosmetic reward
+                reward_id = str(uuid.uuid4())
+                reward = Reward(
+                    id=reward_id,
+                    name=item.get("name", f"Cosmétique {cosmetic_id}"),
+                    description=item.get("description", f"Débloque le cosmétique {item.get('name', cosmetic_id)}"),
+                    cost=item.get("cost", 100),
+                    coin_cost=item.get("coin_cost", 0),
+                    category="cosmetic",
+                    icon="🎨",  # Default cosmetic icon
+                    reward_type="cosmetic",
+                    cosmetic_data={
+                        "type": cosmetic_type,
+                        "cosmetic_id": cosmetic_id,
+                        "rarity": item.get("rarity", "common"),
+                        "catalog_data": item
+                    }
+                )
+                
+                self.rewards[reward_id] = reward
+                created_count += 1
+                _LOGGER.info("Created cosmetic reward for %s: %s", cosmetic_type, item.get("name", cosmetic_id))
+        
+        if created_count > 0:
+            await self.async_save_data()
+            await self.async_request_refresh()
+            
+            # Fire event
+            self.hass.bus.async_fire(
+                f"{DOMAIN}_cosmetic_rewards_created",
+                {
+                    "count": created_count,
+                    "catalog_items": sum(len(items) for items in catalog.values())
+                }
+            )
+        
+        _LOGGER.info("Created %d cosmetic rewards from catalog", created_count)
+        return created_count

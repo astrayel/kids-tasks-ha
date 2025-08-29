@@ -1,0 +1,67 @@
+{
+  "version": "1.0",
+  "type": "avatars",
+  "description": "Avatar cosmetics for kids",
+  "items": [
+    {
+      "id": "default_child",
+      "name": "Enfant par défaut",
+      "description": "Avatar par défaut pour les enfants",
+      "rarity": "common",
+      "cost": 0,
+      "coin_cost": 0,
+      "unlocked_by_default": true,
+      "emoji": "👶",
+      "pixel_art": null,
+      "image_url": null
+    },
+    {
+      "id": "superhero_boy",
+      "name": "Super Héros",
+      "description": "Avatar de super héros pour garçon",
+      "rarity": "rare",
+      "cost": 500,
+      "coin_cost": 0,
+      "unlocked_by_default": false,
+      "emoji": "🦸‍♂️",
+      "pixel_art": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAYAAADED76LAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAAdgAAAHYBTnsmCAAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAAFYSURBVBiVY/z//z8DAwMDw38GBgYGBgYGBv///wz/GRgYGBgYGBgY/jMwMDAwMDAwMPz//5+BgYGBgYGBgYHh////DAwMDAwMDAwM//8zMDAwMDAwMDAw/P//n4GBgYGBgYGBgeH//wz/GRgYGBgYGBgY/v//z8DAwMDAwMDAwPD//38GBgYGBgYGBgaG//8Z/jMwMDAwMDAwMPz//5+BgYGBgYGBgYHh//8M/xkYGBgYGBgYGP7//8/AwMDAwMDAwMDw//9/BgYGBgYGBgYGhv//Gf4zMDAwMDAwMDD8//+fgYGBgYGBgYGB4f//DP8ZGBgYGBgYGBj+//8/AwMDAwMDAwMDw///fwYGBgYGBgYGBob//xn+MzAwMDAwMDAw/P//n4GBgYGBgYGBgeH//wz/GRgYGBgYGBgY/v//PwMDAwMDAwMDA8P///8ZGBgYGBgYGBgY/v9n+M/AwMDAwMDAwPD//38GBgYGBgYGBgaG//8Z/jMwMDAwMDAwMPz//5+BgYGBgYGBgYHh//8AAP//AwBfR1lrBAAAAABJRU5ErkJggg==",
+      "image_url": null
+    },
+    {
+      "id": "superhero_girl",
+      "name": "Super Héroïne",
+      "description": "Avatar de super héroïne pour fille",
+      "rarity": "rare",
+      "cost": 500,
+      "coin_cost": 0,
+      "unlocked_by_default": false,
+      "emoji": "🦸‍♀️",
+      "pixel_art": null,
+      "image_url": null
+    },
+    {
+      "id": "ninja",
+      "name": "Ninja",
+      "description": "Avatar ninja mystérieux",
+      "rarity": "epic",
+      "cost": 800,
+      "coin_cost": 5,
+      "unlocked_by_default": false,
+      "emoji": "🥷",
+      "pixel_art": null,
+      "image_url": null
+    },
+    {
+      "id": "wizard",
+      "name": "Magicien",
+      "description": "Avatar de magicien puissant",
+      "rarity": "legendary",
+      "cost": 1200,
+      "coin_cost": 10,
+      "unlocked_by_default": false,
+      "emoji": "🧙‍♂️",
+      "pixel_art": null,
+      "image_url": null
+    }
+  ]
+}

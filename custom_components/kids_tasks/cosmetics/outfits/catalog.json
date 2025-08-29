@@ -1,0 +1,62 @@
+{
+  "version": "1.0",
+  "type": "outfits",
+  "description": "Outfit accessories for avatars",
+  "items": [
+    {
+      "id": "default_none",
+      "name": "Aucune tenue",
+      "description": "Pas d'accessoire ou de tenue",
+      "rarity": "common",
+      "cost": 0,
+      "coin_cost": 0,
+      "unlocked_by_default": true,
+      "css_overlay": null,
+      "emoji_overlay": null
+    },
+    {
+      "id": "crown",
+      "name": "Couronne",
+      "description": "Une belle couronne dorée",
+      "rarity": "rare",
+      "cost": 600,
+      "coin_cost": 3,
+      "unlocked_by_default": false,
+      "css_overlay": "position: absolute; top: -5px; left: 50%; transform: translateX(-50%); font-size: 1.2em;",
+      "emoji_overlay": "👑"
+    },
+    {
+      "id": "sunglasses",
+      "name": "Lunettes de soleil",
+      "description": "Des lunettes de soleil cool",
+      "rarity": "common",
+      "cost": 300,
+      "coin_cost": 1,
+      "unlocked_by_default": false,
+      "css_overlay": "position: absolute; top: 30%; left: 50%; transform: translateX(-50%); font-size: 0.8em;",
+      "emoji_overlay": "🕶️"
+    },
+    {
+      "id": "party_hat",
+      "name": "Chapeau de fête",
+      "description": "Pour célébrer les victoires",
+      "rarity": "common",
+      "cost": 250,
+      "coin_cost": 0,
+      "unlocked_by_default": false,
+      "css_overlay": "position: absolute; top: -8px; left: 50%; transform: translateX(-50%); font-size: 1.1em;",
+      "emoji_overlay": "🎉"
+    },
+    {
+      "id": "magic_wand",
+      "name": "Baguette magique",
+      "description": "Une baguette magique scintillante",
+      "rarity": "epic",
+      "cost": 900,
+      "coin_cost": 7,
+      "unlocked_by_default": false,
+      "css_overlay": "position: absolute; top: 10%; right: -5px; font-size: 1em; animation: magic-sparkle 1.5s infinite;",
+      "emoji_overlay": "🪄"
+    }
+  ]
+}

@@ -450,6 +450,14 @@ reset_penalties:
   name: Reset Task Penalties
   description: Reset all penalty_points to 0 for all tasks (diagnostic/fix service)
 
+load_cosmetics_catalog:
+  name: Load Cosmetics Catalog
+  description: Load the cosmetics catalog from the filesystem
+
+create_cosmetic_rewards:
+  name: Create Cosmetic Rewards
+  description: Automatically create rewards for cosmetic items from the catalog
+
 activate_cosmetic:
   name: Activate Cosmetic
   description: Activate a cosmetic item for a child (avatar, theme, etc.)

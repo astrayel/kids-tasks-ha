@@ -1,0 +1,68 @@
+{
+  "version": "1.0",
+  "type": "backgrounds",
+  "description": "Background cosmetics for child cards",
+  "items": [
+    {
+      "id": "default_gradient",
+      "name": "Dégradé par défaut",
+      "description": "Arrière-plan par défaut avec dégradé",
+      "rarity": "common",
+      "cost": 0,
+      "coin_cost": 0,
+      "unlocked_by_default": true,
+      "css_gradient": "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+      "css_background": null,
+      "image_url": null
+    },
+    {
+      "id": "sunset_gradient",
+      "name": "Coucher de soleil",
+      "description": "Magnifique gradient de coucher de soleil",
+      "rarity": "common",
+      "cost": 200,
+      "coin_cost": 0,
+      "unlocked_by_default": false,
+      "css_gradient": "linear-gradient(135deg, #fa709a 0%, #fee140 100%)",
+      "css_background": null,
+      "image_url": null
+    },
+    {
+      "id": "ocean_gradient",
+      "name": "Océan",
+      "description": "Gradient bleu océan apaisant",
+      "rarity": "common",
+      "cost": 200,
+      "coin_cost": 0,
+      "unlocked_by_default": false,
+      "css_gradient": "linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)",
+      "css_background": null,
+      "image_url": null
+    },
+    {
+      "id": "forest_gradient",
+      "name": "Forêt",
+      "description": "Gradient vert forêt naturel",
+      "rarity": "rare",
+      "cost": 400,
+      "coin_cost": 2,
+      "unlocked_by_default": false,
+      "css_gradient": "linear-gradient(135deg, #74b9ff 0%, #0984e3 100%)",
+      "css_background": null,
+      "image_url": null
+    },
+    {
+      "id": "space_animated",
+      "name": "Espace animé",
+      "description": "Arrière-plan espace avec étoiles scintillantes",
+      "rarity": "epic",
+      "cost": 800,
+      "coin_cost": 5,
+      "unlocked_by_default": false,
+      "css_gradient": "linear-gradient(135deg, #0c3483 0%, #a2b6df 100%)",
+      "css_background": "radial-gradient(circle at 20% 80%, white 2px, transparent 2px), radial-gradient(circle at 80% 20%, white 2px, transparent 2px), radial-gradient(circle at 40% 40%, white 1px, transparent 1px)",
+      "animation": "twinkle 2s infinite alternate",
+      "image_url": null
+    }
+  ]
+}

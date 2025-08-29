@@ -71,8 +71,9 @@ class Child:
     avatar_data: str | None = None  # Données selon le type (URL, base64, etc.)
     card_gradient_start: str | None = None  # Couleur début dégradé
     card_gradient_end: str | None = None    # Couleur fin dégradé
-    cosmetic_items: list[str] = field(default_factory=list)  # IDs des cosmétiques possédés
-    active_cosmetics: dict[str, str] = field(default_factory=dict)  # Cosmétiques actifs {"type": "reward_id"}
+    cosmetic_items: list[str] = field(default_factory=list)  # IDs des cosmétiques possédés (legacy)
+    cosmetic_collection: dict[str, list[str]] = field(default_factory=dict)  # Collection organisée {"type": ["id1", "id2"]}
+    active_cosmetics: dict[str, str] = field(default_factory=dict)  # Cosmétiques actifs {"type": "cosmetic_id"}
     created_at: datetime = field(default_factory=datetime.now)
     
     @property
@@ -108,15 +109,33 @@ class Child:
             self.add_coins(coins)
         return level_up
     
-    def add_cosmetic_item(self, reward_id: str) -> None:
+    def add_cosmetic_item(self, reward_id: str, cosmetic_type: str = None) -> None:
         """Add a cosmetic item to the child's collection."""
+        # Legacy support
         if reward_id not in self.cosmetic_items:
             self.cosmetic_items.append(reward_id)
+        
+        # New organized collection
+        if cosmetic_type:
+            if cosmetic_type not in self.cosmetic_collection:
+                self.cosmetic_collection[cosmetic_type] = []
+            if reward_id not in self.cosmetic_collection[cosmetic_type]:
+                self.cosmetic_collection[cosmetic_type].append(reward_id)
     
-    def activate_cosmetic(self, cosmetic_type: str, reward_id: str) -> bool:
+    def activate_cosmetic(self, cosmetic_type: str, cosmetic_id: str) -> bool:
         """Activate a cosmetic item if owned."""
-        if reward_id in self.cosmetic_items:
-            self.active_cosmetics[cosmetic_type] = reward_id
+        # Check in new collection first
+        if (cosmetic_type in self.cosmetic_collection and 
+            cosmetic_id in self.cosmetic_collection[cosmetic_type]):
+            self.active_cosmetics[cosmetic_type] = cosmetic_id
+            return True
+        # Fallback to legacy collection
+        if cosmetic_id in self.cosmetic_items:
+            self.active_cosmetics[cosmetic_type] = cosmetic_id
+            return True
+        # Default cosmetics are always available
+        if cosmetic_id.startswith("default_"):
+            self.active_cosmetics[cosmetic_type] = cosmetic_id
             return True
         return False
     
@@ -153,6 +172,7 @@ class Child:
             "card_gradient_start": self.card_gradient_start,
             "card_gradient_end": self.card_gradient_end,
             "cosmetic_items": self.cosmetic_items,
+            "cosmetic_collection": self.cosmetic_collection,
             "active_cosmetics": self.active_cosmetics,
             "created_at": self.created_at.isoformat(),
         }
@@ -173,6 +193,7 @@ class Child:
             card_gradient_start=data.get("card_gradient_start"),
             card_gradient_end=data.get("card_gradient_end"),
             cosmetic_items=data.get("cosmetic_items", []),
+            cosmetic_collection=data.get("cosmetic_collection", {}),
             active_cosmetics=data.get("active_cosmetics", {}),
             created_at=datetime.fromisoformat(data.get("created_at", datetime.now().isoformat())),
         )

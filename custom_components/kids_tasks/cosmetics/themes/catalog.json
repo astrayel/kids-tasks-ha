@@ -1,0 +1,73 @@
+{
+  "version": "1.0",
+  "type": "themes",
+  "description": "Complete themes that change multiple visual elements",
+  "items": [
+    {
+      "id": "default_theme",
+      "name": "Thème par défaut",
+      "description": "Le thème standard de l'application",
+      "rarity": "common",
+      "cost": 0,
+      "coin_cost": 0,
+      "unlocked_by_default": true,
+      "css_variables": {
+        "--primary-color": "#667eea",
+        "--secondary-color": "#764ba2",
+        "--text-color": "#333333",
+        "--card-background": "#ffffff"
+      }
+    },
+    {
+      "id": "dark_theme",
+      "name": "Thème sombre",
+      "description": "Un thème sombre pour les yeux",
+      "rarity": "common",
+      "cost": 400,
+      "coin_cost": 0,
+      "unlocked_by_default": false,
+      "css_variables": {
+        "--primary-color": "#4a5568",
+        "--secondary-color": "#2d3748",
+        "--text-color": "#ffffff",
+        "--card-background": "#1a202c"
+      }
+    },
+    {
+      "id": "rainbow_theme",
+      "name": "Thème arc-en-ciel",
+      "description": "Des couleurs vives et joyeuses",
+      "rarity": "rare",
+      "cost": 800,
+      "coin_cost": 4,
+      "unlocked_by_default": false,
+      "css_variables": {
+        "--primary-color": "#ff6b6b",
+        "--secondary-color": "#4ecdc4",
+        "--text-color": "#2c3e50",
+        "--card-background": "#ffffff"
+      },
+      "css_animations": {
+        "rainbow-border": "border-image: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1, #96ceb4, #feca57) 1; animation: rainbow-rotate 3s linear infinite;"
+      }
+    },
+    {
+      "id": "space_theme",
+      "name": "Thème spatial",
+      "description": "Explorez l'espace avec ce thème cosmique",
+      "rarity": "epic",
+      "cost": 1200,
+      "coin_cost": 8,
+      "unlocked_by_default": false,
+      "css_variables": {
+        "--primary-color": "#1e3a8a",
+        "--secondary-color": "#312e81",
+        "--text-color": "#e5e7eb",
+        "--card-background": "#111827"
+      },
+      "css_animations": {
+        "stars-bg": "background-image: radial-gradient(circle at 25% 25%, white 1px, transparent 1px), radial-gradient(circle at 75% 75%, white 0.5px, transparent 0.5px); animation: stars-twinkle 4s ease-in-out infinite;"
+      }
+    }
+  ]
+}

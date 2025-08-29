@@ -48,6 +48,9 @@ SERVICE_RESET_ALL_MONTHLY_TASKS = "reset_all_monthly_tasks"
 SERVICE_BACKUP_DATA = "backup_data"
 SERVICE_RESTORE_DATA = "restore_data"
 SERVICE_CLEAR_ALL_DATA = "clear_all_data"
+SERVICE_LOAD_COSMETICS_CATALOG = "load_cosmetics_catalog"
+SERVICE_CREATE_COSMETIC_REWARDS = "create_cosmetic_rewards"
+SERVICE_ACTIVATE_COSMETIC = "activate_cosmetic"
 SERVICE_LIST_TASKS = "list_tasks"
 SERVICE_LIST_CHILDREN = "list_children"
 SERVICE_CLEANUP_OLD_ENTITIES = "cleanup_old_entities"
@@ -231,11 +234,15 @@ SERVICE_REMOVE_COINS_SCHEMA = vol.Schema(
 
 SERVICE_RESET_PENALTIES_SCHEMA = vol.Schema({})  # No parameters needed
 
+SERVICE_LOAD_COSMETICS_SCHEMA = vol.Schema({})  # No parameters needed
+
+SERVICE_CREATE_COSMETIC_REWARDS_SCHEMA = vol.Schema({})  # No parameters needed
+
 SERVICE_ACTIVATE_COSMETIC_SCHEMA = vol.Schema(
     {
         vol.Required("child_id"): cv.string,
-        vol.Required("cosmetic_type"): vol.In(["avatar", "theme", "badge"]),
-        vol.Required("reward_id"): cv.string,
+        vol.Required("cosmetic_id"): cv.string,
+        vol.Required("cosmetic_type"): vol.In(["avatar", "background", "outfit", "theme"]),
     }
 )
 
@@ -761,6 +768,58 @@ async def async_setup_services(
     
     hass.services.async_register(
         DOMAIN, "reset_penalties", reset_penalties_service, schema=SERVICE_RESET_PENALTIES_SCHEMA
+    )
+    
+    async def load_cosmetics_catalog_service(call: ServiceCall) -> None:
+        """Load cosmetics catalog from filesystem."""
+        try:
+            coordinator = hass.data[DOMAIN][config_entry_id]["coordinator"]
+            await coordinator.async_load_cosmetics_catalog()
+            _LOGGER.info("Cosmetics catalog loaded successfully")
+                           
+        except Exception as e:
+            _LOGGER.error("Failed to load cosmetics catalog: %s", e)
+            raise
+    
+    async def create_cosmetic_rewards_service(call: ServiceCall) -> None:
+        """Create cosmetic rewards from catalog."""
+        try:
+            coordinator = hass.data[DOMAIN][config_entry_id]["coordinator"]
+            created_count = await coordinator.async_create_cosmetic_rewards_from_catalog()
+            _LOGGER.info("Created %d cosmetic rewards from catalog", created_count)
+                           
+        except Exception as e:
+            _LOGGER.error("Failed to create cosmetic rewards: %s", e)
+            raise
+    
+    hass.services.async_register(
+        DOMAIN, "load_cosmetics_catalog", load_cosmetics_catalog_service, schema=SERVICE_LOAD_COSMETICS_SCHEMA
+    )
+    
+    hass.services.async_register(
+        DOMAIN, "create_cosmetic_rewards", create_cosmetic_rewards_service, schema=SERVICE_CREATE_COSMETIC_REWARDS_SCHEMA
+    )
+    
+    async def activate_cosmetic_service(call: ServiceCall) -> None:
+        """Activate a cosmetic item for a child."""
+        try:
+            coordinator = hass.data[DOMAIN][config_entry_id]["coordinator"]
+            child_id = call.data.get("child_id")
+            cosmetic_id = call.data.get("cosmetic_id")
+            cosmetic_type = call.data.get("cosmetic_type")
+            
+            success = await coordinator.async_activate_cosmetic(child_id, cosmetic_id, cosmetic_type)
+            if success:
+                _LOGGER.info("Activated cosmetic %s for child %s", cosmetic_id, child_id)
+            else:
+                _LOGGER.error("Failed to activate cosmetic %s for child %s", cosmetic_id, child_id)
+                           
+        except Exception as e:
+            _LOGGER.error("Failed to activate cosmetic: %s", e)
+            raise
+    
+    hass.services.async_register(
+        DOMAIN, "activate_cosmetic", activate_cosmetic_service, schema=SERVICE_ACTIVATE_COSMETIC_SCHEMA
     )
     
     async def cleanup_old_entities_service(call: ServiceCall) -> None:
