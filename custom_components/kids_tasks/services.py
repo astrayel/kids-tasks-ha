@@ -548,8 +548,8 @@ async def async_setup_services(
         """Activate a cosmetic item for a child."""
         await coordinator.async_activate_cosmetic(
             call.data["child_id"], 
-            call.data["cosmetic_type"], 
-            call.data["reward_id"]
+            call.data["cosmetic_id"], 
+            call.data["cosmetic_type"]
         )
     
     async def update_reward_service(call: ServiceCall) -> None:
@@ -773,8 +773,7 @@ async def async_setup_services(
     async def load_cosmetics_catalog_service(call: ServiceCall) -> None:
         """Load cosmetics catalog from filesystem."""
         try:
-            coordinator = hass.data[DOMAIN][config_entry_id]["coordinator"]
-            await coordinator.async_load_cosmetics_catalog()
+            catalog = await coordinator.async_load_cosmetics_catalog()
             _LOGGER.info("Cosmetics catalog loaded successfully")
                            
         except Exception as e:
@@ -784,7 +783,6 @@ async def async_setup_services(
     async def create_cosmetic_rewards_service(call: ServiceCall) -> None:
         """Create cosmetic rewards from catalog."""
         try:
-            coordinator = hass.data[DOMAIN][config_entry_id]["coordinator"]
             created_count = await coordinator.async_create_cosmetic_rewards_from_catalog()
             _LOGGER.info("Created %d cosmetic rewards from catalog", created_count)
                            
@@ -800,23 +798,6 @@ async def async_setup_services(
         DOMAIN, "create_cosmetic_rewards", create_cosmetic_rewards_service, schema=SERVICE_CREATE_COSMETIC_REWARDS_SCHEMA
     )
     
-    async def activate_cosmetic_service(call: ServiceCall) -> None:
-        """Activate a cosmetic item for a child."""
-        try:
-            coordinator = hass.data[DOMAIN][config_entry_id]["coordinator"]
-            child_id = call.data.get("child_id")
-            cosmetic_id = call.data.get("cosmetic_id")
-            cosmetic_type = call.data.get("cosmetic_type")
-            
-            success = await coordinator.async_activate_cosmetic(child_id, cosmetic_id, cosmetic_type)
-            if success:
-                _LOGGER.info("Activated cosmetic %s for child %s", cosmetic_id, child_id)
-            else:
-                _LOGGER.error("Failed to activate cosmetic %s for child %s", cosmetic_id, child_id)
-                           
-        except Exception as e:
-            _LOGGER.error("Failed to activate cosmetic: %s", e)
-            raise
     
     hass.services.async_register(
         DOMAIN, "activate_cosmetic", activate_cosmetic_service, schema=SERVICE_ACTIVATE_COSMETIC_SCHEMA

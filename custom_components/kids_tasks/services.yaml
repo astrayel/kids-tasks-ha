@@ -477,14 +477,16 @@ activate_cosmetic:
           options:
             - label: "Avatar"
               value: "avatar"
-            - label: "Card Theme"
+            - label: "Background"
+              value: "background"
+            - label: "Outfit"
+              value: "outfit"
+            - label: "Theme"
               value: "theme"
-            - label: "Badge"
-              value: "badge"
           mode: dropdown
-    reward_id:
-      name: Reward ID
-      description: ID of the cosmetic reward to activate
+    cosmetic_id:
+      name: Cosmetic ID
+      description: ID of the cosmetic item to activate
       required: true
       selector:
         text:
