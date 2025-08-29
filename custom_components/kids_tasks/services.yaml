@@ -446,6 +446,10 @@ remove_coins:
       selector:
         text:
 
+reset_penalties:
+  name: Reset Task Penalties
+  description: Reset all penalty_points to 0 for all tasks (diagnostic/fix service)
+
 activate_cosmetic:
   name: Activate Cosmetic
   description: Activate a cosmetic item for a child (avatar, theme, etc.)

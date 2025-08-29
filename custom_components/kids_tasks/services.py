@@ -229,6 +229,8 @@ SERVICE_REMOVE_COINS_SCHEMA = vol.Schema(
     }
 )
 
+SERVICE_RESET_PENALTIES_SCHEMA = vol.Schema({})  # No parameters needed
+
 SERVICE_ACTIVATE_COSMETIC_SCHEMA = vol.Schema(
     {
         vol.Required("child_id"): cv.string,
@@ -735,6 +737,30 @@ async def async_setup_services(
     
     hass.services.async_register(
         DOMAIN, SERVICE_LIST_CHILDREN, list_children_service
+    )
+    
+    async def reset_penalties_service(call: ServiceCall) -> None:
+        """Reset all penalty_points to 0 for all tasks."""
+        try:
+            tasks_updated = 0
+            for task_id, task in coordinator.tasks.items():
+                if task.penalty_points > 0:
+                    _LOGGER.info(f"Resetting penalty_points for task '{task.name}' from {task.penalty_points} to 0")
+                    task.penalty_points = 0
+                    tasks_updated += 1
+            
+            # Save the changes
+            await coordinator.async_save_data()
+            await coordinator.async_request_refresh()
+            
+            _LOGGER.info(f"Reset penalty_points to 0 for {tasks_updated} tasks")
+                           
+        except Exception as e:
+            _LOGGER.error("Failed to reset penalties: %s", e)
+            raise
+    
+    hass.services.async_register(
+        DOMAIN, "reset_penalties", reset_penalties_service, schema=SERVICE_RESET_PENALTIES_SCHEMA
     )
     
     async def cleanup_old_entities_service(call: ServiceCall) -> None:
