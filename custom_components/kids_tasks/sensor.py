@@ -581,7 +581,7 @@ class RewardSensor(CoordinatorEntity, SensorEntity):
         """Return the state attributes."""
         reward_data = self.coordinator.data["rewards"].get(self.reward_id, {})
         
-        return {
+        attributes = {
             "reward_id": self.reward_id,
             "reward_name": reward_data.get("name", ""),
             "description": reward_data.get("description", ""),
@@ -593,7 +593,16 @@ class RewardSensor(CoordinatorEntity, SensorEntity):
             "limited_quantity": reward_data.get("limited_quantity"),
             "remaining_quantity": reward_data.get("remaining_quantity"),
             "is_available": reward_data.get("remaining_quantity") is None or reward_data.get("remaining_quantity", 0) > 0,
+            "reward_type": reward_data.get("reward_type", "real"),
+            "min_level": reward_data.get("min_level", 1),
         }
+        
+        # Add cosmetic data if available
+        cosmetic_data = reward_data.get("cosmetic_data")
+        if cosmetic_data:
+            attributes["cosmetic_data"] = cosmetic_data
+        
+        return attributes
 
     @property
     def available(self) -> bool:
