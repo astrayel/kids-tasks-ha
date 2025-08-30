@@ -23,7 +23,8 @@
       "coin_cost": 3,
       "unlocked_by_default": false,
       "css_overlay": "position: absolute; top: -5px; left: 50%; transform: translateX(-50%); font-size: 1.2em;",
-      "emoji_overlay": "👑"
+      "emoji_overlay": "👑",
+      "pixel_art": "crown.png"
     },
     {
       "id": "sunglasses",
@@ -34,7 +35,8 @@
       "coin_cost": 1,
       "unlocked_by_default": false,
       "css_overlay": "position: absolute; top: 30%; left: 50%; transform: translateX(-50%); font-size: 0.8em;",
-      "emoji_overlay": "🕶️"
+      "emoji_overlay": "🕶️",
+      "pixel_art": "sunglasses.png"
     },
     {
       "id": "party_hat",
@@ -45,7 +47,8 @@
       "coin_cost": 0,
       "unlocked_by_default": false,
       "css_overlay": "position: absolute; top: -8px; left: 50%; transform: translateX(-50%); font-size: 1.1em;",
-      "emoji_overlay": "🎉"
+      "emoji_overlay": "🎉",
+      "pixel_art": "party_hat.png"
     },
     {
       "id": "magic_wand",
@@ -56,7 +59,8 @@
       "coin_cost": 7,
       "unlocked_by_default": false,
       "css_overlay": "position: absolute; top: 10%; right: -5px; font-size: 1em; animation: magic-sparkle 1.5s infinite;",
-      "emoji_overlay": "🪄"
+      "emoji_overlay": "🪄",
+      "pixel_art": "magic_wand.png"
     }
   ]
 }
