@@ -10,7 +10,7 @@
       "rarity": "common",
       "cost": 0,
       "coin_cost": 0,
-      "unlocked_by_default": true,
+      "unlocked_by_default": false,
       "emoji": "👶",
       "pixel_art": "default_child.png",
       "image_url": null
@@ -24,7 +24,7 @@
       "coin_cost": 0,
       "unlocked_by_default": false,
       "emoji": "🦸‍♂️",
-      "pixel_art": "superhero_boy.png",
+      "pixel_art": "default_child.png",
       "image_url": null
     },
     {
