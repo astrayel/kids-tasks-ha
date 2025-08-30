@@ -1147,10 +1147,16 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
                     # Load catalog.json for this type
                     catalog_file = os.path.join(type_dir, "catalog.json")
                     if os.path.exists(catalog_file):
-                        with open(catalog_file, 'r', encoding='utf-8') as f:
-                            type_catalog = json.load(f)
-                            catalog[cosmetic_type] = type_catalog.get("items", [])
-                            _LOGGER.info("Loaded %d %s from catalog", len(catalog[cosmetic_type]), cosmetic_type)
+                        # Use async file reading to avoid blocking the event loop
+                        import asyncio
+                        def read_catalog_file(file_path):
+                            with open(file_path, 'r', encoding='utf-8') as f:
+                                return json.load(f)
+                        
+                        # Execute file reading in thread pool to avoid blocking
+                        type_catalog = await self.hass.async_add_executor_job(read_catalog_file, catalog_file)
+                        catalog[cosmetic_type] = type_catalog.get("items", [])
+                        _LOGGER.info("Loaded %d %s from catalog", len(catalog[cosmetic_type]), cosmetic_type)
             
             # Fire event with loaded catalog
             self.hass.bus.async_fire(
