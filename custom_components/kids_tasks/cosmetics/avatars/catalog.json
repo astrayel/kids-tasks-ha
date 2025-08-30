@@ -12,7 +12,7 @@
       "coin_cost": 0,
       "unlocked_by_default": true,
       "emoji": "👶",
-      "pixel_art": null,
+      "pixel_art": "default_child.png",
       "image_url": null
     },
     {
@@ -24,7 +24,7 @@
       "coin_cost": 0,
       "unlocked_by_default": false,
       "emoji": "🦸‍♂️",
-      "pixel_art": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAYAAADED76LAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAAdgAAAHYBTnsmCAAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAAFYSURBVBiVY/z//z8DAwMDw38GBgYGBgYGBv///wz/GRgYGBgYGBgY/jMwMDAwMDAwMPz//5+BgYGBgYGBgYHh////DAwMDAwMDAwM//8zMDAwMDAwMDAw/P//n4GBgYGBgYGBgeH//wz/GRgYGBgYGBgY/v//z8DAwMDAwMDAwPD//38GBgYGBgYGBgaG//8Z/jMwMDAwMDAwMPz//5+BgYGBgYGBgYHh//8M/xkYGBgYGBgYGP7//8/AwMDAwMDAwMDw//9/BgYGBgYGBgYGhv//Gf4zMDAwMDAwMDD8//+fgYGBgYGBgYGB4f//DP8ZGBgYGBgYGBj+//8/AwMDAwMDAwMDw///fwYGBgYGBgYGBob//xn+MzAwMDAwMDAw/P//n4GBgYGBgYGBgeH//wz/GRgYGBgYGBgY/v//PwMDAwMDAwMDA8P///8ZGBgYGBgYGBgY/v9n+M/AwMDAwMDAwPD//38GBgYGBgYGBgaG//8Z/jMwMDAwMDAwMPz//5+BgYGBgYGBgYHh//8AAP//AwBfR1lrBAAAAABJRU5ErkJggg==",
+      "pixel_art": "superhero_boy.png",
       "image_url": null
     },
     {
@@ -36,7 +36,7 @@
       "coin_cost": 0,
       "unlocked_by_default": false,
       "emoji": "🦸‍♀️",
-      "pixel_art": null,
+      "pixel_art": "superhero_girl.png",
       "image_url": null
     },
     {
@@ -48,7 +48,7 @@
       "coin_cost": 5,
       "unlocked_by_default": false,
       "emoji": "🥷",
-      "pixel_art": null,
+      "pixel_art": "ninja.png",
       "image_url": null
     },
     {
@@ -60,7 +60,7 @@
       "coin_cost": 10,
       "unlocked_by_default": false,
       "emoji": "🧙‍♂️",
-      "pixel_art": null,
+      "pixel_art": "wizard.png",
       "image_url": null
     }
   ]
