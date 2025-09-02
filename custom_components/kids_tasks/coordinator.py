@@ -133,10 +133,15 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
                             child = self.children[child_id]
                             old_points = child.points
                             old_level = child.level
-                            child.points = max(0, child.points - task.penalty_points)
                             
-                            # Recalculate level after penalty
-                            child.level = (child.points // 100) + 1 if child.points > 0 else 1
+                            # Apply penalty with tracking
+                            child.add_points(
+                                -task.penalty_points,
+                                description=f"Pénalité deadline - Tâche '{task.name}' non terminée",
+                                action_type="task_penalty",
+                                related_entity_id=task.id,
+                                related_entity_name=task.name
+                            )
                             
                             # Mark penalty in child status
                             if child_id in task.child_statuses:
@@ -227,11 +232,17 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
                             # Use penalty_points (no default penalty)
                             penalty_points = task.penalty_points
                             old_points = child.points
-                            child.points = max(0, child.points - penalty_points)
-                            
-                            # Recalculate level after penalty
                             old_level = child.level
-                            child.level = (child.points // 100) + 1 if child.points > 0 else 1
+                            
+                            # Apply penalty with tracking
+                            if penalty_points > 0:
+                                child.add_points(
+                                    -penalty_points,
+                                    description=f"Reset automatique {frequency} - Tâche '{task.name}' non terminée",
+                                    action_type="task_penalty",
+                                    related_entity_id=task.id,
+                                    related_entity_name=task.name
+                                )
                             
                             # Mark penalty in child status
                             if child_id in task.child_statuses:
@@ -457,7 +468,19 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
             # Award points and coins only to the child who completed the task
             child = self.children.get(child_id)
             if child:
-                level_up = child.add_currency(task.points, task.coins)
+                # Add points with tracking
+                level_up = False
+                if task.points > 0:
+                    level_up = child.add_points(
+                        task.points,
+                        description=f"Tâche '{task.name}' terminée",
+                        action_type="task_completed",
+                        related_entity_id=task.id,
+                        related_entity_name=task.name
+                    )
+                # Add coins (no tracking for coins yet)
+                if task.coins > 0:
+                    child.add_coins(task.coins)
                 
                 # Fire events
                 self.hass.bus.async_fire(
@@ -509,7 +532,19 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
                     # Award points and coins to the child who completed the task
                     child = self.children.get(child_id)
                     if child:
-                        level_up = child.add_currency(task.points, task.coins)
+                        # Add points with tracking
+                        level_up = False
+                        if task.points > 0:
+                            level_up = child.add_points(
+                                task.points,
+                                description=f"Tâche '{task.name}' validée",
+                                action_type="task_validated",
+                                related_entity_id=task.id,
+                                related_entity_name=task.name
+                            )
+                        # Add coins (no tracking for coins yet)
+                        if task.coins > 0:
+                            child.add_coins(task.coins)
                         
                         # Fire events
                         self.hass.bus.async_fire(
@@ -634,10 +669,17 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
             cosmetic_id = reward.cosmetic_data.get("cosmetic_id", reward_id) if reward.cosmetic_data else reward_id
             child.add_cosmetic_item(cosmetic_id, cosmetic_type)
         else:
-            # For real rewards, deduct currency and consume
-            child.points -= reward.cost
-            child.coins -= reward.coin_cost
-            child.level = (child.points // 100) + 1 if child.points > 0 else 1
+            # For real rewards, deduct currency and consume with tracking
+            if reward.cost > 0:
+                child.add_points(
+                    -reward.cost,
+                    description=f"Récompense '{reward.name}' achetée",
+                    action_type="reward_claimed",
+                    related_entity_id=reward.id,
+                    related_entity_name=reward.name
+                )
+            if reward.coin_cost > 0:
+                child.coins -= reward.coin_cost
         
         # Fire event
         self.hass.bus.async_fire(
@@ -729,7 +771,19 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
         
         child = self.children[child_id]
         old_level = child.level
-        level_up = child.add_currency(points, coins)
+        level_up = False
+        
+        # Add points with tracking
+        if points != 0:
+            level_up = child.add_points(
+                points,
+                description=f"Ajustement manuel de {points} points",
+                action_type="manual_adjustment"
+            )
+        
+        # Add coins (no tracking for coins yet)
+        if coins != 0:
+            child.add_coins(coins)
         
         # Check for level up
         if level_up:
@@ -755,8 +809,12 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
             return False
         
         child = self.children[child_id]
-        child.points = max(0, child.points - points)
-        child.level = (child.points // 100) + 1 if child.points > 0 else 1
+        # Use add_points with negative value to track the removal
+        child.add_points(
+            -points,
+            description=f"Retrait manuel de {points} points",
+            action_type="manual_adjustment"
+        )
         
         await self.async_save_data()
         await self.async_request_refresh()
@@ -870,11 +928,17 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
                             # Pour reset manuel: utiliser penalty_points si défini, sinon moitié des points (minimum 1)
                             penalty_points = task.penalty_points if task.penalty_points > 0 else max(1, task.points // 2)
                             old_points = child.points
-                            child.points = max(0, child.points - penalty_points)
-                            
-                            # Recalculer le niveau après déduction
                             old_level = child.level
-                            child.level = (child.points // 100) + 1 if child.points > 0 else 1
+                            
+                            # Apply penalty with tracking
+                            if penalty_points > 0:
+                                child.add_points(
+                                    -penalty_points,
+                                    description=f"Reset manuel quotidien - Tâche '{task.name}' non terminée",
+                                    action_type="task_penalty",
+                                    related_entity_id=task.id,
+                                    related_entity_name=task.name
+                                )
                             
                             # Marquer la pénalité dans le statut de l'enfant
                             if child_id in task.child_statuses:
@@ -925,11 +989,17 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
                             # Pour reset manuel: utiliser penalty_points si défini, sinon moitié des points (minimum 1)
                             penalty_points = task.penalty_points if task.penalty_points > 0 else max(1, task.points // 2)
                             old_points = child.points
-                            child.points = max(0, child.points - penalty_points)
-                            
-                            # Recalculer le niveau après déduction
                             old_level = child.level
-                            child.level = (child.points // 100) + 1 if child.points > 0 else 1
+                            
+                            # Apply penalty with tracking
+                            if penalty_points > 0:
+                                child.add_points(
+                                    -penalty_points,
+                                    description=f"Reset manuel hebdomadaire - Tâche '{task.name}' non terminée",
+                                    action_type="task_penalty",
+                                    related_entity_id=task.id,
+                                    related_entity_name=task.name
+                                )
                             
                             # Marquer la pénalité dans le statut de l'enfant
                             if child_id in task.child_statuses:
@@ -980,11 +1050,17 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
                             # Pour reset manuel: utiliser penalty_points si défini, sinon moitié des points (minimum 1)
                             penalty_points = task.penalty_points if task.penalty_points > 0 else max(1, task.points // 2)
                             old_points = child.points
-                            child.points = max(0, child.points - penalty_points)
-                            
-                            # Recalculer le niveau après déduction
                             old_level = child.level
-                            child.level = (child.points // 100) + 1 if child.points > 0 else 1
+                            
+                            # Apply penalty with tracking
+                            if penalty_points > 0:
+                                child.add_points(
+                                    -penalty_points,
+                                    description=f"Reset manuel mensuel - Tâche '{task.name}' non terminée",
+                                    action_type="task_penalty",
+                                    related_entity_id=task.id,
+                                    related_entity_name=task.name
+                                )
                             
                             # Marquer la pénalité dans le statut de l'enfant
                             if child_id in task.child_statuses:

@@ -74,6 +74,7 @@ class Child:
     cosmetic_items: list[str] = field(default_factory=list)  # IDs des cosmétiques possédés (legacy)
     cosmetic_collection: dict[str, list[str]] = field(default_factory=dict)  # Collection organisée {"type": ["id1", "id2"]}
     active_cosmetics: dict[str, str] = field(default_factory=dict)  # Cosmétiques actifs {"type": "cosmetic_id"}
+    points_history: list[PointsHistoryEntry] = field(default_factory=list)  # Historique des 20 dernières modifications
     created_at: datetime = field(default_factory=datetime.now)
     
     @property
@@ -81,12 +82,28 @@ class Child:
         """Calculate points needed for next level."""
         return (self.level * 100) - self.points
     
-    def add_points(self, points: int) -> bool:
+    def add_points(self, points: int, description: str = None, action_type: str = "manual_adjustment", related_entity_id: str = None, related_entity_name: str = None) -> bool:
         """Add points and check for level up."""
         old_level = self.level
         self.points += points
         # Corrected level calculation: level 1 = 0-99 points, level 2 = 100-199 points, etc.
         self.level = (self.points // 100) + 1
+        
+        # Add to history
+        if description is None:
+            if points > 0:
+                description = f"Ajout de {points} points"
+            else:
+                description = f"Retrait de {abs(points)} points"
+        
+        self._add_to_points_history(
+            action_type=action_type,
+            points_delta=points,
+            description=description,
+            related_entity_id=related_entity_id,
+            related_entity_name=related_entity_name
+        )
+        
         return self.level > old_level
     
     def add_coins(self, coins: int) -> None:
@@ -142,6 +159,29 @@ class Child:
     def get_active_cosmetics(self) -> dict[str, str]:
         """Get active cosmetics."""
         return self.active_cosmetics.copy()
+    
+    def _add_to_points_history(self, action_type: str, points_delta: int, description: str, related_entity_id: str = None, related_entity_name: str = None) -> None:
+        """Add an entry to the points history and maintain max 20 entries."""
+        entry = PointsHistoryEntry(
+            timestamp=datetime.now(),
+            action_type=action_type,
+            points_delta=points_delta,
+            description=description,
+            related_entity_id=related_entity_id,
+            related_entity_name=related_entity_name,
+            child_id=self.id
+        )
+        
+        # Add to beginning of list (most recent first)
+        self.points_history.insert(0, entry)
+        
+        # Keep only last 20 entries
+        if len(self.points_history) > 20:
+            self.points_history = self.points_history[:20]
+    
+    def get_points_history(self) -> list[dict[str, Any]]:
+        """Get points history as list of dictionaries."""
+        return [entry.to_dict() for entry in self.points_history]
 
     def get_effective_avatar(self, hass=None) -> str:
         """Get the effective avatar based on avatar_type."""
@@ -174,6 +214,7 @@ class Child:
             "cosmetic_items": self.cosmetic_items,
             "cosmetic_collection": self.cosmetic_collection,
             "active_cosmetics": self.active_cosmetics,
+            "points_history": [entry.to_dict() for entry in self.points_history],
             "created_at": self.created_at.isoformat(),
         }
     
@@ -195,6 +236,7 @@ class Child:
             cosmetic_items=data.get("cosmetic_items", []),
             cosmetic_collection=data.get("cosmetic_collection", {}),
             active_cosmetics=data.get("active_cosmetics", {}),
+            points_history=[PointsHistoryEntry.from_dict(entry) for entry in data.get("points_history", [])],
             created_at=datetime.fromisoformat(data.get("created_at", datetime.now().isoformat())),
         )
 
@@ -517,4 +559,41 @@ class Reward:
             remaining_quantity=data.get("remaining_quantity"),
             reward_type=data.get("reward_type", "real"),
             cosmetic_data=data.get("cosmetic_data"),
+        )
+
+
+@dataclass
+class PointsHistoryEntry:
+    """Represents an entry in the points history."""
+    timestamp: datetime
+    action_type: str  # "task_completed", "task_validated", "task_penalty", "reward_claimed", "manual_adjustment"
+    points_delta: int  # Positive for gains, negative for losses
+    description: str
+    related_entity_id: str | None = None  # ID de la tâche, récompense, etc.
+    related_entity_name: str | None = None  # Nom de la tâche, récompense, etc.
+    child_id: str | None = None  # For tracking which child
+    
+    def to_dict(self) -> dict[str, Any]:
+        """Convert to dictionary."""
+        return {
+            "timestamp": self.timestamp.isoformat(),
+            "action_type": self.action_type,
+            "points_delta": self.points_delta,
+            "description": self.description,
+            "related_entity_id": self.related_entity_id,
+            "related_entity_name": self.related_entity_name,
+            "child_id": self.child_id,
+        }
+    
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> PointsHistoryEntry:
+        """Create from dictionary."""
+        return cls(
+            timestamp=datetime.fromisoformat(data["timestamp"]),
+            action_type=data["action_type"],
+            points_delta=data["points_delta"],
+            description=data["description"],
+            related_entity_id=data.get("related_entity_id"),
+            related_entity_name=data.get("related_entity_name"),
+            child_id=data.get("child_id"),
         )

@@ -57,6 +57,7 @@ async def async_setup_entry(
             ChildPointsSensor(coordinator, child_id),
             ChildLevelSensor(coordinator, child_id),
             ChildTasksCompletedTodaySensor(coordinator, child_id),
+            ChildPointsHistorySensor(coordinator, child_id),
         ])
     
     # Add individual task sensors
@@ -608,3 +609,64 @@ class RewardSensor(CoordinatorEntity, SensorEntity):
     def available(self) -> bool:
         """Return if entity is available."""
         return self.reward_id in self.coordinator.data.get("rewards", {})
+
+
+class ChildPointsHistorySensor(CoordinatorEntity, SensorEntity):
+    """Sensor for child points history."""
+
+    def __init__(self, coordinator: KidsTasksDataUpdateCoordinator, child_id: str) -> None:
+        """Initialize the sensor."""
+        super().__init__(coordinator)
+        self.child_id = child_id
+        # Use child name for both unique_id and entity_id (safe for HA compatibility)
+        safe_child_name = get_safe_child_name(coordinator, child_id)
+        self._attr_unique_id = f"kidtasks_{safe_child_name}_points_history"
+        self._attr_device_class = None
+        self._attr_state_class = None
+        self._attr_icon = "mdi:history"
+        self.entity_id = f"sensor.kidtasks_{safe_child_name}_points_history"
+
+    @property
+    def name(self) -> str:
+        """Return the name of the sensor."""
+        child_data = self.coordinator.data["children"].get(self.child_id, {})
+        child_name = child_data.get("name", "Enfant inconnu")
+        return f"Historique Points: {child_name}"
+
+    @property
+    def native_value(self) -> int:
+        """Return the number of history entries."""
+        child_data = self.coordinator.data["children"].get(self.child_id, {})
+        points_history = child_data.get("points_history", [])
+        return len(points_history)
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return the state attributes with points history."""
+        child_data = self.coordinator.data["children"].get(self.child_id, {})
+        points_history = child_data.get("points_history", [])
+        
+        # Format the history for display
+        formatted_history = []
+        for entry in points_history[:20]:  # Limit to 20 entries
+            formatted_entry = {
+                "timestamp": entry.get("timestamp"),
+                "action_type": entry.get("action_type", "unknown"),
+                "points_delta": entry.get("points_delta", 0),
+                "description": entry.get("description", ""),
+                "related_entity_name": entry.get("related_entity_name"),
+            }
+            formatted_history.append(formatted_entry)
+        
+        return {
+            "child_id": self.child_id,
+            "child_name": child_data.get("name", "Enfant inconnu"),
+            "total_entries": len(points_history),
+            "points_history": formatted_history,
+            "last_update": points_history[0].get("timestamp") if points_history else None,
+        }
+
+    @property
+    def available(self) -> bool:
+        """Return if entity is available."""
+        return self.child_id in self.coordinator.data.get("children", {})
