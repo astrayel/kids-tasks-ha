@@ -54,6 +54,7 @@ SERVICE_ACTIVATE_COSMETIC = "activate_cosmetic"
 SERVICE_LIST_TASKS = "list_tasks"
 SERVICE_LIST_CHILDREN = "list_children"
 SERVICE_CLEANUP_OLD_ENTITIES = "cleanup_old_entities"
+SERVICE_GET_CHILD_HISTORY = "get_child_history"
 
 SERVICE_ADD_CHILD_SCHEMA = vol.Schema(
     {
@@ -276,6 +277,15 @@ SERVICE_BACKUP_DATA_SCHEMA = vol.Schema(
 SERVICE_RESTORE_DATA_SCHEMA = vol.Schema(
     {
         vol.Required("backup_data"): cv.string,
+    }
+)
+
+SERVICE_GET_CHILD_HISTORY_SCHEMA = vol.Schema(
+    {
+        vol.Required("child_id"): cv.string,
+        vol.Optional("limit", default=20): vol.Coerce(int),
+        vol.Optional("since_date"): cv.string,  # Format ISO date
+        vol.Optional("action_type"): cv.string,  # Filter by action type
     }
 )
 
@@ -847,4 +857,33 @@ async def async_setup_services(
     
     hass.services.async_register(
         DOMAIN, SERVICE_CLEANUP_OLD_ENTITIES, cleanup_old_entities_service
+    )
+    
+    async def get_child_history_service(call: ServiceCall) -> None:
+        """Get child history with optional filtering."""
+        try:
+            child_id = call.data["child_id"]
+            limit = call.data.get("limit", 20)
+            since_date = call.data.get("since_date")
+            action_type = call.data.get("action_type")
+            
+            history = await coordinator.async_get_child_history(
+                child_id, limit, since_date, action_type
+            )
+            
+            _LOGGER.info("Retrieved history for child %s: %d entries", child_id, len(history))
+            
+            # Log the history for visibility (since we can't return data directly from services)
+            for entry in history:
+                _LOGGER.info("History entry: %s - %s points (%s)", 
+                           entry.get("description", "Unknown action"),
+                           entry.get("points_delta", 0),
+                           entry.get("timestamp", "Unknown time"))
+                           
+        except Exception as e:
+            _LOGGER.error("Failed to get child history: %s", e)
+            raise
+    
+    hass.services.async_register(
+        DOMAIN, SERVICE_GET_CHILD_HISTORY, get_child_history_service, schema=SERVICE_GET_CHILD_HISTORY_SCHEMA
     )

@@ -1373,3 +1373,71 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
         
         _LOGGER.info("Created %d cosmetic rewards from catalog", created_count)
         return created_count
+
+    async def async_get_child_history(
+        self, 
+        child_id: str, 
+        limit: int = 20, 
+        since_date: str | None = None, 
+        action_type: str | None = None
+    ) -> list[dict[str, Any]]:
+        """Get child points history with optional filtering."""
+        try:
+            # Verify child exists
+            if child_id not in self.children:
+                available_children = list(self.children.keys())
+                _LOGGER.error(
+                    "Child with ID %s does not exist. Available children: %s", 
+                    child_id, available_children
+                )
+                raise ValueError(f"Child with ID {child_id} does not exist")
+            
+            child = self.children[child_id]
+            points_history = child.points_history or []
+            
+            # Apply date filter if provided
+            if since_date:
+                try:
+                    since_datetime = datetime.fromisoformat(since_date)
+                    filtered_history = []
+                    for entry in points_history:
+                        if entry.get("timestamp"):
+                            entry_datetime = datetime.fromisoformat(entry["timestamp"])
+                            if entry_datetime >= since_datetime:
+                                filtered_history.append(entry)
+                    points_history = filtered_history
+                except ValueError:
+                    _LOGGER.warning("Invalid date format for since_date: %s", since_date)
+            
+            # Apply action type filter if provided
+            if action_type:
+                points_history = [
+                    entry for entry in points_history 
+                    if entry.get("action_type") == action_type
+                ]
+            
+            # Limit results
+            limited_history = points_history[:limit]
+            
+            # Format for response
+            formatted_history = []
+            for entry in limited_history:
+                formatted_entry = {
+                    "timestamp": entry.get("timestamp"),
+                    "action_type": entry.get("action_type", "unknown"),
+                    "points_delta": entry.get("points_delta", 0),
+                    "description": entry.get("description", ""),
+                    "related_entity_name": entry.get("related_entity_name"),
+                }
+                formatted_history.append(formatted_entry)
+            
+            _LOGGER.info(
+                "Retrieved %d history entries for child %s (out of %d total)", 
+                len(formatted_history), child_id, len(child.points_history or [])
+            )
+            
+            return formatted_history
+            
+        except Exception as e:
+            _LOGGER.error("Failed to get child history for %s: %s", child_id, e)
+            raise
