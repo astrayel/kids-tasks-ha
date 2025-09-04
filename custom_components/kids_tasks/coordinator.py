@@ -1498,9 +1498,8 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
                     since_datetime = datetime.fromisoformat(since_date)
                     filtered_history = []
                     for entry in points_history:
-                        if entry.get("timestamp"):
-                            entry_datetime = datetime.fromisoformat(entry["timestamp"])
-                            if entry_datetime >= since_datetime:
+                        if hasattr(entry, 'timestamp') and entry.timestamp:
+                            if entry.timestamp >= since_datetime:
                                 filtered_history.append(entry)
                     points_history = filtered_history
                 except ValueError:
@@ -1510,7 +1509,7 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
             if action_type:
                 points_history = [
                     entry for entry in points_history 
-                    if entry.get("action_type") == action_type
+                    if hasattr(entry, 'action_type') and entry.action_type == action_type
                 ]
             
             # Limit results
@@ -1519,13 +1518,17 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
             # Format for response
             formatted_history = []
             for entry in limited_history:
-                formatted_entry = {
-                    "timestamp": entry.get("timestamp"),
-                    "action_type": entry.get("action_type", "unknown"),
-                    "points_delta": entry.get("points_delta", 0),
-                    "description": entry.get("description", ""),
-                    "related_entity_name": entry.get("related_entity_name"),
-                }
+                # Use to_dict() method if available, or access attributes directly
+                if hasattr(entry, 'to_dict'):
+                    formatted_entry = entry.to_dict()
+                else:
+                    formatted_entry = {
+                        "timestamp": entry.timestamp.isoformat() if hasattr(entry, 'timestamp') and entry.timestamp else "",
+                        "action_type": getattr(entry, 'action_type', 'unknown'),
+                        "points_delta": getattr(entry, 'points_delta', 0),
+                        "description": getattr(entry, 'description', ''),
+                        "related_entity_name": getattr(entry, 'related_entity_name', None),
+                    }
                 formatted_history.append(formatted_entry)
             
             _LOGGER.info(
