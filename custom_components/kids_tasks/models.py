@@ -126,6 +126,53 @@ class Child:
             self.add_coins(coins)
         return level_up
     
+    def set_points(self, new_points: int, description: str = None, action_type: str = "set_value", related_entity_id: str = None, related_entity_name: str = None) -> bool:
+        """Set points to exact value and check for level up. Returns True if level up occurred."""
+        old_level = self.level
+        old_points = self.points
+        self.points = max(0, new_points)  # Ensure points cannot be negative
+        # Recalculate level based on new points
+        self.level = (self.points // 100) + 1
+        
+        # Add to history
+        if description is None:
+            description = f"Points définis à {self.points}"
+        
+        self._add_to_points_history(
+            action_type=action_type,
+            points_delta=self.points - old_points,
+            description=description,
+            related_entity_id=related_entity_id,
+            related_entity_name=related_entity_name
+        )
+        
+        # Return True if level up occurred
+        return self.level > old_level
+    
+    def set_coins(self, new_coins: int) -> None:
+        """Set coins to exact value."""
+        self.coins = max(0, new_coins)  # Ensure coins cannot be negative
+    
+    def set_level(self, new_level: int, description: str = None, action_type: str = "set_level", related_entity_id: str = None, related_entity_name: str = None) -> None:
+        """Set level to exact value and recalculate points accordingly."""
+        old_level = self.level
+        old_points = self.points
+        self.level = max(1, new_level)  # Ensure level is at least 1
+        # Calculate points for this level (level 1 = 0-99 points, level 2 = 100-199 points, etc.)
+        self.points = (self.level - 1) * 100
+        
+        # Add to history
+        if description is None:
+            description = f"Niveau défini à {self.level}"
+        
+        self._add_to_points_history(
+            action_type=action_type,
+            points_delta=self.points - old_points,
+            description=description,
+            related_entity_id=related_entity_id,
+            related_entity_name=related_entity_name
+        )
+    
     def add_cosmetic_item(self, reward_id: str, cosmetic_type: str = None) -> None:
         """Add a cosmetic item to the child's collection."""
         # Legacy support

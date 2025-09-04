@@ -838,6 +838,83 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
         
         return success
 
+    async def async_set_points(self, child_id: str, points: int, description: str = None) -> bool:
+        """Set child's points to exact value."""
+        if child_id not in self.children:
+            return False
+        
+        child = self.children[child_id]
+        old_level = child.level
+        
+        # Set points with tracking
+        level_up = child.set_points(
+            points,
+            description=description or f"Points définis à {points}",
+            action_type="set_value"
+        )
+        
+        # Fire level up event if needed
+        if level_up:
+            self.hass.bus.async_fire(
+                f"{DOMAIN}_level_up",
+                {
+                    "child_id": child_id,
+                    "child_name": child.name,
+                    "old_level": old_level,
+                    "new_level": child.level,
+                    "new_points": child.points,
+                },
+            )
+        
+        await self.async_save_data()
+        await self.async_request_refresh()
+        return True
+
+    async def async_set_coins(self, child_id: str, coins: int) -> bool:
+        """Set child's coins to exact value."""
+        if child_id not in self.children:
+            return False
+        
+        child = self.children[child_id]
+        child.set_coins(coins)
+        
+        await self.async_save_data()
+        await self.async_request_refresh()
+        return True
+
+    async def async_set_level(self, child_id: str, level: int, description: str = None) -> bool:
+        """Set child's level to exact value and recalculate points."""
+        if child_id not in self.children:
+            return False
+        
+        child = self.children[child_id]
+        old_level = child.level
+        
+        # Set level with tracking
+        child.set_level(
+            level,
+            description=description or f"Niveau défini à {level}",
+            action_type="set_level"
+        )
+        
+        # Fire level change event (could be up or down)
+        if child.level != old_level:
+            event_name = f"{DOMAIN}_level_up" if child.level > old_level else f"{DOMAIN}_level_change"
+            self.hass.bus.async_fire(
+                event_name,
+                {
+                    "child_id": child_id,
+                    "child_name": child.name,
+                    "old_level": old_level,
+                    "new_level": child.level,
+                    "new_points": child.points,
+                },
+            )
+        
+        await self.async_save_data()
+        await self.async_request_refresh()
+        return True
+
     async def async_update_child(self, child_id: str, updates: dict) -> bool:
         """Update a child's information."""
         if child_id not in self.children:

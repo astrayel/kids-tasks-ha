@@ -30,6 +30,9 @@ SERVICE_CLAIM_REWARD = "claim_reward"
 SERVICE_RESET_TASK = "reset_task"
 SERVICE_ADD_POINTS = "add_points"
 SERVICE_REMOVE_POINTS = "remove_points"
+SERVICE_SET_POINTS = "set_points"
+SERVICE_SET_COINS = "set_coins"
+SERVICE_SET_LEVEL = "set_level"
 SERVICE_UPDATE_CHILD = "update_child"
 SERVICE_REMOVE_CHILD = "remove_child"
 SERVICE_UPDATE_TASK = "update_task"
@@ -147,6 +150,29 @@ SERVICE_REMOVE_POINTS_SCHEMA = vol.Schema(
         vol.Required("child_id"): cv.string,
         vol.Required("points"): vol.Coerce(int),
         vol.Optional("reason"): cv.string,
+    }
+)
+
+SERVICE_SET_POINTS_SCHEMA = vol.Schema(
+    {
+        vol.Required("child_id"): cv.string,
+        vol.Required("points"): vol.Coerce(int),
+        vol.Optional("description"): cv.string,
+    }
+)
+
+SERVICE_SET_COINS_SCHEMA = vol.Schema(
+    {
+        vol.Required("child_id"): cv.string,
+        vol.Required("coins"): vol.Coerce(int),
+    }
+)
+
+SERVICE_SET_LEVEL_SCHEMA = vol.Schema(
+    {
+        vol.Required("child_id"): cv.string,
+        vol.Required("level"): vol.Coerce(int),
+        vol.Optional("description"): cv.string,
     }
 )
 
@@ -477,6 +503,26 @@ async def async_setup_services(
         points = call.data["points"]
         await coordinator.async_remove_points(child_id, points)
     
+    async def set_points_service(call: ServiceCall) -> None:
+        """Set child's points to exact value."""
+        child_id = call.data["child_id"]
+        points = call.data["points"]
+        description = call.data.get("description")
+        await coordinator.async_set_points(child_id, points, description)
+    
+    async def set_coins_service(call: ServiceCall) -> None:
+        """Set child's coins to exact value."""
+        child_id = call.data["child_id"]
+        coins = call.data["coins"]
+        await coordinator.async_set_coins(child_id, coins)
+    
+    async def set_level_service(call: ServiceCall) -> None:
+        """Set child's level to exact value."""
+        child_id = call.data["child_id"]
+        level = call.data["level"]
+        description = call.data.get("description")
+        await coordinator.async_set_level(child_id, level, description)
+    
     async def update_child_service(call: ServiceCall) -> None:
         """Update a child."""
         child_id = call.data["child_id"]
@@ -606,6 +652,18 @@ async def async_setup_services(
     
     hass.services.async_register(
         DOMAIN, SERVICE_REMOVE_POINTS, remove_points_service, schema=SERVICE_REMOVE_POINTS_SCHEMA
+    )
+    
+    hass.services.async_register(
+        DOMAIN, SERVICE_SET_POINTS, set_points_service, schema=SERVICE_SET_POINTS_SCHEMA
+    )
+    
+    hass.services.async_register(
+        DOMAIN, SERVICE_SET_COINS, set_coins_service, schema=SERVICE_SET_COINS_SCHEMA
+    )
+    
+    hass.services.async_register(
+        DOMAIN, SERVICE_SET_LEVEL, set_level_service, schema=SERVICE_SET_LEVEL_SCHEMA
     )
     
     hass.services.async_register(
