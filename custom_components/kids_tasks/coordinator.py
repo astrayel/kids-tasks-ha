@@ -191,32 +191,34 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
                 _LOGGER.info("Auto-resetting %d daily tasks (%d with penalties)", len(daily_tasks), len(penalty_tasks))
                 await self._reset_tasks_with_penalty(daily_tasks, "daily")
                 self.last_daily_reset = today
+                await self.async_request_refresh()
         
-        # Check weekly tasks (reset on Monday)
-        if now.weekday() == 0:  # Monday
-            week_start = today
-            if self.last_weekly_reset is None or self.last_weekly_reset < week_start:
-                weekly_tasks = [task for task in self.tasks.values() if task.frequency == "weekly"]
-                if weekly_tasks:
-                    penalty_tasks = [t for t in weekly_tasks if t.penalty_points > 0]
-                    _LOGGER.info("Auto-resetting %d weekly tasks (%d with penalties)", len(weekly_tasks), len(penalty_tasks))
-                    await self._reset_tasks_with_penalty(weekly_tasks, "weekly")
-                    self.last_weekly_reset = week_start
+        # Check weekly tasks (reset on Monday) - only if not already done this week
+        week_start = today - timedelta(days=today.weekday())  # Start of current week (Monday)
+        if self.last_weekly_reset is None or self.last_weekly_reset < week_start:
+            weekly_tasks = [task for task in self.tasks.values() if task.frequency == "weekly"]
+            if weekly_tasks:
+                penalty_tasks = [t for t in weekly_tasks if t.penalty_points > 0]
+                _LOGGER.info("Auto-resetting %d weekly tasks (%d with penalties)", len(weekly_tasks), len(penalty_tasks))
+                await self._reset_tasks_with_penalty(weekly_tasks, "weekly")
+                self.last_weekly_reset = week_start
+                await self.async_request_refresh()
         
-        # Check monthly tasks (reset on 1st of month)
-        if now.day == 1:
-            month_start = today
-            if self.last_monthly_reset is None or self.last_monthly_reset < month_start:
-                monthly_tasks = [task for task in self.tasks.values() if task.frequency == "monthly"]
-                if monthly_tasks:
-                    penalty_tasks = [t for t in monthly_tasks if t.penalty_points > 0]
-                    _LOGGER.info("Auto-resetting %d monthly tasks (%d with penalties)", len(monthly_tasks), len(penalty_tasks))
-                    await self._reset_tasks_with_penalty(monthly_tasks, "monthly")
-                    self.last_monthly_reset = month_start
+        # Check monthly tasks (reset on 1st of month) - only if not already done this month
+        month_start = today.replace(day=1)  # Start of current month
+        if self.last_monthly_reset is None or self.last_monthly_reset < month_start:
+            monthly_tasks = [task for task in self.tasks.values() if task.frequency == "monthly"]
+            if monthly_tasks:
+                penalty_tasks = [t for t in monthly_tasks if t.penalty_points > 0]
+                _LOGGER.info("Auto-resetting %d monthly tasks (%d with penalties)", len(monthly_tasks), len(penalty_tasks))
+                await self._reset_tasks_with_penalty(monthly_tasks, "monthly")
+                self.last_monthly_reset = month_start
+                await self.async_request_refresh()
 
     async def _reset_tasks_with_penalty(self, tasks: list, frequency: str) -> None:
         """Reset a list of tasks and apply penalties for uncompleted ones."""
         penalties_applied = False
+        tasks_reset = False
         
         for task in tasks:
             # Only apply penalty for available tasks that have penalty_points defined
@@ -278,6 +280,7 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
             
             # Reset task status for next period
             task.reset()
+            tasks_reset = True
             
             # For tasks with weekly_days, only reset if it matches the current day
             if frequency == "daily" and task.weekly_days:
@@ -291,7 +294,8 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
                             task.child_statuses[child_id].validated_at = datetime.now()
                     task._update_global_status()
         
-        if penalties_applied:
+        # Save data if tasks were reset or penalties were applied
+        if tasks_reset or penalties_applied:
             await self.async_save_data()
 
     async def async_save_data(self) -> None:
