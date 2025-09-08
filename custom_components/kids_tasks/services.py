@@ -186,6 +186,7 @@ SERVICE_UPDATE_CHILD_SCHEMA = vol.Schema(
         vol.Optional("avatar_data"): vol.Any(cv.string, None),
         vol.Optional("card_gradient_start"): vol.Any(cv.string, None),
         vol.Optional("card_gradient_end"): vol.Any(cv.string, None),
+        vol.Optional("card_customizations"): vol.Any(dict, None),
     }
 )
 

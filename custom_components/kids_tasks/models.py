@@ -76,6 +76,7 @@ class Child:
     active_cosmetics: dict[str, str] = field(default_factory=dict)  # Cosmétiques actifs {"type": "cosmetic_id"}
     points_history: list[PointsHistoryEntry] = field(default_factory=list)  # Historique des 20 dernières modifications
     created_at: datetime = field(default_factory=datetime.now)
+    card_customizations: dict[str, Any] = field(default_factory=dict)  # Personnalisations de la carte enfant
     
     @property
     def points_to_next_level(self) -> int:
@@ -263,6 +264,7 @@ class Child:
             "active_cosmetics": self.active_cosmetics,
             "points_history": [entry.to_dict() for entry in self.points_history],
             "created_at": self.created_at.isoformat(),
+            "card_customizations": self.card_customizations,
         }
     
     @classmethod
@@ -285,6 +287,7 @@ class Child:
             active_cosmetics=data.get("active_cosmetics", {}),
             points_history=[PointsHistoryEntry.from_dict(entry) for entry in data.get("points_history", [])],
             created_at=datetime.fromisoformat(data.get("created_at", datetime.now().isoformat())),
+            card_customizations=data.get("card_customizations", {}),
         )
 
 
