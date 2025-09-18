@@ -248,52 +248,63 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
                         
                         # Apply penalty if task was not validated by this child
                         if child_status != "validated":
-                            # Use penalty_points (no default penalty)
-                            penalty_points = task.penalty_points
-                            old_points = child.points
-                            old_level = child.level
-                            
-                            # Apply penalty with tracking
-                            if penalty_points > 0:
-                                child.add_points(
-                                    -penalty_points,
-                                    description=f"Reset automatique {frequency} - Tâche '{task.name}' non terminée",
-                                    action_type="task_penalty",
-                                    related_entity_id=task.id,
-                                    related_entity_name=task.name
-                                )
-                            
-                            # Mark penalty in child status
+                            # Check if penalty was already applied for this period (e.g., deadline penalty)
+                            penalty_already_applied = False
                             if child_id in task.child_statuses:
-                                task.child_statuses[child_id].penalty_applied = True
-                                task.child_statuses[child_id].penalty_applied_at = datetime.now()
-                            
-                            penalties_applied = True
-                            
-                            _LOGGER.info(
-                                "Applied %s penalty of %d points to %s for uncompleted task '%s' "
-                                "(points: %d -> %d, level: %d -> %d)", 
-                                frequency, penalty_points, child.name, task.name, 
-                                old_points, child.points, old_level, child.level
-                            )
-                            
-                            # Fire penalty event
-                            self.hass.bus.async_fire(
-                                "kids_tasks_penalty_applied",
-                                {
-                                    "task_id": task.id,
-                                    "task_name": task.name,
-                                    "child_id": child_id,
-                                    "child_name": child.name,
-                                    "penalty_points": penalty_points,
-                                    "old_points": old_points,
-                                    "new_points": child.points,
-                                    "old_level": old_level,
-                                    "new_level": child.level,
-                                    "frequency": frequency,
-                                    "reset_type": "automatic"
-                                },
-                            )
+                                penalty_already_applied = task.child_statuses[child_id].penalty_applied
+
+                            if not penalty_already_applied:
+                                # Use penalty_points (no default penalty)
+                                penalty_points = task.penalty_points
+                                old_points = child.points
+                                old_level = child.level
+
+                                # Apply penalty with tracking
+                                if penalty_points > 0:
+                                    child.add_points(
+                                        -penalty_points,
+                                        description=f"Reset automatique {frequency} - Tâche '{task.name}' non terminée",
+                                        action_type="task_penalty",
+                                        related_entity_id=task.id,
+                                        related_entity_name=task.name
+                                    )
+
+                                # Mark penalty in child status
+                                if child_id in task.child_statuses:
+                                    task.child_statuses[child_id].penalty_applied = True
+                                    task.child_statuses[child_id].penalty_applied_at = datetime.now()
+
+                                penalties_applied = True
+
+                                _LOGGER.info(
+                                    "Applied %s penalty of %d points to %s for uncompleted task '%s' "
+                                    "(points: %d -> %d, level: %d -> %d)",
+                                    frequency, penalty_points, child.name, task.name,
+                                    old_points, child.points, old_level, child.level
+                                )
+
+                                # Fire penalty event
+                                self.hass.bus.async_fire(
+                                    "kids_tasks_penalty_applied",
+                                    {
+                                        "task_id": task.id,
+                                        "task_name": task.name,
+                                        "child_id": child_id,
+                                        "child_name": child.name,
+                                        "penalty_points": penalty_points,
+                                        "old_points": old_points,
+                                        "new_points": child.points,
+                                        "old_level": old_level,
+                                        "new_level": child.level,
+                                        "frequency": frequency,
+                                        "reset_type": "automatic"
+                                    },
+                                )
+                            else:
+                                _LOGGER.info(
+                                    "Skipping penalty for %s on task '%s' - penalty already applied this period",
+                                    child.name, task.name
+                                )
             
             # Reset task status for next period
             task.reset()
