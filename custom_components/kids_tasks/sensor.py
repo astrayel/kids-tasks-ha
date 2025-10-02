@@ -355,7 +355,7 @@ class AllTasksListSensor(CoordinatorEntity, SensorEntity):
                 "todo": "À faire",
                 "in_progress": "En cours", 
                 "completed": "Terminé",
-                "pending_validation": "En attente de validation",
+                "pending_validation": "En validation",
                 "validated": "Validé",
                 "failed": "Échoué"
             }.get(task_data.get("status", "todo"), "Statut inconnu")
@@ -466,7 +466,7 @@ class TaskSensor(CoordinatorEntity, SensorEntity):
         """Return the name of the sensor."""
         task_data = self.coordinator.data["tasks"].get(self.task_id, {})
         task_name = task_data.get("name", "Tâche inconnue")
-        return f"Tâche: {task_name}"
+        return f"{task_name}"
 
     @property
     def icon(self) -> str:
