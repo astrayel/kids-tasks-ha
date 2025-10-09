@@ -140,7 +140,7 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
                             # Apply penalty with tracking
                             child.add_points(
                                 -task.penalty_points,
-                                description=f"Pénalité deadline - Tâche '{task.name}' non terminée",
+                                description=f"'{task.name}' non terminée",
                                 action_type="task_penalty",
                                 related_entity_id=task.id,
                                 related_entity_name=task.name

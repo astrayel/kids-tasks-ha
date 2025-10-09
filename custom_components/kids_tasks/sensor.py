@@ -355,7 +355,7 @@ class AllTasksListSensor(CoordinatorEntity, SensorEntity):
                 "todo": "À faire",
                 "in_progress": "En cours", 
                 "completed": "Terminé",
-                "pending_validation": "En attente de validation",
+                "pending_validation": "En validation",
                 "validated": "Validé",
                 "failed": "Échoué"
             }.get(task_data.get("status", "todo"), "Statut inconnu")
@@ -466,7 +466,7 @@ class TaskSensor(CoordinatorEntity, SensorEntity):
         """Return the name of the sensor."""
         task_data = self.coordinator.data["tasks"].get(self.task_id, {})
         task_name = task_data.get("name", "Tâche inconnue")
-        return f"Tâche: {task_name}"
+        return f"{task_name}"
 
     @property
     def icon(self) -> str:
@@ -522,7 +522,6 @@ class TaskSensor(CoordinatorEntity, SensorEntity):
             "coins": task_data.get("coins", 0),
             "frequency": task_data.get("frequency", "daily"),
             "assigned_child_ids": task_data.get("assigned_child_ids", []),
-            "assigned_child_name": child_name,
             "validation_required": task_data.get("validation_required", False),
             "active": task_data.get("active", True),
             "created_at": task_data.get("created_at"),
@@ -559,7 +558,7 @@ class RewardSensor(CoordinatorEntity, SensorEntity):
         """Return the name of the sensor."""
         reward_data = self.coordinator.data["rewards"].get(self.reward_id, {})
         reward_name = reward_data.get("name", "Récompense inconnue")
-        return f"Récompense: {reward_name}"
+        return f"{reward_name}"
 
     @property
     def icon(self) -> str:
