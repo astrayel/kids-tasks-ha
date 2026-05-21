@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
@@ -27,38 +28,34 @@ PLATFORMS: list[Platform] = [
 ]
 
 
+@dataclass
+class KidsTasksData:
+    """Runtime data stored on the config entry."""
+    coordinator: KidsTasksDataUpdateCoordinator
 
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+
+KidsTasksConfigEntry = ConfigEntry[KidsTasksData]
+
+
+async def async_setup_entry(hass: HomeAssistant, entry: KidsTasksConfigEntry) -> bool:
     """Set up Kids Tasks from a config entry."""
-    hass.data.setdefault(DOMAIN, {})
-    
-    # Initialize storage
     store = Store(hass, STORAGE_VERSION, STORAGE_KEY)
-    
-    # Create coordinator
     coordinator = KidsTasksDataUpdateCoordinator(hass, store, entry.entry_id)
     await coordinator.async_config_entry_first_refresh()
-    
-    hass.data[DOMAIN][entry.entry_id] = {
-        "coordinator": coordinator,
-        "store": store,
-    }
-    
-    # Setup platforms
+
+    entry.runtime_data = KidsTasksData(coordinator=coordinator)
+
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
-    
-    # Setup services
     await async_setup_services(hass, coordinator)
-    
+
     return True
 
 
-async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+async def async_unload_entry(hass: HomeAssistant, entry: KidsTasksConfigEntry) -> bool:
     """Unload a config entry."""
     if unload_ok := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
         for service_name in list(hass.services.async_services().get(DOMAIN, {}).keys()):
             hass.services.async_remove(DOMAIN, service_name)
-        hass.data[DOMAIN].pop(entry.entry_id)
     return unload_ok
 
 

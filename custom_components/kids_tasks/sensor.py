@@ -17,24 +17,47 @@ from homeassistant.components.sensor import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.device_registry import DeviceEntryType
+from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.util import dt as dt_util
 
-from .const import DOMAIN
+from .const import DOMAIN, CATEGORIES, FREQUENCIES, CATEGORY_ICONS, REWARD_CATEGORIES, REWARD_CATEGORY_ICONS
 from .coordinator import KidsTasksDataUpdateCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
 
-def get_safe_child_name(coordinator, child_id: str) -> str:
+def get_safe_child_name(coordinator: KidsTasksDataUpdateCoordinator, child_id: str) -> str:
     """Get a safe name for entity_id from child data."""
     import re
     child_data = coordinator.children.get(child_id, {})
     child_name = child_data.name if hasattr(child_data, 'name') else str(child_data.get('name', f'child_{child_id[:8]}'))
     safe_child_name = child_name.lower().replace(' ', '_').replace('-', '_').replace('é', 'e').replace('è', 'e').replace('à', 'a').replace('ç', 'c')
-    # Remove special characters and keep only alphanumeric and underscores
     safe_child_name = re.sub(r'[^a-z0-9_]', '', safe_child_name)
     return safe_child_name
+
+
+def _child_device_info(coordinator: KidsTasksDataUpdateCoordinator, child_id: str) -> DeviceInfo:
+    """Return DeviceInfo for a child profile device."""
+    child_data = coordinator.data["children"].get(child_id, {})
+    return DeviceInfo(
+        identifiers={(DOMAIN, child_id)},
+        name=child_data.get("name", "Child"),
+        manufacturer="Kids Tasks",
+        model="Child Profile",
+        via_device=(DOMAIN, "kids_tasks"),
+    )
+
+
+_SYSTEM_DEVICE_INFO = DeviceInfo(
+    identifiers={(DOMAIN, "kids_tasks")},
+    name="Kids Tasks",
+    manufacturer="Kids Tasks",
+    model="Task Manager",
+    entry_type=DeviceEntryType.SERVICE,
+)
 
 
 async def async_setup_entry(
@@ -43,12 +66,9 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up sensor platform."""
-    _LOGGER.info("🔧 NOUVELLE VERSION SENSOR - Setting up sensor platform with TaskSensor support")
-    coordinator = hass.data[DOMAIN][config_entry.entry_id]["coordinator"]
-    
-    # Store the add_entities callback for dynamic entity creation
-    hass.data[DOMAIN][config_entry.entry_id]["async_add_entities"] = async_add_entities
-    
+    coordinator: KidsTasksDataUpdateCoordinator = config_entry.runtime_data.coordinator
+    coordinator.async_register_platform("sensor", async_add_entities)
+
     entities = []
     
     # Add child sensors
@@ -85,14 +105,18 @@ class ChildPointsSensor(CoordinatorEntity, SensorEntity):
         """Initialize the sensor."""
         super().__init__(coordinator)
         self.child_id = child_id
-        # Use child name for both unique_id and entity_id (safe for HA compatibility)
         safe_child_name = get_safe_child_name(coordinator, child_id)
         self._attr_unique_id = f"kidtasks_{safe_child_name}_points"
-        self._attr_device_class = None  # Remove problematic device class
+        self._attr_device_class = None
         self._attr_state_class = SensorStateClass.TOTAL
         self._attr_icon = "mdi:star"
         self._attr_native_unit_of_measurement = "points"
         self.entity_id = f"sensor.kidtasks_{safe_child_name}_points"
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return device info."""
+        return _child_device_info(self.coordinator, self.child_id)
 
     @property
     def name(self) -> str:
@@ -134,11 +158,15 @@ class ChildLevelSensor(CoordinatorEntity, SensorEntity):
         """Initialize the sensor."""
         super().__init__(coordinator)
         self.child_id = child_id
-        # Use child name for both unique_id and entity_id (safe for HA compatibility)
         safe_child_name = get_safe_child_name(coordinator, child_id)
         self._attr_unique_id = f"kidtasks_{safe_child_name}_level"
         self._attr_icon = "mdi:trophy"
         self.entity_id = f"sensor.kidtasks_{safe_child_name}_level"
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return device info."""
+        return _child_device_info(self.coordinator, self.child_id)
 
     @property
     def name(self) -> str:
@@ -159,11 +187,15 @@ class ChildTasksCompletedTodaySensor(CoordinatorEntity, SensorEntity):
         """Initialize the sensor."""
         super().__init__(coordinator)
         self.child_id = child_id
-        # Use child name for both unique_id and entity_id (safe for HA compatibility)
         safe_child_name = get_safe_child_name(coordinator, child_id)
         self._attr_unique_id = f"kidtasks_{safe_child_name}_tasks_today"
         self._attr_icon = "mdi:check-circle"
         self.entity_id = f"sensor.kidtasks_{safe_child_name}_tasks_today"
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return device info."""
+        return _child_device_info(self.coordinator, self.child_id)
 
     @property
     def name(self) -> str:
@@ -174,7 +206,7 @@ class ChildTasksCompletedTodaySensor(CoordinatorEntity, SensorEntity):
     @property
     def native_value(self) -> int:
         """Return the state of the sensor."""
-        today = datetime.now().date()
+        today = dt_util.now().date()
         count = 0
         
         for task_data in self.coordinator.data.get("tasks", {}).values():
@@ -208,6 +240,11 @@ class PendingValidationsSensor(CoordinatorEntity, SensorEntity):
         self.entity_id = f"sensor.kidtasks_pending_validations"
 
     @property
+    def device_info(self) -> DeviceInfo:
+        """Return device info."""
+        return _SYSTEM_DEVICE_INFO
+
+    @property
     def name(self) -> str:
         """Return the name of the sensor."""
         return "Tâches en Attente de Validation"
@@ -239,20 +276,13 @@ class PendingValidationsSensor(CoordinatorEntity, SensorEntity):
                     "points": task_data.get("points", 0),
                 })
         
-        from .const import (
-            CATEGORIES, FREQUENCIES, CATEGORY_LABELS, CATEGORY_ICONS,
-            REWARD_CATEGORIES, REWARD_CATEGORY_LABELS, REWARD_CATEGORY_ICONS
-        )
-        
         return {
             "pending_tasks": pending_tasks,
             "available_categories": CATEGORIES,
             "available_frequencies": FREQUENCIES,
-            "category_labels": CATEGORY_LABELS,
             "category_icons": CATEGORY_ICONS,
             "available_reward_categories": REWARD_CATEGORIES,
-            "reward_category_labels": REWARD_CATEGORY_LABELS,
-            "reward_category_icons": REWARD_CATEGORY_ICONS
+            "reward_category_icons": REWARD_CATEGORY_ICONS,
         }
 
 
@@ -267,6 +297,11 @@ class TotalTasksCompletedTodaySensor(CoordinatorEntity, SensorEntity):
         self.entity_id = f"sensor.kidtasks_total_tasks_today"
 
     @property
+    def device_info(self) -> DeviceInfo:
+        """Return device info."""
+        return _SYSTEM_DEVICE_INFO
+
+    @property
     def name(self) -> str:
         """Return the name of the sensor."""
         return "Total Tâches Aujourd'hui"
@@ -274,7 +309,7 @@ class TotalTasksCompletedTodaySensor(CoordinatorEntity, SensorEntity):
     @property
     def native_value(self) -> int:
         """Return the state of the sensor."""
-        today = datetime.now().date()
+        today = dt_util.now().date()
         count = 0
         
         for task_data in self.coordinator.data.get("tasks", {}).values():
@@ -302,6 +337,11 @@ class ActiveTasksSensor(CoordinatorEntity, SensorEntity):
         self._attr_unique_id = f"kidtasks_active_tasks"
         self._attr_icon = "mdi:format-list-checks"
         self.entity_id = f"sensor.kidtasks_active_tasks"
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return device info."""
+        return _SYSTEM_DEVICE_INFO
 
     @property
     def name(self) -> str:
@@ -456,10 +496,13 @@ class TaskSensor(CoordinatorEntity, SensorEntity):
         super().__init__(coordinator)
         self.task_id = task_id
         self._attr_unique_id = f"kidtasks_task_{task_id}"
-        # L'icône sera définie dynamiquement dans la propriété icon
-        # Force the entity_id format we want (replace hyphens with underscores for HA compatibility)
         safe_task_id = task_id.replace("-", "_")
         self.entity_id = f"sensor.kidtasks_task_{safe_task_id}"
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return device info."""
+        return _SYSTEM_DEVICE_INFO
 
     @property
     def name(self) -> str:
@@ -548,10 +591,13 @@ class RewardSensor(CoordinatorEntity, SensorEntity):
         super().__init__(coordinator)
         self.reward_id = reward_id
         self._attr_unique_id = f"kidtasks_reward_{reward_id}"
-        # L'icône sera définie dynamiquement dans la propriété icon
-        # Force the entity_id format we want (replace hyphens with underscores for HA compatibility)
         safe_reward_id = reward_id.replace("-", "_")
         self.entity_id = f"sensor.kidtasks_reward_{safe_reward_id}"
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return device info."""
+        return _SYSTEM_DEVICE_INFO
 
     @property
     def name(self) -> str:
@@ -617,13 +663,17 @@ class ChildPointsHistorySensor(CoordinatorEntity, SensorEntity):
         """Initialize the sensor."""
         super().__init__(coordinator)
         self.child_id = child_id
-        # Use child name for both unique_id and entity_id (safe for HA compatibility)
         safe_child_name = get_safe_child_name(coordinator, child_id)
         self._attr_unique_id = f"kidtasks_{safe_child_name}_points_history"
         self._attr_device_class = None
         self._attr_state_class = None
         self._attr_icon = "mdi:history"
         self.entity_id = f"sensor.kidtasks_{safe_child_name}_points_history"
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return device info."""
+        return _child_device_info(self.coordinator, self.child_id)
 
     @property
     def name(self) -> str:
