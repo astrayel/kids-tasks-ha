@@ -33,66 +33,36 @@ Intégration Home Assistant pour gérer les tâches quotidiennes des enfants ave
 - `tests/test_sensor.py` — 43 tests : toutes les classes sensor
 - `.github/workflows/tests.yaml` — CI sur Python 3.12
 
----
+### Architecture refactorisée
 
-## Plan restant
+#### 1.3 ✅ diagnostics.py — DONE (PR #4)
+`custom_components/kids_tasks/diagnostics.py` — HACS Quality Scale niveau Silver.
+`TO_REDACT = {"name", "avatar", "avatar_data", "person_entity_id"}`.
 
-### Section 1 — Architecture (priorité moyenne)
+#### 1.4 ✅ Migration storage v1 → v2 — DONE (PR #4)
+`STORAGE_VERSION = 2` dans `const.py`.
+`_migrate_data()` dans `coordinator/_storage.py` : rename `assigned_child_id` → `assigned_child_ids`, ajout `coins=0`.
 
-#### 1.1 Découper coordinator.py (~70KB, God Class)
-`coordinator.py` contient tout : storage, resets, deadlines, logique métier, CRUD.
-Créer un package `custom_components/kids_tasks/coordinator/` avec :
-- `__init__.py` — réexporte `KidsTasksDataUpdateCoordinator`
-- `storage.py` — `_load_data()`, `_save_data()`, `async_backup_data()`, `async_restore_data()`
-- `resets.py` — `_check_automatic_resets()`, `_reset_tasks_with_penalty()`
-- `deadlines.py` — `_check_deadlines()`
-- `business.py` — `async_complete_task()`, `async_validate_task()`, `async_claim_reward()`, CRUD enfants/tâches/récompenses
+#### 1.1 ✅ Découpage coordinator.py — DONE (PR #4)
+`coordinator/` package avec mixins :
+- `__init__.py` — `KidsTasksDataUpdateCoordinator` (83 lignes)
+- `_storage.py` — `StorageMixin` : persistence, backup, restore, migration
+- `_resets.py` — `ResetsMixin` : resets quotidien/hebdo/mensuel, pénalités
+- `_deadlines.py` — `DeadlinesMixin` : vérification deadlines, notifications
+- `_business.py` — `BusinessMixin` : CRUD et logique métier
 
-#### 1.2 Découper services.py (~36KB)
-Créer un package `custom_components/kids_tasks/services/` avec :
-- `__init__.py` — `async_setup_services()`, `async_unregister_services()`
-- `child_services.py` — services relatifs aux enfants
-- `task_services.py` — services relatifs aux tâches
-- `reward_services.py` — services relatifs aux récompenses
-
-#### 1.3 Ajouter diagnostics.py
-Requis pour la HACS Quality Scale (niveau Silver).
-Créer `custom_components/kids_tasks/diagnostics.py` :
-```python
-from homeassistant.components.diagnostics import async_redact_data
-TO_REDACT = {"name", "avatar"}
-
-async def async_get_config_entry_diagnostics(hass, entry):
-    coordinator = entry.runtime_data.coordinator
-    return async_redact_data({
-        "children_count": len(coordinator.children),
-        "tasks_count": len(coordinator.tasks),
-        "rewards_count": len(coordinator.rewards),
-        "last_daily_reset": str(coordinator.last_daily_reset),
-        "last_weekly_reset": str(coordinator.last_weekly_reset),
-        "last_monthly_reset": str(coordinator.last_monthly_reset),
-    }, TO_REDACT)
-```
-Ajouter `"diagnostics"` dans les `platforms` de `__init__.py`.
-
-#### 1.4 Migration de schéma storage
-Bumper `STORAGE_VERSION = 2` dans `const.py` et ajouter dans `coordinator.py` :
-```python
-async def _migrate_data(self, data: dict) -> dict:
-    version = data.get("version", 1)
-    if version < 2:
-        # migration v1 → v2 : ajouter coins=0 à tous les enfants
-        for child in data.get("children", {}).values():
-            child.setdefault("coins", 0)
-        data["version"] = 2
-    return data
-```
+#### 1.2 ✅ Découpage services.py — DONE (PR #4)
+`services/` package :
+- `__init__.py` — `async_setup_services()` + services système (backup/restore/clear)
+- `_child_services.py` — CRUD enfants, points, coins, level, cosmétiques, historique
+- `_task_services.py` — CRUD tâches, complétion/validation/rejet, resets, pénalités
+- `_reward_services.py` — CRUD récompenses, réclamation, catalogue cosmétiques
 
 ---
 
 ### Section 2 — Tests
 
-#### 2.1 ✅ Infrastructure complète — DONE (PR #3)
+#### 2.1 ✅ Infrastructure complète — DONE (PR #3 + PR #4)
 
 ---
 
