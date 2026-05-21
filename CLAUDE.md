@@ -94,11 +94,8 @@ Base existante : `translations/fr.json` et `translations/en.json`.
 ### Section 4 — Modernisation des cartes Lovelace (priorité haute)
 
 Objectifs : cartes **synthétiques** (info clé visible d'un coup d'œil), **pratiques** (actions en 1 tap, pas de navigation inutile) et **modernes** (Material Design 3, thème HA, responsive mobile).
-Mockups Canva générés — choisir la variante préférée parmi :
-- Variante 1 : https://www.canva.com/d/MMAqWVfvgS9QC3Q
-- Variante 2 : https://www.canva.com/d/iJsfUFa3LKGU4pv
-- Variante 3 : https://www.canva.com/d/jKTqVNYAqKmV-Y7
-- Variante 4 : https://www.canva.com/d/1MKXtZvjGFB2oNc
+Mockups Canva générés — **Variante 4 choisie** :
+- Design de référence (éditable) : https://www.canva.com/d/yuqthQagdyhEuzr
 
 #### 4.1 Architecture technique
 Fichier : `www/kids_tasks/kids-tasks-card.js`
