@@ -88,3 +88,123 @@ Ajouter `blueprints/automation/kids_tasks/` avec des automatisations types :
 #### 3.5 Support multilingue
 Ajouter `translations/de.json`, `translations/es.json`, `translations/nl.json`.
 Base existante : `translations/fr.json` et `translations/en.json`.
+
+---
+
+### Section 4 — Modernisation des cartes Lovelace (priorité haute)
+
+Objectifs : cartes **synthétiques** (info clé visible d'un coup d'œil), **pratiques** (actions en 1 tap, pas de navigation inutile) et **modernes** (Material Design 3, thème HA, responsive mobile).
+Mockups Canva générés — choisir la variante préférée parmi :
+- Variante 1 : https://www.canva.com/d/MMAqWVfvgS9QC3Q
+- Variante 2 : https://www.canva.com/d/iJsfUFa3LKGU4pv
+- Variante 3 : https://www.canva.com/d/jKTqVNYAqKmV-Y7
+- Variante 4 : https://www.canva.com/d/1MKXtZvjGFB2oNc
+
+#### 4.1 Architecture technique
+Fichier : `www/kids_tasks/kids-tasks-card.js`
+- **LitElement** (déjà disponible dans HA, pas de dépendance externe)
+- Design tokens HA : `--primary-color`, `--card-background-color`, `--primary-text-color`, etc.
+- Support thème clair/sombre automatique via variables CSS HA
+- Enregistrement : `customElements.define('kids-tasks-card', KidsTasksCard)`
+- 4 cartes indépendantes déclarées dans le même fichier JS
+
+```
+┌─────────────────────────────────────────┐
+│  kids-tasks-card.js                     │
+│  ├── KidsTasksChildCard                 │
+│  ├── KidsTasksValidationCard            │
+│  ├── KidsTasksTaskListCard              │
+│  └── KidsTasksRewardCard               │
+└─────────────────────────────────────────┘
+```
+
+#### 4.2 Carte enfant (kids-tasks-child-card)
+Vue compacte d'un enfant — à placer en grille (1 carte par enfant).
+
+```
+┌──────────────────────────────────┐
+│  🧙 Léo              Niv. 4  ⭐  │
+│  ████████░░░░  320 pts  💰 45   │
+│  ✅ Chambre  ✅ Devoirs  ⏳ Dents │
+│  [Valider 2]           [Détails] │
+└──────────────────────────────────┘
+```
+- Avatar (emoji/image) + nom + badge niveau
+- Barre de progression XP avec points / seuil prochain niveau
+- Chips de tâches du jour : ✅ fait / ⏳ en attente / ⬜ à faire
+- Bouton "Valider N" si tâches en attente de validation
+- Gradient de couleur configurable par enfant (`card_gradient_start/end`)
+- Config YAML : `type: kids-tasks-child-card`, `child_id: xxx`
+
+#### 4.3 Carte validation parentale (kids-tasks-validation-card)
+Queue de validation — vue parent, zéro scroll inutile.
+
+```
+┌──────────────────────────────────┐
+│  À valider          3 en attente │
+├──────────────────────────────────┤
+│  🛏️ Ranger chambre   👦 Léo      │
+│  [✓ Valider]      [✗ Rejeter]   │
+├──────────────────────────────────┤
+│  📚 Devoirs maths   👧 Emma      │
+│  [✓ Valider]      [✗ Rejeter]   │
+├──────────────────────────────────┤
+│  🍽️ Mettre la table  👦 Léo      │
+│  [✓ Valider]      [✗ Rejeter]   │
+└──────────────────────────────────┘
+```
+- Liste uniquement les tâches `pending_validation`
+- Icône catégorie + nom tâche + avatar enfant sur chaque ligne
+- Boutons Valider/Rejeter inline (appelle `kids_tasks.validate_task` / `reject_task`)
+- Badge de compteur dans le header
+- Masquée / affiche "Tout est validé ✅" si queue vide
+
+#### 4.4 Carte liste de tâches (kids-tasks-task-list-card)
+Vue complète des tâches avec filtres — pour dashboard parent.
+
+```
+┌──────────────────────────────────┐
+│  Tâches du jour   [+ Ajouter]   │
+│  [Tous] [Quotidien] [En cours]  │
+├──────────────────────────────────┤
+│  🛏️ Ranger chambre  ●todo  15pts │
+│     👦 Léo                      │
+│  📚 Devoirs         ●done  20pts │
+│     👧 Emma                     │
+│  🍽️ Mettre la table ●wait  10pts │
+│     👦 Léo          [✓][✗]      │
+└──────────────────────────────────┘
+```
+- Chips de filtre : fréquence, statut, enfant assigné
+- Indicateur de statut coloré (todo=gris, done=vert, wait=orange, fail=rouge)
+- Points badge à droite
+- Actions inline uniquement pour `pending_validation`
+- Bouton "Ajouter" ouvre un dialog HA natif (via `ha-dialog`)
+
+#### 4.5 Carte récompenses (kids-tasks-reward-card)
+Catalogue visuel — vue enfant ou parent selon contexte.
+
+```
+┌──────────────────────────────────┐
+│  Récompenses          Emma 320pts│
+├─────────────┬────────────────────┤
+│ 📱 Écran    │ 🚗 Sortie          │
+│ +30min      │ Cinéma             │
+│ 💰 200 pts  │ 💰 500 pts         │
+│ [Échanger]  │ [Pas assez]        │
+├─────────────┼────────────────────┤
+│ 🍭 Friandise│ 👑 Privilège       │
+│ Glace       │ Choisir le repas   │
+│ 💰 50 pts   │ 💰 150 pts         │
+│ [Échanger]  │ [Échanger]         │
+└─────────────┴────────────────────┘
+```
+- Grille 2 colonnes, tuiles avec icône + nom + coût
+- Bouton "Échanger" actif si points suffisants, grisé sinon
+- Filtre par catégorie en header
+- Config : `child_id` optionnel (si absent = vue admin sans échange)
+- Quantité limitée affichée si `limited_quantity` défini
+
+#### 4.6 Intégration dans install.py
+Mettre à jour `install.py` pour copier `www/kids_tasks/kids-tasks-card.js` automatiquement.
+Mettre à jour `INTERFACE_GUIDE.md` avec les nouveaux types de cartes et leur config YAML.
