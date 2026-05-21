@@ -5,7 +5,7 @@
 """Constants for the Kids Tasks integration."""
 
 DOMAIN = "kids_tasks"
-STORAGE_VERSION = 1
+STORAGE_VERSION = 2
 STORAGE_KEY = f"{DOMAIN}.storage"
 
 # Default configuration

@@ -16,7 +16,7 @@ from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util import dt as dt_util
 
-from .const import DOMAIN, DEFAULT_SCAN_INTERVAL
+from .const import DOMAIN, DEFAULT_SCAN_INTERVAL, STORAGE_VERSION
 from .models import Child, Task, Reward
 
 _LOGGER = logging.getLogger(__name__)
@@ -70,9 +70,25 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
         except Exception as err:
             raise UpdateFailed(f"Error updating kids tasks data: {err}") from err
 
+    async def _migrate_data(self, data: dict) -> dict:
+        """Migrate storage data to the current schema version."""
+        version = data.get("version", 1)
+
+        if version < 2:
+            # v1 → v2: rename assigned_child_id (str) → assigned_child_ids (list)
+            for task in data.get("tasks", {}).values():
+                if "assigned_child_ids" not in task:
+                    legacy_id = task.pop("assigned_child_id", None)
+                    task["assigned_child_ids"] = [legacy_id] if legacy_id else []
+            data["version"] = 2
+            _LOGGER.info("Migrated Kids Tasks storage from v1 to v2")
+
+        return data
+
     async def _load_data(self) -> None:
         """Load data from storage."""
-        data = await self.store.async_load() or {}
+        raw = await self.store.async_load() or {}
+        data = await self._migrate_data(raw)
         
         # Load children
         children_data = data.get("children", {})
@@ -330,6 +346,7 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
     async def async_save_data(self) -> None:
         """Save data to storage."""
         data = {
+            "version": STORAGE_VERSION,
             "children": {child_id: child.to_dict() for child_id, child in self.children.items()},
             "tasks": {task_id: task.to_dict() for task_id, task in self.tasks.items()},
             "rewards": {reward_id: reward.to_dict() for reward_id, reward in self.rewards.items()},
@@ -1184,7 +1201,7 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
         import json
         
         backup_data = {
-            "version": 1,
+            "version": STORAGE_VERSION,
             "timestamp": dt_util.now().isoformat(),
             "children": {child_id: child.to_dict() for child_id, child in self.children.items()},
             "tasks": {task_id: task.to_dict() for task_id, task in self.tasks.items()},
@@ -1198,13 +1215,13 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
         import json
         
         try:
-            backup_data = json.loads(backup_json)
-            
+            backup_data = await self._migrate_data(json.loads(backup_json))
+
             # Clear existing data
             self.children.clear()
             self.tasks.clear()
             self.rewards.clear()
-            
+
             # Restore children
             for child_id, child_data in backup_data.get("children", {}).items():
                 self.children[child_id] = Child.from_dict(child_data)
