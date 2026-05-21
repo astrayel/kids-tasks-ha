@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import pytest
-import voluptuous as vol
 from unittest.mock import AsyncMock, MagicMock
 
 from custom_components.kids_tasks.config_flow import (
@@ -30,9 +29,9 @@ class TestStepUserSchema:
         assert result["validation_required"] is False
         assert result["notifications_enabled"] is False
 
-    def test_rejects_missing_name(self):
-        with pytest.raises(vol.Invalid):
-            STEP_USER_DATA_SCHEMA({})
+    def test_empty_input_uses_default_name(self):
+        result = STEP_USER_DATA_SCHEMA({})
+        assert result["name"] == "Kids Tasks"
 
 
 # ---------------------------------------------------------------------------
