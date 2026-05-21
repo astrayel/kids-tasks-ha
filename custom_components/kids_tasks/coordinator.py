@@ -5,6 +5,7 @@
 """Data update coordinator for Kids Tasks integration."""
 from __future__ import annotations
 
+import asyncio
 import logging
 from datetime import datetime, timedelta, date
 from typing import Any
@@ -12,6 +13,7 @@ from typing import Any
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.util import dt as dt_util
 
 from .const import DOMAIN, DEFAULT_SCAN_INTERVAL
 from .models import Child, Task, Reward
@@ -22,22 +24,21 @@ _LOGGER = logging.getLogger(__name__)
 class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
     """Class to manage fetching data from the API."""
 
-    def __init__(self, hass: HomeAssistant, store: Store, config_entry_id: str = None) -> None:
+    def __init__(self, hass: HomeAssistant, store: Store, config_entry_id: str | None = None) -> None:
         """Initialize."""
         self.store = store
         self.config_entry_id = config_entry_id
         self.children: dict[str, Child] = {}
         self.tasks: dict[str, Task] = {}
         self.rewards: dict[str, Reward] = {}
-        
-        # Suivi des dernières réinitialisations pour automatisation
+
         self.last_daily_reset = None
         self.last_weekly_reset = None
         self.last_monthly_reset = None
-        
-        # Verrouillage pour éviter les resets concurrents
-        self._reset_in_progress = False
-        
+
+        self._initialized = False
+        self._reset_lock = asyncio.Lock()
+
         super().__init__(
             hass,
             _LOGGER,
@@ -48,23 +49,20 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
     async def _async_update_data(self) -> dict[str, Any]:
         """Update data via library."""
         try:
-            # Load data from storage
-            await self._load_data()
-            
-            # Check for deadline violations
+            if not self._initialized:
+                await self._load_data()
+                self._initialized = True
+
             await self._check_task_deadlines()
-            
-            # Check for automatic task resets
             await self._check_automatic_resets()
-            
-            # Return current state
+
             return {
                 "children": {child_id: child.to_dict() for child_id, child in self.children.items()},
                 "tasks": {task_id: task.to_dict() for task_id, task in self.tasks.items()},
                 "rewards": {reward_id: reward.to_dict() for reward_id, reward in self.rewards.items()},
             }
         except Exception as err:
-            raise UpdateFailed(f"Error communicating with API: {err}") from err
+            raise UpdateFailed(f"Error updating kids tasks data: {err}") from err
 
     async def _load_data(self) -> None:
         """Load data from storage."""
@@ -93,8 +91,7 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
         
         # Load system data (reset dates)
         system_data = data.get("system", {})
-        from datetime import date, datetime
-        
+
         # Parse reset dates
         if system_data.get("last_daily_reset"):
             try:
@@ -124,39 +121,38 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
                 continue
                 
             if task.check_deadline():  # Returns True if deadline just passed
-                _LOGGER.info(f"Task '{task.name}' (ID: {task_id}) deadline passed")
-                
+                _LOGGER.info("Task '%s' (ID: %s) deadline passed", task.name, task_id)
+
                 # Apply penalties only to assigned children who haven't completed the task
                 for child_id in task.get_assigned_child_ids():
                     if child_id in self.children and task.penalty_points > 0:
                         child_status = task.get_status_for_child(child_id)
-                        
+
                         # Only apply penalty if the child hasn't completed/validated the task
                         if child_status not in ["validated", "pending_validation"]:
                             child = self.children[child_id]
                             old_points = child.points
                             old_level = child.level
-                            
-                            # Apply penalty with tracking
+
                             child.add_points(
                                 -task.penalty_points,
-                                description=f"'{task.name}' non terminée",
+                                description="'%s' non terminée" % task.name,
                                 action_type="task_penalty",
                                 related_entity_id=task.id,
                                 related_entity_name=task.name
                             )
-                            
-                            # Mark penalty in child status
+
                             if child_id in task.child_statuses:
                                 task.child_statuses[child_id].penalty_applied = True
-                                task.child_statuses[child_id].penalty_applied_at = datetime.now()
-                            
+                                task.child_statuses[child_id].penalty_applied_at = dt_util.now()
+
                             penalties_applied = True
-                            
+
                             _LOGGER.info(
-                                f"Applied deadline penalty of {task.penalty_points} points to {child.name} "
-                                f"for missing deadline of task '{task.name}' "
-                                f"(points: {old_points} -> {child.points}, level: {old_level} -> {child.level})"
+                                "Applied deadline penalty of %d points to %s for task '%s' "
+                                "(points: %d -> %d, level: %d -> %d)",
+                                task.penalty_points, child.name, task.name,
+                                old_points, child.points, old_level, child.level,
                             )
                             
                             # Fire penalty event
@@ -183,54 +179,56 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
 
     async def _check_automatic_resets(self) -> None:
         """Check if tasks need to be automatically reset based on frequency."""
-        if self._reset_in_progress:
+        if self._reset_lock.locked():
             _LOGGER.debug("Reset already in progress, skipping")
             return
-            
-        self._reset_in_progress = True
-        try:
-            now = datetime.now()
-            today = now.date()
-            
-            # Check daily tasks (reset at midnight)
+
+        async with self._reset_lock:
+            today = dt_util.now().date()
+
             if self.last_daily_reset is None or self.last_daily_reset < today:
                 daily_tasks = [task for task in self.tasks.values() if task.frequency == "daily"]
                 if daily_tasks:
-                    penalty_tasks = [t for t in daily_tasks if t.penalty_points > 0]
-                    _LOGGER.info("Auto-resetting %d daily tasks (%d with penalties) - last reset was %s", len(daily_tasks), len(penalty_tasks), self.last_daily_reset)
+                    _LOGGER.info(
+                        "Auto-resetting %d daily tasks (%d with penalties) - last reset was %s",
+                        len(daily_tasks),
+                        sum(1 for t in daily_tasks if t.penalty_points > 0),
+                        self.last_daily_reset,
+                    )
                     await self._reset_tasks_with_penalty(daily_tasks, "daily")
-                    # Only update timestamp after successful reset
                     self.last_daily_reset = today
-                    await self.async_save_data()  # Ensure timestamp is saved immediately
+                    await self.async_save_data()
                     _LOGGER.info("Daily reset completed - updated timestamp to %s", today)
-            
-            # Check weekly tasks (reset on Monday) - only if not already done this week
-            week_start = today - timedelta(days=today.weekday())  # Start of current week (Monday)
+
+            week_start = today - timedelta(days=today.weekday())
             if self.last_weekly_reset is None or self.last_weekly_reset < week_start:
                 weekly_tasks = [task for task in self.tasks.values() if task.frequency == "weekly"]
                 if weekly_tasks:
-                    penalty_tasks = [t for t in weekly_tasks if t.penalty_points > 0]
-                    _LOGGER.info("Auto-resetting %d weekly tasks (%d with penalties) - last reset was %s", len(weekly_tasks), len(penalty_tasks), self.last_weekly_reset)
+                    _LOGGER.info(
+                        "Auto-resetting %d weekly tasks (%d with penalties) - last reset was %s",
+                        len(weekly_tasks),
+                        sum(1 for t in weekly_tasks if t.penalty_points > 0),
+                        self.last_weekly_reset,
+                    )
                     await self._reset_tasks_with_penalty(weekly_tasks, "weekly")
-                    # Only update timestamp after successful reset
                     self.last_weekly_reset = week_start
-                    await self.async_save_data()  # Ensure timestamp is saved immediately
+                    await self.async_save_data()
                     _LOGGER.info("Weekly reset completed - updated timestamp to %s", week_start)
-            
-            # Check monthly tasks (reset on 1st of month) - only if not already done this month
-            month_start = today.replace(day=1)  # Start of current month
+
+            month_start = today.replace(day=1)
             if self.last_monthly_reset is None or self.last_monthly_reset < month_start:
                 monthly_tasks = [task for task in self.tasks.values() if task.frequency == "monthly"]
                 if monthly_tasks:
-                    penalty_tasks = [t for t in monthly_tasks if t.penalty_points > 0]
-                    _LOGGER.info("Auto-resetting %d monthly tasks (%d with penalties) - last reset was %s", len(monthly_tasks), len(penalty_tasks), self.last_monthly_reset)
+                    _LOGGER.info(
+                        "Auto-resetting %d monthly tasks (%d with penalties) - last reset was %s",
+                        len(monthly_tasks),
+                        sum(1 for t in monthly_tasks if t.penalty_points > 0),
+                        self.last_monthly_reset,
+                    )
                     await self._reset_tasks_with_penalty(monthly_tasks, "monthly")
-                    # Only update timestamp after successful reset
                     self.last_monthly_reset = month_start
-                    await self.async_save_data()  # Ensure timestamp is saved immediately
+                    await self.async_save_data()
                     _LOGGER.info("Monthly reset completed - updated timestamp to %s", month_start)
-        finally:
-            self._reset_in_progress = False
 
     async def _reset_tasks_with_penalty(self, tasks: list, frequency: str) -> bool:
         """Reset a list of tasks and apply penalties for uncompleted ones. Returns True if any changes were made."""
@@ -269,10 +267,9 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
                                         related_entity_name=task.name
                                     )
 
-                                # Mark penalty in child status
                                 if child_id in task.child_statuses:
                                     task.child_statuses[child_id].penalty_applied = True
-                                    task.child_statuses[child_id].penalty_applied_at = datetime.now()
+                                    task.child_statuses[child_id].penalty_applied_at = dt_util.now()
 
                                 penalties_applied = True
 
@@ -312,14 +309,13 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
             
             # For tasks with weekly_days, only reset if it matches the current day
             if frequency == "daily" and task.weekly_days:
-                current_day = datetime.now().strftime('%a').lower()
+                now = dt_util.now()
+                current_day = now.strftime('%a').lower()
                 if current_day not in task.weekly_days:
-                    # Skip this task today - mark all assigned children as validated
-                    # so the task doesn't appear as active today
                     for child_id in task.get_assigned_child_ids():
                         if child_id in task.child_statuses:
                             task.child_statuses[child_id].status = "validated"
-                            task.child_statuses[child_id].validated_at = datetime.now()
+                            task.child_statuses[child_id].validated_at = now
                     task._update_global_status()
         
         # Note: Saving is handled by the caller to ensure atomic operations
@@ -1048,13 +1044,10 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
                                     related_entity_name=task.name
                                 )
                             
-                            # Marquer la pénalité dans le statut de l'enfant
                             if child_id in task.child_statuses:
                                 task.child_statuses[child_id].penalty_applied = True
-                                task.child_statuses[child_id].penalty_applied_at = datetime.now()
-                            
-                            
-                            # Envoyer un événement pour la pénalité
+                                task.child_statuses[child_id].penalty_applied_at = dt_util.now()
+
                             self.hass.bus.async_fire(
                                 "kids_tasks_penalty_applied",
                                 {
@@ -1083,7 +1076,7 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
         
         for task in self.tasks.values():
             if task.frequency == "weekly":
-                _LOGGER.debug(f"Resetting weekly task: {task.name} (ID: {task.id})")
+                _LOGGER.debug("Resetting weekly task: %s (ID: %s)", task.name, task.id)
                 
                 # Vérifier chaque enfant assigné pour appliquer des pénalités
                 assigned_children = task.get_assigned_child_ids()
@@ -1109,13 +1102,10 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
                                     related_entity_name=task.name
                                 )
                             
-                            # Marquer la pénalité dans le statut de l'enfant
                             if child_id in task.child_statuses:
                                 task.child_statuses[child_id].penalty_applied = True
-                                task.child_statuses[child_id].penalty_applied_at = datetime.now()
-                            
-                            
-                            # Envoyer un événement pour la pénalité
+                                task.child_statuses[child_id].penalty_applied_at = dt_util.now()
+
                             self.hass.bus.async_fire(
                                 "kids_tasks_penalty_applied",
                                 {
@@ -1144,7 +1134,7 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
         
         for task in self.tasks.values():
             if task.frequency == "monthly":
-                _LOGGER.debug(f"Resetting monthly task: {task.name} (ID: {task.id})")
+                _LOGGER.debug("Resetting monthly task: %s (ID: %s)", task.name, task.id)
                 
                 # Vérifier chaque enfant assigné pour appliquer des pénalités
                 assigned_children = task.get_assigned_child_ids()
@@ -1170,13 +1160,10 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
                                     related_entity_name=task.name
                                 )
                             
-                            # Marquer la pénalité dans le statut de l'enfant
                             if child_id in task.child_statuses:
                                 task.child_statuses[child_id].penalty_applied = True
-                                task.child_statuses[child_id].penalty_applied_at = datetime.now()
-                            
-                            
-                            # Envoyer un événement pour la pénalité
+                                task.child_statuses[child_id].penalty_applied_at = dt_util.now()
+
                             self.hass.bus.async_fire(
                                 "kids_tasks_penalty_applied",
                                 {
@@ -1206,7 +1193,7 @@ class KidsTasksDataUpdateCoordinator(DataUpdateCoordinator):
         
         backup_data = {
             "version": 1,
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": dt_util.now().isoformat(),
             "children": {child_id: child.to_dict() for child_id, child in self.children.items()},
             "tasks": {task_id: task.to_dict() for task_id, task in self.tasks.items()},
             "rewards": {reward_id: reward.to_dict() for reward_id, reward in self.rewards.items()},
