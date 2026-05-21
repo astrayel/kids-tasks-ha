@@ -56,17 +56,6 @@ CATEGORIES = [
     "other",
 ]
 
-# Task categories metadata
-CATEGORY_LABELS = {
-    "bedroom": "🛏️ Chambre",
-    "hygiene": "🛁 Hygiène",
-    "kitchen": "🍽️ Cuisine",
-    "homework": "📚 Devoirs",
-    "music": "🎵 Musique",
-    "outdoor": "🌳 Extérieur",
-    "other": "📦 Autre",
-}
-
 CATEGORY_ICONS = {
     "bedroom": "🛏️",
     "hygiene": "🛁",
@@ -86,16 +75,6 @@ REWARD_CATEGORIES = [
     "toy",
     "treat",
 ]
-
-# Reward categories metadata
-REWARD_CATEGORY_LABELS = {
-    "fun": "🎉 Amusement",
-    "screen_time": "📱 Écran",
-    "outing": "🚗 Sortie",
-    "privilege": "👑 Privilège",
-    "toy": "🧸 Jouet",
-    "treat": "🍭 Friandise",
-}
 
 REWARD_CATEGORY_ICONS = {
     "fun": "🎉",

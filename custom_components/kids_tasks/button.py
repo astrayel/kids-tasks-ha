@@ -8,11 +8,21 @@ from __future__ import annotations
 from homeassistant.components.button import ButtonEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.device_registry import DeviceEntryType
+from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
 from .coordinator import KidsTasksDataUpdateCoordinator
+
+_SYSTEM_DEVICE_INFO = DeviceInfo(
+    identifiers={(DOMAIN, "kids_tasks")},
+    name="Kids Tasks",
+    manufacturer="Kids Tasks",
+    model="Task Manager",
+    entry_type=DeviceEntryType.SERVICE,
+)
 
 
 async def async_setup_entry(
@@ -21,20 +31,18 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up button platform."""
-    coordinator = hass.data[DOMAIN][config_entry.entry_id]["coordinator"]
-    
+    coordinator: KidsTasksDataUpdateCoordinator = config_entry.runtime_data.coordinator
+
     entities = []
-    
-    # Add task completion buttons for each active task
+
     for task_id, task_data in coordinator.data.get("tasks", {}).items():
         if task_data.get("active", True):
             entities.append(TaskCompleteButton(coordinator, task_id))
-    
-    # Add validation buttons for pending tasks
+
     for task_id, task_data in coordinator.data.get("tasks", {}).items():
         if task_data.get("status") == "pending_validation":
             entities.append(TaskValidateButton(coordinator, task_id))
-    
+
     async_add_entities(entities)
 
 
@@ -47,6 +55,11 @@ class TaskCompleteButton(CoordinatorEntity, ButtonEntity):
         self.task_id = task_id
         self._attr_unique_id = f"{DOMAIN}_complete_{task_id}"
         self._attr_icon = "mdi:check"
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return device info."""
+        return _SYSTEM_DEVICE_INFO
 
     @property
     def name(self) -> str:
@@ -62,9 +75,8 @@ class TaskCompleteButton(CoordinatorEntity, ButtonEntity):
 
     async def async_press(self) -> None:
         """Handle the button press."""
-        # DEPRECATED: Generic task completion buttons are disabled
-        # Task completion now requires specifying which child completed the task
-        # Use the service with child_id parameter instead
+        # DEPRECATED: Generic task completion buttons are disabled.
+        # Use the complete_task service with child_id instead.
         pass
 
 
@@ -77,6 +89,11 @@ class TaskValidateButton(CoordinatorEntity, ButtonEntity):
         self.task_id = task_id
         self._attr_unique_id = f"{DOMAIN}_validate_{task_id}"
         self._attr_icon = "mdi:check-decagram"
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return device info."""
+        return _SYSTEM_DEVICE_INFO
 
     @property
     def name(self) -> str:
