@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import timedelta
+from datetime import datetime, timedelta
 from typing import Any
 
 from homeassistant.core import HomeAssistant
@@ -14,6 +14,7 @@ from homeassistant.util import dt as dt_util
 
 from ..const import DOMAIN, DEFAULT_SCAN_INTERVAL
 from ..models import Child, Task, Reward
+from ..statistics import async_record_statistics
 from ._storage import StorageMixin
 from ._resets import ResetsMixin
 from ._deadlines import DeadlinesMixin
@@ -43,6 +44,7 @@ class KidsTasksDataUpdateCoordinator(
         self._initialized = False
         self._reset_lock = asyncio.Lock()
         self._platform_add_entities: dict[str, AddEntitiesCallback] = {}
+        self._last_statistics_hour: datetime | None = None
 
         super().__init__(
             hass,
@@ -64,6 +66,7 @@ class KidsTasksDataUpdateCoordinator(
 
             await self._check_task_deadlines()
             await self._check_automatic_resets()
+            await self._maybe_record_statistics()
 
             return {
                 "children": {child_id: child.to_dict() for child_id, child in self.children.items()},
@@ -72,6 +75,18 @@ class KidsTasksDataUpdateCoordinator(
             }
         except Exception as err:
             raise UpdateFailed(f"Error updating kids tasks data: {err}") from err
+
+    async def _maybe_record_statistics(self) -> None:
+        """Record statistics at most once per hour."""
+        now = dt_util.utcnow()
+        current_hour = now.replace(minute=0, second=0, microsecond=0)
+        if self._last_statistics_hour == current_hour:
+            return
+        try:
+            await async_record_statistics(self.hass, self)
+            self._last_statistics_hour = current_hour
+        except Exception as err:
+            _LOGGER.warning("Failed to record statistics: %s", err)
 
     async def async_request_refresh(self) -> None:
         """Request a data refresh."""

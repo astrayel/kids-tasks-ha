@@ -14,14 +14,18 @@ _Intégration pour gérer les tâches récurrentes des enfants avec système de 
 
 ## 🌟 Fonctionnalités
 
-- ✅ **Gestion des tâches récurrentes** avec catégorisation
-- 👶 **Profils enfants individuels** avec système de points et niveaux  
-- 🎁 **Système de récompenses** personnalisable
-- ✋ **Validation parentale** optionnelle
-- 📊 **Dashboards dédiés** parents et enfants
-- 🔔 **Notifications** temps réel
-- 📱 **Interface mobile** optimisée
-- 🌍 **Multilingue** (FR/EN)
+- ✅ **Gestion des tâches récurrentes** avec catégorisation (chambre, devoirs, cuisine…)
+- 👶 **Profils enfants individuels** avec système de points, niveaux et monnaie virtuelle
+- 🎁 **Système de récompenses** personnalisable avec quantités limitées
+- ✋ **Validation parentale** optionnelle tâche par tâche
+- 📅 **Calendrier intégré** (`calendar.kids_tasks`) — deadlines et tâches récurrentes visibles dans HA
+- 🔀 **Interrupteurs par tâche** (`switch`) — complétion en un tap depuis n'importe quel dashboard
+- 🃏 **4 cartes Lovelace personnalisées** — vue enfant, validation parentale, liste filtrée, catalogue récompenses
+- 🤖 **3 blueprints d'automatisation** — notifications parent, rappels quotidiens, montée de niveau
+- 🔔 **Notifications** temps réel via les services HA
+- 📱 **Interface mobile** optimisée, thème clair/sombre automatique
+- 🌍 **Multilingue** (FR, EN, DE, ES, NL)
+- 🏅 **HACS Quality Scale Silver** — diagnostics, migration automatique du stockage
 
 ---
 
@@ -104,7 +108,8 @@ data:
   category: "bedroom"
   points: 15
   frequency: "daily"
-  assigned_child_id: "emma_id"
+  assigned_child_ids:
+    - "emma_id"
 ```
 
 ### Ajouter une récompense
@@ -118,8 +123,34 @@ data:
 
 ---
 
+## 🃏 Cartes Lovelace
+
+Quatre cartes personnalisées sont incluses dans `www/kids_tasks/kids-tasks-card.js` :
+
+| Carte | Type | Description |
+|---|---|---|
+| Vue enfant | `kids-tasks-child-card` | Avatar, XP, tâches du jour, bouton valider |
+| Validation | `kids-tasks-validation-card` | Queue de validation avec Valider/Rejeter inline |
+| Liste tâches | `kids-tasks-task-list-card` | Dashboard filtrable par fréquence et statut |
+| Récompenses | `kids-tasks-reward-card` | Catalogue en grille avec bouton Échanger |
+
+📖 **[Guide complet des cartes](INTERFACE_GUIDE.md)**
+
+---
+
+## 🤖 Blueprints d'automatisation
+
+Importez directement depuis `blueprints/automation/kids_tasks/` :
+
+- **`notify_pending_validation.yaml`** — Notifie les parents dès qu'une tâche est soumise
+- **`remind_incomplete_tasks.yaml`** — Rappel quotidien à heure configurable
+- **`notify_level_up.yaml`** — Félicitations automatiques pour les montées de niveau
+
+---
+
 ## 📖 Documentation
 
+- [Guide interface Lovelace](INTERFACE_GUIDE.md)
 - [Installation détaillée](docs/installation.md)
 - [Configuration avancée](docs/configuration.md) 
 - [Exemples d'utilisation](docs/examples.md)

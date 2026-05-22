@@ -14,22 +14,31 @@
 // ─── Shared constants ────────────────────────────────────────────────────────
 
 const CATEGORY_ICONS = {
-  bedroom: "🛏️", hygiene: "🛁", kitchen: "🍽️",
-  homework: "📚", outdoor: "🌳", music: "🎵", other: "📋",
+  bedroom:  "mdi:bed",
+  hygiene:  "mdi:shower",
+  kitchen:  "mdi:silverware-fork-knife",
+  homework: "mdi:book-open-variant",
+  outdoor:  "mdi:tree",
+  music:    "mdi:music",
+  other:    "mdi:clipboard-list",
 };
 
 const REWARD_ICONS = {
-  fun: "🎉", screen_time: "📱", outing: "🚗",
-  privilege: "👑", toy: "🧸", treat: "🍭",
+  fun:         "mdi:gamepad-variant",
+  screen_time: "mdi:monitor",
+  outing:      "mdi:car",
+  privilege:   "mdi:crown",
+  toy:         "mdi:toy-brick",
+  treat:       "mdi:food-apple",
 };
 
 const STATUS_META = {
-  todo:               { label: "À faire",      color: "#9e9e9e", dot: "⬜" },
-  in_progress:        { label: "En cours",     color: "#2196f3", dot: "🔵" },
-  completed:          { label: "Terminé",      color: "#4caf50", dot: "✅" },
-  pending_validation: { label: "En attente",   color: "#ff9800", dot: "⏳" },
-  validated:          { label: "Validé",       color: "#4caf50", dot: "✅" },
-  failed:             { label: "Échoué",       color: "#f44336", dot: "❌" },
+  todo:               { label: "A faire",    color: "#9e9e9e", icon: "mdi:circle-outline" },
+  in_progress:        { label: "En cours",   color: "#2196f3", icon: "mdi:play-circle-outline" },
+  completed:          { label: "Termine",    color: "#4caf50", icon: "mdi:check-circle-outline" },
+  pending_validation: { label: "En attente", color: "#ff9800", icon: "mdi:clock-outline" },
+  validated:          { label: "Valide",     color: "#4caf50", icon: "mdi:check-circle" },
+  failed:             { label: "Echoue",     color: "#f44336", icon: "mdi:close-circle-outline" },
 };
 
 // ─── Shared styles ───────────────────────────────────────────────────────────
@@ -109,6 +118,13 @@ const BASE_STYLES = `
     color: var(--secondary-text-color);
     font-size: 14px;
   }
+
+  ha-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    vertical-align: middle;
+  }
 `;
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -131,14 +147,30 @@ function xpProgress(points, level) {
   return Math.min(100, Math.round(((points - base) / (target - base)) * 100));
 }
 
-function avatarHtml(avatar, avatarType, size = 40) {
-  if (avatarType === "emoji" || !avatarType) {
-    return `<span style="font-size:${size * 0.6}px;line-height:${size}px;">${avatar || "👶"}</span>`;
+/** Renders an icon: MDI via ha-icon, empty string/null → person placeholder, else text span. */
+function iconHtml(icon, size = "20px") {
+  if (icon && icon.startsWith("mdi:")) {
+    return `<ha-icon icon="${icon}" style="--mdc-icon-size:${size};"></ha-icon>`;
   }
+  if (icon) {
+    return `<span style="font-size:${size};">${icon}</span>`;
+  }
+  return `<ha-icon icon="mdi:help-circle-outline" style="--mdc-icon-size:${size};"></ha-icon>`;
+}
+
+function categoryIconHtml(category, size = "20px") {
+  const icon = CATEGORY_ICONS[(category || "").toLowerCase()] || "mdi:clipboard-list";
+  return `<ha-icon icon="${icon}" style="--mdc-icon-size:${size};"></ha-icon>`;
+}
+
+function avatarHtml(avatar, avatarType, size = 40) {
   if ((avatarType === "url" || avatarType === "inline") && avatar) {
     return `<img src="${avatar}" style="width:${size}px;height:${size}px;border-radius:50%;object-fit:cover;">`;
   }
-  return `<span style="font-size:${size * 0.6}px;line-height:${size}px;">👶</span>`;
+  if (avatarType === "emoji" && avatar) {
+    return `<span style="font-size:${size * 0.6}px;line-height:${size}px;">${avatar}</span>`;
+  }
+  return `<ha-icon icon="mdi:account-circle" style="--mdc-icon-size:${size}px;color:rgba(255,255,255,.8);"></ha-icon>`;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -183,7 +215,7 @@ class KidsTasksChildCard extends HTMLElement {
   _render() {
     const state = this._hass.states[this._config.entity];
     if (!state) {
-      this.shadowRoot.innerHTML = `<div class="kt-card"><div class="kt-empty">Entité introuvable : ${this._config.entity}</div></div>`;
+      this.shadowRoot.innerHTML = `<div class="kt-card"><div class="kt-empty">Entite introuvable : ${this._config.entity}</div></div>`;
       return;
     }
 
@@ -194,7 +226,7 @@ class KidsTasksChildCard extends HTMLElement {
     const points = state.state !== undefined ? parseInt(state.state) : (a.points || 0);
     const level = a.level || 1;
     const coins = a.coins || 0;
-    const avatar = a.avatar || "👶";
+    const avatar = a.avatar || "";
     const avatarType = a.avatar_type || "emoji";
     const gradStart = a.card_gradient_start || "var(--primary-color)";
     const gradEnd = a.card_gradient_end || "var(--accent-color, #7c4dff)";
@@ -206,7 +238,8 @@ class KidsTasksChildCard extends HTMLElement {
     const taskChips = tasks.slice(0, 5).map(t => {
       const meta = STATUS_META[this._rawStatus(t.status)] || STATUS_META["todo"];
       return `<span class="task-chip" style="border-color:${meta.color}20;background:${meta.color}15;">
-        ${CATEGORY_ICONS[t.category?.toLowerCase()] || "📋"} <span style="color:${meta.color};font-size:10px;">${meta.dot}</span>
+        ${categoryIconHtml(t.category, "14px")}
+        <ha-icon icon="${meta.icon}" style="--mdc-icon-size:12px;color:${meta.color};"></ha-icon>
         <span style="max-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;">${t.name}</span>
       </span>`;
     }).join("");
@@ -230,7 +263,7 @@ class KidsTasksChildCard extends HTMLElement {
           flex-shrink: 0;
         }
         .child-name { font-size: 17px; font-weight: 700; }
-        .child-sub  { font-size: 12px; opacity: .85; margin-top: 2px; }
+        .child-sub  { font-size: 12px; opacity: .85; margin-top: 2px; display: flex; align-items: center; gap: 4px; }
         .level-badge {
           margin-left: auto;
           background: rgba(255,255,255,.25);
@@ -239,6 +272,7 @@ class KidsTasksChildCard extends HTMLElement {
           font-size: 12px;
           font-weight: 700;
           white-space: nowrap;
+          display: flex; align-items: center; gap: 4px;
         }
         .kt-body { padding: 12px 16px; }
         .xp-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
@@ -268,17 +302,25 @@ class KidsTasksChildCard extends HTMLElement {
           background: #ff9800; color: #fff;
           border: none; border-radius: 8px;
           padding: 6px 14px; font-size: 13px; font-weight: 600;
-          cursor: pointer; display: ${pending > 0 ? "block" : "none"};
+          cursor: pointer; display: ${pending > 0 ? "flex" : "none"};
+          align-items: center; gap: 6px;
         }
+        .all-done { font-size: 12px; color: var(--secondary-text-color); display: flex; align-items: center; gap: 4px; }
       </style>
       <div class="kt-card">
         <div class="child-header">
           <div class="avatar-ring">${avatarHtml(avatar, avatarType, 40)}</div>
           <div>
             <div class="child-name">${childName}</div>
-            <div class="child-sub">💰 ${coins} pièces</div>
+            <div class="child-sub">
+              <ha-icon icon="mdi:cash" style="--mdc-icon-size:14px;"></ha-icon>
+              ${coins} pieces
+            </div>
           </div>
-          <div class="level-badge">⭐ Niv. ${level}</div>
+          <div class="level-badge">
+            <ha-icon icon="mdi:star" style="--mdc-icon-size:14px;"></ha-icon>
+            Niv. ${level}
+          </div>
         </div>
 
         <div class="kt-body">
@@ -287,12 +329,21 @@ class KidsTasksChildCard extends HTMLElement {
             <div class="xp-label">${points} pts · encore ${toNext} avant niv. ${level + 1}</div>
           </div>
 
-          ${tasks.length > 0 ? `<div class="tasks-chips">${taskChips}</div>` : `<div style="font-size:12px;color:var(--secondary-text-color);margin-bottom:10px;">Aucune tâche assignée</div>`}
+          ${tasks.length > 0
+            ? `<div class="tasks-chips">${taskChips}</div>`
+            : `<div style="font-size:12px;color:var(--secondary-text-color);margin-bottom:10px;">Aucune tache assignee</div>`
+          }
 
           <div class="actions">
             ${pending > 0
-              ? `<button class="validate-btn" id="val-btn">⏳ ${pending} à valider</button>`
-              : `<span style="font-size:12px;color:var(--secondary-text-color);">✅ Tout est validé</span>`
+              ? `<button class="validate-btn" id="val-btn">
+                   <ha-icon icon="mdi:clock-outline" style="--mdc-icon-size:16px;"></ha-icon>
+                   ${pending} a valider
+                 </button>`
+              : `<span class="all-done">
+                   <ha-icon icon="mdi:check-circle-outline" style="--mdc-icon-size:14px;color:#4caf50;"></ha-icon>
+                   Tout est valide
+                 </span>`
             }
           </div>
         </div>
@@ -312,9 +363,9 @@ class KidsTasksChildCard extends HTMLElement {
 
   _rawStatus(displayStatus) {
     const map = {
-      "À faire": "todo", "En cours": "in_progress", "Terminé": "completed",
+      "A faire": "todo", "En cours": "in_progress", "Termine": "completed",
       "En validation": "pending_validation", "En attente de validation": "pending_validation",
-      "Validé": "validated", "Échoué": "failed",
+      "Valide": "validated", "Echoue": "failed",
     };
     return map[displayStatus] || "todo";
   }
@@ -350,15 +401,15 @@ class KidsTasksValidationCard extends HTMLElement {
     const rows = pending.map((t, i) => `
       <div class="task-row" data-idx="${i}">
         <div class="task-info">
-          <span class="task-icon">${this._categoryIcon(t)}</span>
+          <span class="task-icon">${categoryIconHtml(t.category, "22px")}</span>
           <div class="task-details">
             <div class="task-name">${t.name}</div>
-            <div class="task-child">👤 ${t.child} · ${t.points} pts</div>
+            <div class="task-child">${t.child} · ${t.points} pts</div>
           </div>
         </div>
         <div class="task-actions">
-          <button class="kt-btn kt-btn-validate" data-id="${t.task_id}" data-action="validate">✓</button>
-          <button class="kt-btn kt-btn-reject"   data-id="${t.task_id}" data-action="reject">✗</button>
+          <button class="kt-btn kt-btn-validate" data-id="${t.task_id}" data-action="validate">Valider</button>
+          <button class="kt-btn kt-btn-reject"   data-id="${t.task_id}" data-action="reject">Rejeter</button>
         </div>
       </div>
     `).join('<div class="kt-divider"></div>');
@@ -372,7 +423,7 @@ class KidsTasksValidationCard extends HTMLElement {
           padding: 12px 16px; gap: 10px;
         }
         .task-info { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
-        .task-icon { font-size: 22px; flex-shrink: 0; }
+        .task-icon { display: flex; align-items: center; flex-shrink: 0; }
         .task-details { min-width: 0; }
         .task-name {
           font-size: 14px; font-weight: 600;
@@ -380,16 +431,16 @@ class KidsTasksValidationCard extends HTMLElement {
         }
         .task-child { font-size: 12px; color: var(--secondary-text-color); margin-top: 2px; }
         .task-actions { display: flex; gap: 6px; flex-shrink: 0; }
-        .kt-btn { padding: 6px 12px; font-size: 14px; font-weight: 700; }
+        .kt-btn { padding: 6px 12px; font-size: 13px; font-weight: 600; }
       </style>
       <div class="kt-card">
         <div class="kt-header">
-          À valider
+          A valider
           ${pending.length > 0 ? `<span class="kt-badge">${pending.length}</span>` : ""}
         </div>
         <div class="kt-divider"></div>
         ${pending.length === 0
-          ? `<div class="kt-empty">✅ Tout est validé</div>`
+          ? `<div class="kt-empty">Tout est valide</div>`
           : rows
         }
       </div>`;
@@ -401,11 +452,6 @@ class KidsTasksValidationCard extends HTMLElement {
         callService(this._hass, "kids_tasks", svc, { task_id: id });
       });
     });
-  }
-
-  _categoryIcon(task) {
-    const cat = typeof task.category === "string" ? task.category.toLowerCase() : "";
-    return CATEGORY_ICONS[cat] || "📋";
   }
 }
 
@@ -438,15 +484,15 @@ class KidsTasksTaskListCard extends HTMLElement {
       case "daily":   return tasks.filter(t => t.frequency === "Quotidienne");
       case "weekly":  return tasks.filter(t => t.frequency === "Hebdomadaire");
       case "pending": return tasks.filter(t => t.status === "En validation");
-      case "done":    return tasks.filter(t => t.status === "Validé" || t.status === "Terminé");
+      case "done":    return tasks.filter(t => t.status === "Valide" || t.status === "Termine");
       default:        return tasks;
     }
   }
 
   _rawStatus(displayStatus) {
     const map = {
-      "À faire": "todo", "En cours": "in_progress", "Terminé": "completed",
-      "En validation": "pending_validation", "Validé": "validated", "Échoué": "failed",
+      "A faire": "todo", "En cours": "in_progress", "Termine": "completed",
+      "En validation": "pending_validation", "Valide": "validated", "Echoue": "failed",
     };
     return map[displayStatus] || "todo";
   }
@@ -460,8 +506,8 @@ class KidsTasksTaskListCard extends HTMLElement {
       { key: "all",     label: "Tous" },
       { key: "daily",   label: "Quotidien" },
       { key: "weekly",  label: "Hebdo" },
-      { key: "pending", label: "⏳ En attente" },
-      { key: "done",    label: "✅ Faits" },
+      { key: "pending", label: "En attente" },
+      { key: "done",    label: "Faits" },
     ];
 
     const filterChips = filters.map(f => `
@@ -471,13 +517,12 @@ class KidsTasksTaskListCard extends HTMLElement {
     const taskRows = tasks.map(t => {
       const rawStatus = this._rawStatus(t.status);
       const meta = STATUS_META[rawStatus] || STATUS_META["todo"];
-      const catIcon = CATEGORY_ICONS[t.category?.toLowerCase()] || "📋";
       const isPending = rawStatus === "pending_validation";
 
       return `
         <div class="task-row">
           <span class="status-dot" style="background:${meta.color};" title="${meta.label}"></span>
-          <span class="cat-icon">${catIcon}</span>
+          <span class="cat-icon">${categoryIconHtml(t.category, "18px")}</span>
           <div class="task-details">
             <div class="task-name">${t.name}</div>
             <div class="task-meta">${t.assigned_child} · ${t.frequency}</div>
@@ -485,8 +530,8 @@ class KidsTasksTaskListCard extends HTMLElement {
           <div class="task-right">
             <span class="pts-badge">${t.points} pts</span>
             ${isPending ? `
-              <button class="kt-btn kt-btn-validate sm" data-id="${t.task_id}" data-action="validate">✓</button>
-              <button class="kt-btn kt-btn-reject sm"   data-id="${t.task_id}" data-action="reject">✗</button>
+              <button class="kt-btn kt-btn-validate sm" data-id="${t.task_id}" data-action="validate">Valider</button>
+              <button class="kt-btn kt-btn-reject sm"   data-id="${t.task_id}" data-action="reject">Rejeter</button>
             ` : ""}
           </div>
         </div>
@@ -502,7 +547,7 @@ class KidsTasksTaskListCard extends HTMLElement {
           padding: 10px 16px; gap: 10px;
         }
         .status-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-        .cat-icon   { font-size: 18px; flex-shrink: 0; }
+        .cat-icon   { display: flex; align-items: center; flex-shrink: 0; }
         .task-details { flex: 1; min-width: 0; }
         .task-name {
           font-size: 13px; font-weight: 600;
@@ -515,17 +560,17 @@ class KidsTasksTaskListCard extends HTMLElement {
           border-radius: 10px; padding: 2px 7px;
           font-size: 11px; font-weight: 600;
         }
-        .sm { padding: 4px 8px; font-size: 12px; }
+        .sm { padding: 4px 10px; font-size: 12px; }
       </style>
       <div class="kt-card">
         <div class="kt-header">
-          Tâches
+          Taches
           <span class="kt-badge">${tasks.length}</span>
         </div>
         <div class="filter-row">${filterChips}</div>
         <div class="kt-divider"></div>
         ${tasks.length === 0
-          ? `<div class="kt-empty">Aucune tâche dans cette catégorie</div>`
+          ? `<div class="kt-empty">Aucune tache dans cette categorie</div>`
           : taskRows
         }
       </div>`;
@@ -583,6 +628,13 @@ class KidsTasksRewardCard extends HTMLElement {
     return { name: s.attributes.name, points: parseInt(s.state), child_id: s.attributes.child_id };
   }
 
+  _rewardIconHtml(r, size = "28px") {
+    const icon = r.icon && r.icon.startsWith("mdi:")
+      ? r.icon
+      : (REWARD_ICONS[(r.category || "").toLowerCase()] || "mdi:gift");
+    return `<ha-icon icon="${icon}" style="--mdc-icon-size:${size};"></ha-icon>`;
+  }
+
   _render() {
     const state = this._hass.states[this._config.entity];
     const allRewards = (state?.attributes?.rewards || []).filter(r => r.active && r.is_available);
@@ -596,26 +648,31 @@ class KidsTasksRewardCard extends HTMLElement {
       : allRewards.filter(r => r.category?.toLowerCase() === this._filter);
 
     const catChips = categories.map(c => {
-      const icon = c === "all" ? "🎁" : (REWARD_ICONS[c] || "🎁");
+      const icon = c === "all" ? "mdi:gift" : (REWARD_ICONS[c] || "mdi:gift");
       const label = c === "all" ? "Tous" : c.replace("_", " ");
-      return `<span class="kt-chip ${this._filter === c ? "active" : ""}" data-cat="${c}">${icon} ${label}</span>`;
+      return `<span class="kt-chip ${this._filter === c ? "active" : ""}" data-cat="${c}">
+        <ha-icon icon="${icon}" style="--mdc-icon-size:14px;"></ha-icon>
+        ${label}
+      </span>`;
     }).join("");
 
     const tiles = filtered.map(r => {
-      const icon = r.icon || REWARD_ICONS[r.category?.toLowerCase()] || "🎁";
       const canAfford = childPoints !== null ? childPoints >= r.cost : null;
       const btnClass = child
         ? (canAfford ? "kt-btn kt-btn-claim" : "kt-btn kt-btn-disabled")
         : "kt-btn kt-btn-disabled";
-      const btnLabel = !child ? "Admin" : canAfford ? "Échanger" : "Pas assez";
-      const qty = r.limited_quantity ? `<span class="qty">× ${r.remaining_quantity}</span>` : "";
+      const btnLabel = !child ? "Admin" : canAfford ? "Echanger" : "Pas assez";
+      const qty = r.limited_quantity ? `<span class="qty">x ${r.remaining_quantity}</span>` : "";
 
       return `
         <div class="reward-tile">
-          <div class="reward-icon">${icon}</div>
+          <div class="reward-icon">${this._rewardIconHtml(r, "28px")}</div>
           <div class="reward-name">${r.name}</div>
           ${r.description ? `<div class="reward-desc">${r.description}</div>` : ""}
-          <div class="reward-cost">💰 ${r.cost} pts ${qty}</div>
+          <div class="reward-cost">
+            <ha-icon icon="mdi:cash" style="--mdc-icon-size:14px;"></ha-icon>
+            ${r.cost} pts ${qty}
+          </div>
           <button class="${btnClass}"
             data-id="${r.reward_id}"
             data-child="${child?.child_id || ""}"
@@ -632,7 +689,7 @@ class KidsTasksRewardCard extends HTMLElement {
           padding: 14px 16px 10px;
           display: flex; align-items: center; justify-content: space-between;
         }
-        .reward-header-title { font-weight: 600; font-size: 15px; }
+        .reward-header-title { font-weight: 600; font-size: 15px; display: flex; align-items: center; gap: 6px; }
         .child-pts { font-size: 12px; color: var(--secondary-text-color); }
         .cat-row { display: flex; gap: 6px; flex-wrap: wrap; padding: 0 16px 10px; }
         .reward-grid {
@@ -649,22 +706,25 @@ class KidsTasksRewardCard extends HTMLElement {
           align-items: center; gap: 6px;
           text-align: center;
         }
-        .reward-icon  { font-size: 28px; }
+        .reward-icon  { display: flex; align-items: center; justify-content: center; }
         .reward-name  { font-size: 13px; font-weight: 600; }
         .reward-desc  { font-size: 11px; color: var(--secondary-text-color); }
-        .reward-cost  { font-size: 12px; font-weight: 600; color: var(--primary-color); }
+        .reward-cost  { font-size: 12px; font-weight: 600; color: var(--primary-color); display: flex; align-items: center; gap: 3px; }
         .qty { font-size: 10px; color: var(--secondary-text-color); }
         .kt-btn { width: 100%; margin-top: 4px; padding: 6px 0; font-size: 12px; }
       </style>
       <div class="kt-card">
         <div class="reward-header">
-          <span class="reward-header-title">🎁 Récompenses</span>
+          <span class="reward-header-title">
+            <ha-icon icon="mdi:gift-outline" style="--mdc-icon-size:18px;"></ha-icon>
+            Recompenses
+          </span>
           ${child ? `<span class="child-pts">${child.name} · ${child.points} pts</span>` : ""}
         </div>
         <div class="cat-row">${catChips}</div>
         <div class="kt-divider"></div>
         ${filtered.length === 0
-          ? `<div class="kt-empty">Aucune récompense disponible</div>`
+          ? `<div class="kt-empty">Aucune recompense disponible</div>`
           : `<div class="reward-grid">${tiles}</div>`
         }
       </div>`;
@@ -696,7 +756,7 @@ window.customCards.push(
   {
     type: "kids-tasks-child-card",
     name: "Kids Tasks — Enfant",
-    description: "Vue compacte d'un enfant : avatar, XP, tâches du jour",
+    description: "Vue compacte d'un enfant : avatar, XP, taches du jour",
   },
   {
     type: "kids-tasks-validation-card",
@@ -705,12 +765,12 @@ window.customCards.push(
   },
   {
     type: "kids-tasks-task-list-card",
-    name: "Kids Tasks — Liste de tâches",
-    description: "Liste filtrée des tâches avec statuts et actions",
+    name: "Kids Tasks — Liste de taches",
+    description: "Liste filtree des taches avec statuts et actions",
   },
   {
     type: "kids-tasks-reward-card",
-    name: "Kids Tasks — Récompenses",
-    description: "Catalogue de récompenses avec échange en 1 tap",
+    name: "Kids Tasks — Recompenses",
+    description: "Catalogue de recompenses avec echange en 1 tap",
   }
 );

@@ -777,7 +777,7 @@ class BusinessMixin:
                     cost=item.get("cost", 100),
                     coin_cost=item.get("coin_cost", 0),
                     category="cosmetic",
-                    icon="🎨",  # Default cosmetic icon
+                    icon="mdi:palette",
                     reward_type="cosmetic",
                     cosmetic_data={
                         "type": cosmetic_type,

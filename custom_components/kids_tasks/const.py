@@ -57,13 +57,13 @@ CATEGORIES = [
 ]
 
 CATEGORY_ICONS = {
-    "bedroom": "🛏️",
-    "hygiene": "🛁",
-    "kitchen": "🍽️",
-    "homework": "📚",
-    "music": "🎵",
-    "outdoor": "🌳",
-    "other": "📋",
+    "bedroom": "mdi:bed",
+    "hygiene": "mdi:shower",
+    "kitchen": "mdi:silverware-fork-knife",
+    "homework": "mdi:book-open-variant",
+    "music": "mdi:music",
+    "outdoor": "mdi:tree",
+    "other": "mdi:clipboard-list",
 }
 
 # Reward categories
@@ -77,12 +77,12 @@ REWARD_CATEGORIES = [
 ]
 
 REWARD_CATEGORY_ICONS = {
-    "fun": "🎉",
-    "screen_time": "📱",
-    "outing": "🚗",
-    "privilege": "👑",
-    "toy": "🧸",
-    "treat": "🍭",
+    "fun": "mdi:gamepad-variant",
+    "screen_time": "mdi:monitor",
+    "outing": "mdi:car",
+    "privilege": "mdi:crown",
+    "toy": "mdi:toy-brick",
+    "treat": "mdi:food-apple",
 }
 
 # Events
