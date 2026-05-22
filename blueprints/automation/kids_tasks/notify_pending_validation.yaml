@@ -1,0 +1,56 @@
+blueprint:
+  name: "Kids Tasks — Notification de validation"
+  description: >
+    Envoie une notification au parent quand une tâche passe en attente de validation.
+    Se déclenche à chaque nouvelle tâche soumise par un enfant.
+  domain: automation
+  source_url: https://github.com/astrayel/kids-tasks-ha/blob/main/blueprints/automation/kids_tasks/notify_pending_validation.yaml
+  input:
+    notify_service:
+      name: Service de notification
+      description: >
+        Service notify à appeler pour le parent.
+        Ex : notify.mobile_app_mon_telephone
+      selector:
+        text:
+    notification_title:
+      name: Titre de la notification
+      default: "✅ Tâche à valider"
+      selector:
+        text:
+
+variables:
+  notify_service: !input notify_service
+  notification_title: !input notification_title
+
+trigger:
+  - platform: state
+    entity_id: sensor.kidtasks_pending_validations
+
+condition:
+  - condition: template
+    value_template: >
+      {{ trigger.to_state.state | int(0) > trigger.from_state.state | int(0) }}
+
+action:
+  - variables:
+      pending_list: "{{ trigger.to_state.attributes.get('pending_tasks', []) }}"
+      latest_task: "{{ pending_list[-1] if pending_list else {} }}"
+      task_name: "{{ latest_task.get('name', 'Tâche inconnue') }}"
+      child_name: "{{ latest_task.get('child', 'Enfant') }}"
+      task_points: "{{ latest_task.get('points', 0) }}"
+      total_pending: "{{ trigger.to_state.state | int(0) }}"
+  - service: "{{ notify_service }}"
+    data:
+      title: "{{ notification_title }}"
+      message: >
+        {{ child_name }} a terminé « {{ task_name }} » (+{{ task_points }} pts).
+        {% if total_pending > 1 %}
+        {{ total_pending }} tâches en attente de validation.
+        {% endif %}
+      data:
+        tag: kids_tasks_validation
+        group: kids-tasks
+
+mode: queued
+max: 5

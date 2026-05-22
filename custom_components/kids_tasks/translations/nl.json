@@ -1,0 +1,72 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Kids Tasks instellen",
+        "description": "Configureer uw beheersysteem voor kindertaken",
+        "data": {
+          "name": "Installatienaam",
+          "validation_required": "Oudersvalidatie standaard vereist",
+          "notifications_enabled": "Meldingen ingeschakeld"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Kan geen verbinding maken",
+      "invalid_config": "Ongeldige configuratie",
+      "unknown": "Onbekende fout",
+      "invalid_auth": "Ongeldige authenticatie",
+      "timeout": "Time-out"
+    },
+    "abort": {
+      "already_configured": "Deze integratie is al geconfigureerd",
+      "single_instance_allowed": "Slechts één instantie toegestaan"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Kids Tasks opties",
+        "description": "Geavanceerde opties configureren",
+        "data": {
+          "validation_required": "Oudersvalidatie vereist",
+          "notifications_enabled": "Meldingen ingeschakeld",
+          "auto_reset_tasks": "Taken automatisch resetten",
+          "points_multiplier": "Puntenmultiplier"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "child_points": { "name": "{child_name} Punten" },
+      "child_level": { "name": "{child_name} Niveau" },
+      "child_tasks_today": { "name": "{child_name} Taken Vandaag" },
+      "pending_validations": { "name": "Taken in Afwachting van Validatie" },
+      "total_tasks_today": { "name": "Totaal Taken Vandaag" },
+      "active_tasks": { "name": "Actieve Taken" }
+    },
+    "select": {
+      "task_status": {
+        "name": "Status: {task_name}",
+        "state": {
+          "todo": "Te doen",
+          "in_progress": "Bezig",
+          "completed": "Voltooid",
+          "pending_validation": "In afwachting van validatie",
+          "validated": "Gevalideerd",
+          "failed": "Mislukt"
+        }
+      },
+      "task_frequency": {
+        "name": "Frequentie: {task_name}",
+        "state": {
+          "daily": "Dagelijks",
+          "weekly": "Wekelijks",
+          "monthly": "Maandelijks",
+          "once": "Eenmalig"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,72 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Configurar Kids Tasks",
+        "description": "Configure su sistema de gestión de tareas para niños",
+        "data": {
+          "name": "Nombre de la instalación",
+          "validation_required": "Validación parental requerida por defecto",
+          "notifications_enabled": "Notificaciones activadas"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "No se puede conectar",
+      "invalid_config": "Configuración inválida",
+      "unknown": "Error desconocido",
+      "invalid_auth": "Autenticación inválida",
+      "timeout": "Tiempo de espera agotado"
+    },
+    "abort": {
+      "already_configured": "Esta integración ya está configurada",
+      "single_instance_allowed": "Solo se permite una instancia"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Opciones de Kids Tasks",
+        "description": "Configurar opciones avanzadas",
+        "data": {
+          "validation_required": "Validación parental requerida",
+          "notifications_enabled": "Notificaciones activadas",
+          "auto_reset_tasks": "Restablecer tareas automáticamente",
+          "points_multiplier": "Multiplicador de puntos"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "child_points": { "name": "{child_name} Puntos" },
+      "child_level": { "name": "{child_name} Nivel" },
+      "child_tasks_today": { "name": "{child_name} Tareas Hoy" },
+      "pending_validations": { "name": "Tareas Pendientes de Validación" },
+      "total_tasks_today": { "name": "Total Tareas Hoy" },
+      "active_tasks": { "name": "Tareas Activas" }
+    },
+    "select": {
+      "task_status": {
+        "name": "Estado: {task_name}",
+        "state": {
+          "todo": "Por hacer",
+          "in_progress": "En progreso",
+          "completed": "Completado",
+          "pending_validation": "Pendiente de validación",
+          "validated": "Validado",
+          "failed": "Fallido"
+        }
+      },
+      "task_frequency": {
+        "name": "Frecuencia: {task_name}",
+        "state": {
+          "daily": "Diario",
+          "weekly": "Semanal",
+          "monthly": "Mensual",
+          "once": "Una vez"
+        }
+      }
+    }
+  }
+}
