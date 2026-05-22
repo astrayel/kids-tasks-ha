@@ -168,9 +168,7 @@ class KidsTasksChildCard extends HTMLElement {
     const allTasks = this._hass.states["sensor.kidtasks_all_tasks_list"];
     if (!allTasks) return [];
     return (allTasks.attributes.tasks || []).filter(t =>
-      Array.isArray(t.assigned_child_ids)
-        ? t.assigned_child_ids.includes(childId)
-        : t.assigned_child === this._childName
+      Array.isArray(t.assigned_child_ids) && t.assigned_child_ids.includes(childId)
     );
   }
 
@@ -178,7 +176,7 @@ class KidsTasksChildCard extends HTMLElement {
     const pv = this._hass.states["sensor.kidtasks_pending_validations"];
     if (!pv) return 0;
     return (pv.attributes.pending_tasks || []).filter(t =>
-      Array.isArray(t.child_ids) ? t.child_ids.includes(childId) : t.child === this._childName
+      Array.isArray(t.child_ids) && t.child_ids.includes(childId)
     ).length;
   }
 
@@ -305,7 +303,7 @@ class KidsTasksChildCard extends HTMLElement {
       btn.addEventListener("click", () => {
         const pv = this._hass.states["sensor.kidtasks_pending_validations"];
         const myPending = (pv?.attributes.pending_tasks || []).filter(t =>
-          Array.isArray(t.child_ids) ? t.child_ids.includes(childId) : t.child === childName
+          Array.isArray(t.child_ids) && t.child_ids.includes(childId)
         );
         myPending.forEach(t => callService(this._hass, "kids_tasks", "validate_task", { task_id: t.task_id }));
       });

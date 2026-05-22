@@ -265,8 +265,6 @@ class PendingValidationsSensor(CoordinatorEntity, SensorEntity):
         for task_id, task_data in self.coordinator.data.get("tasks", {}).items():
             if task_data.get("status") == "pending_validation":
                 assigned_child_ids = task_data.get("assigned_child_ids") or []
-                if not assigned_child_ids and task_data.get("assigned_child_id"):
-                    assigned_child_ids = [task_data["assigned_child_id"]]
 
                 child_names = []
                 for cid in assigned_child_ids:
@@ -391,10 +389,7 @@ class AllTasksListSensor(CoordinatorEntity, SensorEntity):
         all_tasks = []
         
         for task_id, task_data in self.coordinator.data.get("tasks", {}).items():
-            # Get child names — support both old assigned_child_id and new assigned_child_ids
             assigned_child_ids = task_data.get("assigned_child_ids") or []
-            if not assigned_child_ids and task_data.get("assigned_child_id"):
-                assigned_child_ids = [task_data["assigned_child_id"]]
 
             child_names = []
             for cid in assigned_child_ids:
@@ -546,11 +541,13 @@ class TaskSensor(CoordinatorEntity, SensorEntity):
         """Return the state attributes."""
         task_data = self.coordinator.data["tasks"].get(self.task_id, {})
         
-        # Get child name if assigned
-        child_name = "Non assigné"
-        if task_data.get("assigned_child_id"):
-            child_data = self.coordinator.data.get("children", {}).get(task_data["assigned_child_id"], {})
-            child_name = child_data.get("name", "Enfant inconnu")
+        # Get child names
+        assigned_child_ids = task_data.get("assigned_child_ids") or []
+        child_names = [
+            self.coordinator.data.get("children", {}).get(cid, {}).get("name")
+            for cid in assigned_child_ids
+        ]
+        child_name = ", ".join(n for n in child_names if n) or "Non assigné"
         
         # Prepare child statuses for frontend
         child_statuses_for_frontend = {}
