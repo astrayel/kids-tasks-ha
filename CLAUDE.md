@@ -68,26 +68,29 @@ Intégration Home Assistant pour gérer les tâches quotidiennes des enfants ave
 
 ### Section 3 — Nouvelles fonctionnalités (priorité basse)
 
-#### 3.1 Plateforme switch
-Créer `custom_components/kids_tasks/switch.py` pour compléter une tâche depuis l'UI HA.
-Pattern : `SwitchEntity` + `CoordinatorEntity`, état ON = tâche validée.
+#### 3.1 ✅ Plateforme switch — DONE
+`custom_components/kids_tasks/switch.py` : `SwitchEntity` par tâche × enfant.
+ON = `complete_task`, OFF = reset. Suit `child_statuses[child_id]`. Listener dynamique.
 
 #### 3.2 Statistiques (statistics.py)
 Intégrer avec le recorder HA pour les graphiques long terme.
 Utiliser `StatisticData` / `async_add_external_statistics`.
 
-#### 3.3 Calendrier (calendar.py)
-Créer une entité `CalendarEntity` qui expose les deadlines comme événements.
-Permet de voir les tâches à faire dans le calendrier HA.
+#### 3.3 ✅ Calendrier (calendar.py) — DONE
+`custom_components/kids_tasks/calendar.py` : entité `CalendarEntity` `calendar.kids_tasks`.
+- Tâches avec `deadline_time` → événements horaires
+- Tâches `daily` non validées → événements toute la journée
+- Tâches `weekly` → événements sur les jours assignés
 
-#### 3.4 Blueprints
-Ajouter `blueprints/automation/kids_tasks/` avec des automatisations types :
-- notifier quand une tâche est en attente de validation
-- envoyer un rappel si deadline approche
+#### 3.4 ✅ Blueprints — DONE
+`blueprints/automation/kids_tasks/` :
+- `notify_pending_validation.yaml` : notif parent à chaque soumission
+- `remind_incomplete_tasks.yaml` : rappel quotidien à heure configurable
+- `notify_level_up.yaml` : félicitations montée de niveau
 
-#### 3.5 Support multilingue
-Ajouter `translations/de.json`, `translations/es.json`, `translations/nl.json`.
-Base existante : `translations/fr.json` et `translations/en.json`.
+#### 3.5 ✅ Support multilingue — DONE
+`translations/de.json`, `translations/es.json`, `translations/nl.json` ajoutés.
+Config flow, options, états select, capteurs traduits.
 
 ---
 
