@@ -78,18 +78,19 @@ class DeadlinesMixin:
     async def _send_validation_notification(self, task, child) -> None:
         """Send a Home Assistant notification for task validation."""
         try:
-            message = f"🎯 Tâche à valider !\n\n"
-            message += f"👤 {child.name if child else 'Enfant inconnu'} a terminé la tâche :\n"
-            message += f"📋 {task.name}\n\n"
+            child_name = child.name if child else "Enfant inconnu"
+            message = f"Tâche à valider !\n\n"
+            message += f"{child_name} a terminé la tâche :\n"
+            message += f"{task.name}\n\n"
 
             if task.points > 0 or task.coins > 0:
-                message += f"🏆 Récompense en attente :\n"
+                message += "Récompense en attente :\n"
                 if task.points > 0:
                     message += f"• {task.points} points\n"
                 if task.coins > 0:
                     message += f"• {task.coins} coins\n"
 
-            message += f"\n✅ Validez depuis l'onglet Validation de votre tableau de bord Kids Tasks"
+            message += "\nValidez depuis l'onglet Validation de votre tableau de bord Kids Tasks"
 
             # Send persistent notification
             await self.hass.services.async_call(

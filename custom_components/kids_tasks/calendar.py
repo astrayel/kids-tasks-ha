@@ -12,7 +12,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import dt as dt_util
 
-from .const import DOMAIN, CATEGORY_ICONS
+from .const import DOMAIN
 from .coordinator import KidsTasksDataUpdateCoordinator
 
 
@@ -76,8 +76,7 @@ class KidsTasksCalendar(CoordinatorEntity, CalendarEntity):
                 if cid in children and children[cid].get("name")
             ]
             child_label = ", ".join(child_names) if child_names else "Non assigné"
-            cat_icon = CATEGORY_ICONS.get(task.get("category", "other"), "📋")
-            summary = f"{cat_icon} {task.get('name', 'Tâche')} — {child_label}"
+            summary = f"{task.get('name', 'Tâche')} — {child_label}"
             description = (
                 f"Points : {task.get('points', 0)}\n"
                 f"Catégorie : {task.get('category', 'other')}\n"
@@ -98,7 +97,7 @@ class KidsTasksCalendar(CoordinatorEntity, CalendarEntity):
                         events.append(CalendarEvent(
                             start=event_start,
                             end=event_end,
-                            summary=f"⏰ {summary}",
+                            summary=f"[deadline] {summary}",
                             description=description,
                             uid=f"kidtasks_deadline_{task_id}",
                         ))
