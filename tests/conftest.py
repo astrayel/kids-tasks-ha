@@ -68,6 +68,7 @@ def coordinator(mock_hass, mock_store):
         coord._initialized = False
         coord._reset_lock = asyncio.Lock()
         coord._platform_add_entities = {}
+        coord._last_statistics_hour = None
         coord.logger = logging.getLogger(__name__)
         coord.data = {}
         coord.last_update_success = True
