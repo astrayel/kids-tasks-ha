@@ -1,0 +1,75 @@
+blueprint:
+  name: "Kids Tasks — Rappel tâches non complétées"
+  description: >
+    Envoie un rappel à une heure configurable si des tâches du jour ne sont
+    pas encore complétées. Utile pour motiver les enfants avant la deadline.
+  domain: automation
+  source_url: https://github.com/astrayel/kids-tasks-ha/blob/main/blueprints/automation/kids_tasks/remind_incomplete_tasks.yaml
+  input:
+    reminder_time:
+      name: Heure du rappel
+      description: Heure à laquelle envoyer le rappel chaque jour.
+      default: "18:00:00"
+      selector:
+        time:
+    notify_service:
+      name: Service de notification
+      description: >
+        Service notify à appeler (ex : notify.mobile_app_enfant ou
+        notify.family_group pour toute la famille).
+      selector:
+        text:
+    notification_title:
+      name: Titre de la notification
+      default: "⏰ Tâches à faire !"
+      selector:
+        text:
+    minimum_pending:
+      name: Nombre minimum de tâches non complétées pour déclencher
+      description: >
+        Le rappel n'est envoyé que si au moins ce nombre de tâches
+        restent à faire. Mettre 1 pour toujours notifier.
+      default: 1
+      selector:
+        number:
+          min: 1
+          max: 10
+          mode: box
+
+variables:
+  notify_service: !input notify_service
+  notification_title: !input notification_title
+  minimum_pending: !input minimum_pending
+
+trigger:
+  - platform: time
+    at: !input reminder_time
+
+condition:
+  - condition: template
+    value_template: >
+      {% set tasks = state_attr('sensor.kidtasks_all_tasks_list', 'tasks') | default([]) %}
+      {% set incomplete = tasks | selectattr('status', 'in', ['À faire', 'En cours']) | list %}
+      {{ incomplete | length >= minimum_pending | int }}
+
+action:
+  - variables:
+      all_tasks: "{{ state_attr('sensor.kidtasks_all_tasks_list', 'tasks') | default([]) }}"
+      incomplete_tasks: >
+        {{ all_tasks | selectattr('status', 'in', ['À faire', 'En cours'])
+                     | selectattr('frequency', 'equalto', 'Quotidienne')
+                     | list }}
+      task_count: "{{ incomplete_tasks | length }}"
+      task_names: >
+        {{ incomplete_tasks | map(attribute='name') | list | join(', ') }}
+  - service: "{{ notify_service }}"
+    data:
+      title: "{{ notification_title }}"
+      message: >
+        {{ task_count }} tâche{{ 's' if task_count > 1 else '' }} encore à faire :
+        {{ task_names }}.
+      data:
+        tag: kids_tasks_reminder
+        group: kids-tasks
+
+mode: single

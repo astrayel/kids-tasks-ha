@@ -1,0 +1,72 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Kids Tasks konfigurieren",
+        "description": "Konfigurieren Sie Ihr Kinderverwaltungssystem",
+        "data": {
+          "name": "Installationsname",
+          "validation_required": "Elternvalidierung standardmäßig erforderlich",
+          "notifications_enabled": "Benachrichtigungen aktiviert"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Verbindung fehlgeschlagen",
+      "invalid_config": "Ungültige Konfiguration",
+      "unknown": "Unbekannter Fehler",
+      "invalid_auth": "Ungültige Authentifizierung",
+      "timeout": "Zeitüberschreitung"
+    },
+    "abort": {
+      "already_configured": "Diese Integration ist bereits konfiguriert",
+      "single_instance_allowed": "Nur eine Instanz erlaubt"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Kids Tasks Optionen",
+        "description": "Erweiterte Optionen konfigurieren",
+        "data": {
+          "validation_required": "Elternvalidierung erforderlich",
+          "notifications_enabled": "Benachrichtigungen aktiviert",
+          "auto_reset_tasks": "Aufgaben automatisch zurücksetzen",
+          "points_multiplier": "Punktemultiplikator"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "child_points": { "name": "{child_name} Punkte" },
+      "child_level": { "name": "{child_name} Stufe" },
+      "child_tasks_today": { "name": "{child_name} Aufgaben Heute" },
+      "pending_validations": { "name": "Aufgaben zur Validierung" },
+      "total_tasks_today": { "name": "Aufgaben Heute Gesamt" },
+      "active_tasks": { "name": "Aktive Aufgaben" }
+    },
+    "select": {
+      "task_status": {
+        "name": "Status: {task_name}",
+        "state": {
+          "todo": "Zu erledigen",
+          "in_progress": "In Bearbeitung",
+          "completed": "Abgeschlossen",
+          "pending_validation": "Wartet auf Validierung",
+          "validated": "Validiert",
+          "failed": "Fehlgeschlagen"
+        }
+      },
+      "task_frequency": {
+        "name": "Häufigkeit: {task_name}",
+        "state": {
+          "daily": "Täglich",
+          "weekly": "Wöchentlich",
+          "monthly": "Monatlich",
+          "once": "Einmalig"
+        }
+      }
+    }
+  }
+}
