@@ -29,8 +29,14 @@ async def async_record_statistics(hass: HomeAssistant, coordinator) -> None:
         from homeassistant.components.recorder.models import StatisticData, StatisticMetaData
         from homeassistant.components.recorder.statistics import async_add_external_statistics
     except ImportError:
-        _LOGGER.debug("Recorder not available — skipping statistics")
+        _LOGGER.debug("Recorder not available - skipping statistics")
         return
+
+    try:
+        from homeassistant.components.recorder.statistics import StatisticMeanType
+        _mean_type = StatisticMeanType.ARITHMETIC
+    except ImportError:
+        _mean_type = None
 
     start = _hour_start(dt_util.utcnow())
     children = coordinator.children
@@ -44,28 +50,18 @@ async def async_record_statistics(hass: HomeAssistant, coordinator) -> None:
 
         # Current point balance
         _push(
-            hass,
-            async_add_external_statistics,
-            StatisticMetaData,
-            StatisticData,
+            hass, async_add_external_statistics, StatisticMetaData, StatisticData,
             statistic_id=f"{DOMAIN}:child_{child_id}_points",
-            name=f"{name} — Points",
-            unit="pts",
-            start=start,
-            value=float(child.points),
+            name=f"{name} - Points",
+            unit="pts", start=start, value=float(child.points), mean_type=_mean_type,
         )
 
         # Current level
         _push(
-            hass,
-            async_add_external_statistics,
-            StatisticMetaData,
-            StatisticData,
+            hass, async_add_external_statistics, StatisticMetaData, StatisticData,
             statistic_id=f"{DOMAIN}:child_{child_id}_level",
-            name=f"{name} — Niveau",
-            unit=None,
-            start=start,
-            value=float(child.level),
+            name=f"{name} - Niveau",
+            unit=None, start=start, value=float(child.level), mean_type=_mean_type,
         )
 
         # Tasks completed (validated or completed) right now
@@ -77,15 +73,10 @@ async def async_record_statistics(hass: HomeAssistant, coordinator) -> None:
             and task.child_statuses[child_id].status in _DONE_STATUSES
         )
         _push(
-            hass,
-            async_add_external_statistics,
-            StatisticMetaData,
-            StatisticData,
+            hass, async_add_external_statistics, StatisticMetaData, StatisticData,
             statistic_id=f"{DOMAIN}:child_{child_id}_tasks_done",
-            name=f"{name} — Tâches Complétées",
-            unit=None,
-            start=start,
-            value=float(done),
+            name=f"{name} - Taches Completees",
+            unit=None, start=start, value=float(done), mean_type=_mean_type,
         )
 
     # ------------------------------------------------------------------ #
@@ -98,15 +89,10 @@ async def async_record_statistics(hass: HomeAssistant, coordinator) -> None:
         if cs.status == "pending_validation"
     )
     _push(
-        hass,
-        async_add_external_statistics,
-        StatisticMetaData,
-        StatisticData,
+        hass, async_add_external_statistics, StatisticMetaData, StatisticData,
         statistic_id=f"{DOMAIN}:pending_validations",
-        name="Tâches en Attente de Validation",
-        unit=None,
-        start=start,
-        value=float(pending),
+        name="Taches en Attente de Validation",
+        unit=None, start=start, value=float(pending), mean_type=_mean_type,
     )
 
     _LOGGER.debug(
@@ -127,15 +113,19 @@ def _push(
     unit: str | None,
     start: datetime,
     value: float,
+    mean_type=None,
 ) -> None:
     """Insert a single mean-based statistic into the recorder."""
-    metadata = StatisticMetaData(
-        has_mean=True,
-        has_sum=False,
-        name=name,
-        source=DOMAIN,
-        statistic_id=statistic_id,
-        unit_of_measurement=unit,
-    )
+    kwargs = {
+        "has_mean": True,
+        "has_sum": False,
+        "name": name,
+        "source": DOMAIN,
+        "statistic_id": statistic_id,
+        "unit_of_measurement": unit,
+    }
+    if mean_type is not None:
+        kwargs["mean_type"] = mean_type
+    metadata = StatisticMetaData(**kwargs)
     data = StatisticData(start=start, mean=value)
     async_add_external_statistics(hass, metadata, [data])
