@@ -164,16 +164,22 @@ class KidsTasksChildCard extends HTMLElement {
 
   getCardSize() { return 3; }
 
-  _tasks(childName) {
+  _tasks(childId) {
     const allTasks = this._hass.states["sensor.kidtasks_all_tasks_list"];
     if (!allTasks) return [];
-    return (allTasks.attributes.tasks || []).filter(t => t.assigned_child === childName);
+    return (allTasks.attributes.tasks || []).filter(t =>
+      Array.isArray(t.assigned_child_ids)
+        ? t.assigned_child_ids.includes(childId)
+        : t.assigned_child === this._childName
+    );
   }
 
-  _pendingCount(childName) {
+  _pendingCount(childId) {
     const pv = this._hass.states["sensor.kidtasks_pending_validations"];
     if (!pv) return 0;
-    return (pv.attributes.pending_tasks || []).filter(t => t.child === childName).length;
+    return (pv.attributes.pending_tasks || []).filter(t =>
+      Array.isArray(t.child_ids) ? t.child_ids.includes(childId) : t.child === this._childName
+    ).length;
   }
 
   _render() {
@@ -185,6 +191,8 @@ class KidsTasksChildCard extends HTMLElement {
 
     const a = state.attributes;
     const childName = a.name || "Enfant";
+    const childId = a.child_id || "";
+    this._childName = childName;
     const points = state.state !== undefined ? parseInt(state.state) : (a.points || 0);
     const level = a.level || 1;
     const coins = a.coins || 0;
@@ -194,8 +202,8 @@ class KidsTasksChildCard extends HTMLElement {
     const gradEnd = a.card_gradient_end || "var(--accent-color, #7c4dff)";
     const pct = xpProgress(points, level);
     const toNext = pointsToNextLevel(points, level);
-    const tasks = this._tasks(childName);
-    const pending = this._pendingCount(childName);
+    const tasks = this._tasks(childId);
+    const pending = this._pendingCount(childId);
 
     const taskChips = tasks.slice(0, 5).map(t => {
       const meta = STATUS_META[this._rawStatus(t.status)] || STATUS_META["todo"];
@@ -296,7 +304,9 @@ class KidsTasksChildCard extends HTMLElement {
     if (btn) {
       btn.addEventListener("click", () => {
         const pv = this._hass.states["sensor.kidtasks_pending_validations"];
-        const myPending = (pv?.attributes.pending_tasks || []).filter(t => t.child === childName);
+        const myPending = (pv?.attributes.pending_tasks || []).filter(t =>
+          Array.isArray(t.child_ids) ? t.child_ids.includes(childId) : t.child === childName
+        );
         myPending.forEach(t => callService(this._hass, "kids_tasks", "validate_task", { task_id: t.task_id }));
       });
     }
@@ -396,11 +406,8 @@ class KidsTasksValidationCard extends HTMLElement {
   }
 
   _categoryIcon(task) {
-    if (task.category) {
-      const cat = typeof task.category === "string" ? task.category.toLowerCase() : "";
-      return CATEGORY_ICONS[cat] || "📋";
-    }
-    return "📋";
+    const cat = typeof task.category === "string" ? task.category.toLowerCase() : "";
+    return CATEGORY_ICONS[cat] || "📋";
   }
 }
 
