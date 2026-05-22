@@ -264,15 +264,20 @@ class PendingValidationsSensor(CoordinatorEntity, SensorEntity):
         pending_tasks = []
         for task_id, task_data in self.coordinator.data.get("tasks", {}).items():
             if task_data.get("status") == "pending_validation":
-                child_name = "Unknown"
-                if task_data.get("assigned_child_id"):
-                    child_data = self.coordinator.data["children"].get(task_data["assigned_child_id"], {})
-                    child_name = child_data.get("name", "Unknown")
-                
+                assigned_child_ids = task_data.get("assigned_child_ids") or []
+
+                child_names = []
+                for cid in assigned_child_ids:
+                    name = self.coordinator.data["children"].get(cid, {}).get("name")
+                    if name:
+                        child_names.append(name)
+
                 pending_tasks.append({
                     "task_id": task_id,
                     "name": task_data.get("name", ""),
-                    "child": child_name,
+                    "child": ", ".join(child_names) if child_names else "Unknown",
+                    "child_ids": assigned_child_ids,
+                    "category": task_data.get("category", "other"),
                     "points": task_data.get("points", 0),
                 })
         
@@ -384,11 +389,14 @@ class AllTasksListSensor(CoordinatorEntity, SensorEntity):
         all_tasks = []
         
         for task_id, task_data in self.coordinator.data.get("tasks", {}).items():
-            # Get child name if assigned
-            child_name = "Non assigné"
-            if task_data.get("assigned_child_id"):
-                child_data = self.coordinator.data.get("children", {}).get(task_data["assigned_child_id"], {})
-                child_name = child_data.get("name", "Enfant inconnu")
+            assigned_child_ids = task_data.get("assigned_child_ids") or []
+
+            child_names = []
+            for cid in assigned_child_ids:
+                name = self.coordinator.data.get("children", {}).get(cid, {}).get("name")
+                if name:
+                    child_names.append(name)
+            child_name = ", ".join(child_names) if child_names else "Non assigné"
             
             # Format status for display
             status_display = {
@@ -417,6 +425,7 @@ class AllTasksListSensor(CoordinatorEntity, SensorEntity):
                 "frequency": frequency_display,
                 "status": status_display,
                 "assigned_child": child_name,
+                "assigned_child_ids": assigned_child_ids,
                 "validation_required": task_data.get("validation_required", False),
                 "active": task_data.get("active", True),
                 "created_at": task_data.get("created_at"),
@@ -432,9 +441,9 @@ class AllTasksListSensor(CoordinatorEntity, SensorEntity):
             "total_count": len(all_tasks),
             "active_count": sum(1 for task in all_tasks if task["active"]),
             "completed_today_count": len([
-                task for task in all_tasks 
-                if task["last_completed_at"] and 
-                task["last_completed_at"].startswith(datetime.now().strftime("%Y-%m-%d"))
+                task for task in all_tasks
+                if task["last_completed_at"] and
+                task["last_completed_at"].startswith(dt_util.now().strftime("%Y-%m-%d"))
             ])
         }
 
@@ -532,11 +541,13 @@ class TaskSensor(CoordinatorEntity, SensorEntity):
         """Return the state attributes."""
         task_data = self.coordinator.data["tasks"].get(self.task_id, {})
         
-        # Get child name if assigned
-        child_name = "Non assigné"
-        if task_data.get("assigned_child_id"):
-            child_data = self.coordinator.data.get("children", {}).get(task_data["assigned_child_id"], {})
-            child_name = child_data.get("name", "Enfant inconnu")
+        # Get child names
+        assigned_child_ids = task_data.get("assigned_child_ids") or []
+        child_names = [
+            self.coordinator.data.get("children", {}).get(cid, {}).get("name")
+            for cid in assigned_child_ids
+        ]
+        child_name = ", ".join(n for n in child_names if n) or "Non assigné"
         
         # Prepare child statuses for frontend
         child_statuses_for_frontend = {}
