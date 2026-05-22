@@ -72,9 +72,10 @@ Intégration Home Assistant pour gérer les tâches quotidiennes des enfants ave
 `custom_components/kids_tasks/switch.py` : `SwitchEntity` par tâche × enfant.
 ON = `complete_task`, OFF = reset. Suit `child_statuses[child_id]`. Listener dynamique.
 
-#### 3.2 Statistiques (statistics.py)
-Intégrer avec le recorder HA pour les graphiques long terme.
-Utiliser `StatisticData` / `async_add_external_statistics`.
+#### 3.2 ✅ Statistiques (statistics.py) — DONE
+`custom_components/kids_tasks/statistics.py` — `async_record_statistics(hass, coordinator)`.
+Statistiques par enfant : points, niveau, tâches complétées. Global : tâches en attente de validation.
+Toutes en `has_mean=True` (snapshot horaire). Enregistrement via `_maybe_record_statistics()` dans le coordinator, au maximum une fois par heure. Dégradation gracieuse si recorder absent.
 
 #### 3.3 ✅ Calendrier (calendar.py) — DONE
 `custom_components/kids_tasks/calendar.py` : entité `CalendarEntity` `calendar.kids_tasks`.
