@@ -53,19 +53,16 @@ def install_integration(hass_config_dir):
 
 def install_frontend(hass_config_dir):
     """Installe l'interface frontend"""
-    
-    source_file = Path(__file__).parent / "custom_components" / "kids_tasks" / "kids-tasks-card.js"
-    
-    # Essayer plusieurs emplacements possibles
-    possible_targets = [
-        hass_config_dir / "www" / "kids_tasks" / "kids-tasks-card.js",
-        hass_config_dir / "www" / "community" / "kids-tasks-ha" / "kids-tasks-card.js",
-    ]
-    
-    for target_file in possible_targets:
-        target_file.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(source_file, target_file)
-        print(f"   ✅ Interface copiée vers: {target_file}")
+
+    source_file = Path(__file__).parent / "www" / "kids_tasks" / "kids-tasks-card.js"
+    if not source_file.exists():
+        print("   ⚠️  kids-tasks-card.js introuvable, interface ignorée")
+        return
+
+    target_file = hass_config_dir / "www" / "kids_tasks" / "kids-tasks-card.js"
+    target_file.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(source_file, target_file)
+    print(f"   ✅ Interface copiée vers: {target_file}")
 
 def update_lovelace_resources(hass_config_dir):
     """Propose la configuration Lovelace"""

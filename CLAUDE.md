@@ -97,7 +97,7 @@ Objectifs : cartes **synthétiques** (info clé visible d'un coup d'œil), **pra
 Mockups Canva générés — **Variante 4 choisie** :
 - Design de référence (éditable) : https://www.canva.com/d/yuqthQagdyhEuzr
 
-#### 4.1 Architecture technique
+#### 4.1 ✅ Architecture technique — DONE
 Fichier : `www/kids_tasks/kids-tasks-card.js`
 - **LitElement** (déjà disponible dans HA, pas de dépendance externe)
 - Design tokens HA : `--primary-color`, `--card-background-color`, `--primary-text-color`, etc.
@@ -115,7 +115,7 @@ Fichier : `www/kids_tasks/kids-tasks-card.js`
 └─────────────────────────────────────────┘
 ```
 
-#### 4.2 Carte enfant (kids-tasks-child-card)
+#### 4.2 ✅ Carte enfant (kids-tasks-child-card) — DONE
 Vue compacte d'un enfant — à placer en grille (1 carte par enfant).
 
 ```
@@ -133,7 +133,7 @@ Vue compacte d'un enfant — à placer en grille (1 carte par enfant).
 - Gradient de couleur configurable par enfant (`card_gradient_start/end`)
 - Config YAML : `type: kids-tasks-child-card`, `child_id: xxx`
 
-#### 4.3 Carte validation parentale (kids-tasks-validation-card)
+#### 4.3 ✅ Carte validation parentale (kids-tasks-validation-card) — DONE
 Queue de validation — vue parent, zéro scroll inutile.
 
 ```
@@ -156,7 +156,7 @@ Queue de validation — vue parent, zéro scroll inutile.
 - Badge de compteur dans le header
 - Masquée / affiche "Tout est validé ✅" si queue vide
 
-#### 4.4 Carte liste de tâches (kids-tasks-task-list-card)
+#### 4.4 ✅ Carte liste de tâches (kids-tasks-task-list-card) — DONE
 Vue complète des tâches avec filtres — pour dashboard parent.
 
 ```
@@ -178,7 +178,7 @@ Vue complète des tâches avec filtres — pour dashboard parent.
 - Actions inline uniquement pour `pending_validation`
 - Bouton "Ajouter" ouvre un dialog HA natif (via `ha-dialog`)
 
-#### 4.5 Carte récompenses (kids-tasks-reward-card)
+#### 4.5 ✅ Carte récompenses (kids-tasks-reward-card) — DONE
 Catalogue visuel — vue enfant ou parent selon contexte.
 
 ```
@@ -202,6 +202,6 @@ Catalogue visuel — vue enfant ou parent selon contexte.
 - Config : `child_id` optionnel (si absent = vue admin sans échange)
 - Quantité limitée affichée si `limited_quantity` défini
 
-#### 4.6 Intégration dans install.py
+#### 4.6 ✅ Intégration dans install.py — DONE
 Mettre à jour `install.py` pour copier `www/kids_tasks/kids-tasks-card.js` automatiquement.
 Mettre à jour `INTERFACE_GUIDE.md` avec les nouveaux types de cartes et leur config YAML.
