@@ -1,17 +1,3 @@
-/**
- * Kids Tasks Manager — Custom Lovelace Cards
- *
- * Cards:
- *   kids-tasks-child-summary-card  — compact child view (avatar, XP, today's tasks)
- *   kids-tasks-validation-card     — parent validation queue
- *   kids-tasks-task-list-card      — full task list with filters and add dialog
- *   kids-tasks-reward-card         — reward catalog with claim button
- *
- * No build step required. Compatible with Home Assistant 2024.11+
- */
-
-// ─── Constants ────────────────────────────────────────────────────────────────
-
 const CATEGORY_ICONS = {
   bedroom:  'mdi:bed',
   hygiene:  'mdi:shower',
@@ -61,46 +47,43 @@ const STATUS_META = {
   failed:             { label: 'Echoue',     icon: 'mdi:close-circle-outline' },
 };
 
-// ─── Shared styles ────────────────────────────────────────────────────────────
+const FIELD_STYLE = [
+  'width:100%', 'box-sizing:border-box', 'padding:9px 12px',
+  'border:1.5px solid var(--divider-color)', 'border-radius:8px',
+  'font-size:14px', 'background:var(--secondary-background-color)',
+  'color:var(--primary-text-color)', 'outline:none',
+].join(';');
+const LABEL_STYLE = 'display:block;margin-bottom:4px;font-size:13px;font-weight:600;';
+const ROW_STYLE   = 'margin-bottom:14px;';
 
 const BASE_STYLES = `
   :host {
     display: block;
 
-    /* Surfaces — inherit HA theme */
     --kt-bg:         var(--card-background-color);
     --kt-surface:    var(--secondary-background-color);
     --kt-divider:    var(--divider-color);
     --kt-shadow:     var(--box-shadow, 0 2px 8px rgba(0,0,0,.12));
 
-    /* Text */
     --kt-text:       var(--primary-text-color);
     --kt-text-muted: var(--secondary-text-color);
     --kt-font:       var(--paper-font-body1_-_font-family, 'Roboto', sans-serif);
 
-    /* Semantic status colors (all provided by HA 2024.11+) */
     --kt-success: var(--success-color, #4caf50);
     --kt-warning: var(--warning-color, #ff9800);
     --kt-error:   var(--error-color,   #f44336);
     --kt-info:    var(--info-color,    #2196f3);
     --kt-muted:   var(--disabled-text-color, #9e9e9e);
 
-    /* Default header gradient — overridable via entity attributes */
     --kt-grad-start: var(--primary-color, #6b73ff);
     --kt-grad-end:   var(--accent-color,  #9c27b0);
 
-    /* Border radii */
     --kt-r-card: 16px;
     --kt-r-btn:  8px;
     --kt-r-pill: 20px;
     --kt-r-chip: 12px;
   }
 
-  /*
-   * Status colour system.
-   * Elements carrying data-status get --s-color / --s-bg, consumed by
-   * .status-dot, .status-icon and .task-chip.
-   */
   [data-status="todo"]               { --s-color: var(--kt-muted);   --s-bg: rgba(158,158,158,.12); }
   [data-status="in_progress"]        { --s-color: var(--kt-info);    --s-bg: rgba(33,150,243,.12);  }
   [data-status="completed"]          { --s-color: var(--kt-success); --s-bg: rgba(76,175,80,.12);   }
@@ -115,7 +98,6 @@ const BASE_STYLES = `
     background:   var(--s-bg,    rgba(158,158,158,.12));
   }
 
-  /* Card shell */
   .kt-card {
     background:    var(--kt-bg);
     border-radius: var(--kt-r-card);
@@ -125,7 +107,6 @@ const BASE_STYLES = `
     color:         var(--kt-text);
   }
 
-  /* Non-gradient header */
   .kt-header {
     padding:         14px 16px 12px;
     display:         flex;
@@ -149,7 +130,6 @@ const BASE_STYLES = `
 
   .kt-divider { height: 1px; background: var(--kt-divider); margin: 0; }
 
-  /* Buttons */
   .kt-btn {
     border:        none;
     border-radius: var(--kt-r-btn);
@@ -176,7 +156,6 @@ const BASE_STYLES = `
   .kt-btn-disabled { background: var(--kt-muted); color: #fff; cursor: default; }
   .kt-btn-add      { background: var(--primary-color); color: var(--text-primary-color, #fff); }
 
-  /* Filter / category chips */
   .kt-chip {
     display:       inline-flex;
     align-items:   center;
@@ -211,8 +190,6 @@ const BASE_STYLES = `
     vertical-align:  middle;
   }
 `;
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function callService(hass, domain, service, data) {
   hass.callService(domain, service, data);
@@ -273,6 +250,18 @@ function showModal(content, title) {
   return overlay;
 }
 
+function confirmModal(message, onConfirm) {
+  const content = `
+    <p style="margin:0 0 20px;font-size:14px;">${message}</p>
+    <div style="display:flex;gap:10px;justify-content:flex-end;">
+      <button id="kt-no" style="padding:8px 18px;border-radius:8px;border:1.5px solid var(--divider-color);background:var(--secondary-background-color);color:var(--primary-text-color);font-size:14px;cursor:pointer;">Annuler</button>
+      <button id="kt-yes" style="padding:8px 18px;border-radius:8px;border:none;background:var(--error-color,#f44336);color:#fff;font-size:14px;font-weight:600;cursor:pointer;">Supprimer</button>
+    </div>`;
+  const dlg = showModal(content, 'Confirmation');
+  dlg.querySelector('#kt-no')?.addEventListener('click', () => dlg.remove());
+  dlg.querySelector('#kt-yes')?.addEventListener('click', () => { dlg.remove(); onConfirm(); });
+}
+
 function xpForLevel(level) { return level * 100; }
 
 function xpProgress(points, level) {
@@ -314,9 +303,44 @@ function rewardIconHtml(r, size = '28px') {
   return `<ha-icon icon="${icon}" style="--mdc-icon-size:${size};"></ha-icon>`;
 }
 
+function childOptsHtml(hass) {
+  const s = hass.states['sensor.kidtasks_all_children_list'];
+  return (s?.attributes?.children || [])
+    .map(c => `<option value="${c.id}">${c.name}</option>`)
+    .join('');
+}
+
+function taskCategoryOptsHtml(selected = '') {
+  return [
+    ['bedroom', 'Chambre'], ['hygiene', 'Hygiene'], ['kitchen', 'Cuisine'],
+    ['homework', 'Devoirs'], ['outdoor', 'Exterieur'], ['music', 'Musique'], ['other', 'Autre'],
+  ].map(([v, l]) => `<option value="${v}"${v === selected ? ' selected' : ''}>${l}</option>`).join('');
+}
+
+function taskFreqOptsHtml(selected = '') {
+  return [
+    ['daily', 'Quotidienne'], ['weekly', 'Hebdomadaire'], ['monthly', 'Mensuelle'], ['once', 'Unique'],
+  ].map(([v, l]) => `<option value="${v}"${v === selected ? ' selected' : ''}>${l}</option>`).join('');
+}
+
+function rewardCategoryOptsHtml(selected = '') {
+  return [
+    ['fun', 'Fun'], ['screen_time', 'Ecran'], ['outing', 'Sortie'],
+    ['privilege', 'Privilege'], ['toy', 'Jouet'], ['treat', 'Friandise'],
+  ].map(([v, l]) => `<option value="${v}"${v === selected ? ' selected' : ''}>${l}</option>`).join('');
+}
+
+function freqRawFromDisplay(display) {
+  const map = { 'Quotidienne': 'daily', 'Hebdomadaire': 'weekly', 'Mensuelle': 'monthly', 'Unique': 'once' };
+  return map[display] || display || 'daily';
+}
+
+function catRawFromDisplay(display) {
+  return (display || 'other').toLowerCase();
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // Card 1 — KidsTasksChildSummaryCard
-// Compact per-child view for dashboard grids.
 // ═══════════════════════════════════════════════════════════════════════════════
 
 class KidsTasksChildSummaryCard extends HTMLElement {
@@ -356,6 +380,49 @@ class KidsTasksChildSummaryCard extends HTMLElement {
     return (pv.attributes.pending_tasks || []).filter(t =>
       Array.isArray(t.child_ids) && t.child_ids.includes(childId)
     ).length;
+  }
+
+  _openEditChildDialog(childId, attrs) {
+    const gradStart = attrs.card_gradient_start || '#6b73ff';
+    const gradEnd   = attrs.card_gradient_end   || '#9c27b0';
+    const content = `
+      <div>
+        <div style="${ROW_STYLE}">
+          <label style="${LABEL_STYLE}">Nom</label>
+          <input id="kt-name" type="text" value="${attrs.name || ''}" style="${FIELD_STYLE}">
+        </div>
+        <div style="${ROW_STYLE}">
+          <label style="${LABEL_STYLE}">Avatar (emoji ou URL)</label>
+          <input id="kt-avatar" type="text" value="${attrs.avatar || ''}" style="${FIELD_STYLE}">
+        </div>
+        <div style="${ROW_STYLE}">
+          <label style="${LABEL_STYLE}">Couleur debut du gradient</label>
+          <input id="kt-grad-start" type="color" value="${gradStart}" style="width:60px;height:36px;border:none;border-radius:8px;cursor:pointer;background:none;">
+        </div>
+        <div style="${ROW_STYLE}">
+          <label style="${LABEL_STYLE}">Couleur fin du gradient</label>
+          <input id="kt-grad-end" type="color" value="${gradEnd}" style="width:60px;height:36px;border:none;border-radius:8px;cursor:pointer;background:none;">
+        </div>
+        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:6px;">
+          <button id="kt-cancel" style="padding:8px 18px;border-radius:8px;border:1.5px solid var(--divider-color);background:var(--secondary-background-color);color:var(--primary-text-color);font-size:14px;cursor:pointer;">Annuler</button>
+          <button id="kt-save" style="padding:8px 18px;border-radius:8px;border:none;background:var(--primary-color);color:var(--text-primary-color,#fff);font-size:14px;font-weight:600;cursor:pointer;">Sauvegarder</button>
+        </div>
+      </div>`;
+
+    const dlg = showModal(content, 'Modifier l\'enfant');
+    dlg.querySelector('#kt-cancel')?.addEventListener('click', () => dlg.remove());
+    dlg.querySelector('#kt-save')?.addEventListener('click', () => {
+      const name = dlg.querySelector('#kt-name')?.value?.trim();
+      if (!name) { dlg.querySelector('#kt-name')?.focus(); return; }
+      callService(this._hass, 'kids_tasks', 'update_child', {
+        child_id:             childId,
+        name,
+        avatar:               dlg.querySelector('#kt-avatar')?.value?.trim() || '',
+        card_gradient_start:  dlg.querySelector('#kt-grad-start')?.value || '#6b73ff',
+        card_gradient_end:    dlg.querySelector('#kt-grad-end')?.value   || '#9c27b0',
+      });
+      dlg.remove();
+    });
   }
 
   _render() {
@@ -523,6 +590,7 @@ class KidsTasksChildSummaryCard extends HTMLElement {
                    Tout est valide
                  </span>`
             }
+            <button class="kt-btn kt-btn-secondary sm" id="edit-child-btn">Modifier</button>
             <button class="kt-btn kt-btn-secondary sm" id="detail-btn">Details</button>
           </div>
         </div>
@@ -534,6 +602,8 @@ class KidsTasksChildSummaryCard extends HTMLElement {
         .filter(t => Array.isArray(t.child_ids) && t.child_ids.includes(childId))
         .forEach(t => callService(this._hass, 'kids_tasks', 'validate_task', { task_id: t.task_id }));
     });
+
+    this.shadowRoot.getElementById('edit-child-btn')?.addEventListener('click', () => this._openEditChildDialog(childId, a));
 
     this.shadowRoot.getElementById('detail-btn')?.addEventListener('click', () => {
       this.dispatchEvent(new CustomEvent('hass-more-info', {
@@ -549,7 +619,6 @@ customElements.define('kids-tasks-child-summary-card', KidsTasksChildSummaryCard
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // Card 2 — KidsTasksValidationCard
-// Parent-facing queue of tasks awaiting validation.
 // ═══════════════════════════════════════════════════════════════════════════════
 
 class KidsTasksValidationCard extends HTMLElement {
@@ -647,7 +716,6 @@ customElements.define('kids-tasks-validation-card', KidsTasksValidationCard);
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // Card 3 — KidsTasksTaskListCard
-// Filtered task list for parent dashboard with add dialog.
 // ═══════════════════════════════════════════════════════════════════════════════
 
 class KidsTasksTaskListCard extends HTMLElement {
@@ -691,74 +759,37 @@ class KidsTasksTaskListCard extends HTMLElement {
   }
 
   _openAddDialog() {
-    const childList = this._hass.states['sensor.kidtasks_all_children_list'];
-    const childOpts = (childList?.attributes?.children || [])
-      .map(c => `<option value="${c.id}">${c.name}</option>`)
-      .join('');
-
-    const fieldStyle = [
-      'width:100%',
-      'box-sizing:border-box',
-      'padding:9px 12px',
-      'border:1.5px solid var(--divider-color)',
-      'border-radius:8px',
-      'font-size:14px',
-      'background:var(--secondary-background-color)',
-      'color:var(--primary-text-color)',
-      'outline:none',
-    ].join(';');
-
-    const labelStyle = 'display:block;margin-bottom:4px;font-size:13px;font-weight:600;';
-    const rowStyle   = 'margin-bottom:14px;';
+    const childOpts = childOptsHtml(this._hass);
 
     const content = `
       <div>
-        <div style="${rowStyle}">
-          <label style="${labelStyle}">Nom</label>
-          <input id="kt-name" type="text" placeholder="Nom de la tache" style="${fieldStyle}">
+        <div style="${ROW_STYLE}">
+          <label style="${LABEL_STYLE}">Nom</label>
+          <input id="kt-name" type="text" placeholder="Nom de la tache" style="${FIELD_STYLE}">
         </div>
-        <div style="${rowStyle}">
-          <label style="${labelStyle}">Categorie</label>
-          <select id="kt-cat" style="${fieldStyle}">
-            <option value="bedroom">Chambre</option>
-            <option value="hygiene">Hygiene</option>
-            <option value="kitchen">Cuisine</option>
-            <option value="homework">Devoirs</option>
-            <option value="outdoor">Exterieur</option>
-            <option value="music">Musique</option>
-            <option value="other">Autre</option>
-          </select>
+        <div style="${ROW_STYLE}">
+          <label style="${LABEL_STYLE}">Categorie</label>
+          <select id="kt-cat" style="${FIELD_STYLE}">${taskCategoryOptsHtml()}</select>
         </div>
-        <div style="${rowStyle}">
-          <label style="${labelStyle}">Points</label>
-          <input id="kt-pts" type="number" value="10" min="1" max="999" style="${fieldStyle}">
+        <div style="${ROW_STYLE}">
+          <label style="${LABEL_STYLE}">Points</label>
+          <input id="kt-pts" type="number" value="10" min="1" max="999" style="${FIELD_STYLE}">
         </div>
-        <div style="${rowStyle}">
-          <label style="${labelStyle}">Frequence</label>
-          <select id="kt-freq" style="${fieldStyle}">
-            <option value="daily">Quotidienne</option>
-            <option value="weekly">Hebdomadaire</option>
-            <option value="monthly">Mensuelle</option>
-            <option value="once">Unique</option>
-          </select>
+        <div style="${ROW_STYLE}">
+          <label style="${LABEL_STYLE}">Frequence</label>
+          <select id="kt-freq" style="${FIELD_STYLE}">${taskFreqOptsHtml()}</select>
         </div>
         ${childOpts ? `
-        <div style="${rowStyle}">
-          <label style="${labelStyle}">Assigner a (optionnel)</label>
-          <select id="kt-child" style="${fieldStyle}">
+        <div style="${ROW_STYLE}">
+          <label style="${LABEL_STYLE}">Assigner a (optionnel)</label>
+          <select id="kt-child" style="${FIELD_STYLE}">
             <option value="">— Non assigne —</option>
             ${childOpts}
           </select>
         </div>` : ''}
         <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:6px;">
-          <button id="kt-cancel"
-            style="padding:8px 18px;border-radius:8px;border:1.5px solid var(--divider-color);background:var(--secondary-background-color);color:var(--primary-text-color);font-size:14px;cursor:pointer;">
-            Annuler
-          </button>
-          <button id="kt-save"
-            style="padding:8px 18px;border-radius:8px;border:none;background:var(--primary-color);color:var(--text-primary-color,#fff);font-size:14px;font-weight:600;cursor:pointer;">
-            Ajouter
-          </button>
+          <button id="kt-cancel" style="padding:8px 18px;border-radius:8px;border:1.5px solid var(--divider-color);background:var(--secondary-background-color);color:var(--primary-text-color);font-size:14px;cursor:pointer;">Annuler</button>
+          <button id="kt-save" style="padding:8px 18px;border-radius:8px;border:none;background:var(--primary-color);color:var(--text-primary-color,#fff);font-size:14px;font-weight:600;cursor:pointer;">Ajouter</button>
         </div>
       </div>`;
 
@@ -782,6 +813,77 @@ class KidsTasksTaskListCard extends HTMLElement {
       callService(this._hass, 'kids_tasks', 'add_task', data);
       dlg.remove();
     });
+  }
+
+  _openEditTaskDialog(task) {
+    const catRaw  = catRawFromDisplay(task.category);
+    const freqRaw = freqRawFromDisplay(task.frequency);
+    const firstChild = Array.isArray(task.assigned_child_ids) ? task.assigned_child_ids[0] || '' : '';
+    const childOpts = childOptsHtml(this._hass);
+
+    const childSelectHtml = childOpts ? `
+      <div style="${ROW_STYLE}">
+        <label style="${LABEL_STYLE}">Assigner a (optionnel)</label>
+        <select id="kt-child" style="${FIELD_STYLE}">
+          <option value="">— Non assigne —</option>
+          ${(this._hass.states['sensor.kidtasks_all_children_list']?.attributes?.children || [])
+            .map(c => `<option value="${c.id}"${c.id === firstChild ? ' selected' : ''}>${c.name}</option>`)
+            .join('')}
+        </select>
+      </div>` : '';
+
+    const content = `
+      <div>
+        <div style="${ROW_STYLE}">
+          <label style="${LABEL_STYLE}">Nom</label>
+          <input id="kt-name" type="text" value="${task.name || ''}" style="${FIELD_STYLE}">
+        </div>
+        <div style="${ROW_STYLE}">
+          <label style="${LABEL_STYLE}">Categorie</label>
+          <select id="kt-cat" style="${FIELD_STYLE}">${taskCategoryOptsHtml(catRaw)}</select>
+        </div>
+        <div style="${ROW_STYLE}">
+          <label style="${LABEL_STYLE}">Points</label>
+          <input id="kt-pts" type="number" value="${task.points || 10}" min="1" max="999" style="${FIELD_STYLE}">
+        </div>
+        <div style="${ROW_STYLE}">
+          <label style="${LABEL_STYLE}">Frequence</label>
+          <select id="kt-freq" style="${FIELD_STYLE}">${taskFreqOptsHtml(freqRaw)}</select>
+        </div>
+        ${childSelectHtml}
+        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:6px;">
+          <button id="kt-cancel" style="padding:8px 18px;border-radius:8px;border:1.5px solid var(--divider-color);background:var(--secondary-background-color);color:var(--primary-text-color);font-size:14px;cursor:pointer;">Annuler</button>
+          <button id="kt-save" style="padding:8px 18px;border-radius:8px;border:none;background:var(--primary-color);color:var(--text-primary-color,#fff);font-size:14px;font-weight:600;cursor:pointer;">Sauvegarder</button>
+        </div>
+      </div>`;
+
+    const dlg = showModal(content, 'Modifier la tache');
+
+    dlg.querySelector('#kt-cancel')?.addEventListener('click', () => dlg.remove());
+
+    dlg.querySelector('#kt-save')?.addEventListener('click', () => {
+      const name = dlg.querySelector('#kt-name')?.value?.trim();
+      if (!name) { dlg.querySelector('#kt-name')?.focus(); return; }
+
+      const data = {
+        task_id:   task.task_id,
+        name,
+        category:  dlg.querySelector('#kt-cat')?.value  || 'other',
+        points:    parseInt(dlg.querySelector('#kt-pts')?.value || '10', 10),
+        frequency: dlg.querySelector('#kt-freq')?.value || 'daily',
+      };
+      const childId = dlg.querySelector('#kt-child')?.value;
+      data.assigned_child_ids = childId ? [childId] : [];
+
+      callService(this._hass, 'kids_tasks', 'update_task', data);
+      dlg.remove();
+    });
+  }
+
+  _openDeleteTaskConfirm(task) {
+    confirmModal('Supprimer la tache "' + task.name + '" ?', () =>
+      callService(this._hass, 'kids_tasks', 'remove_task', { task_id: task.task_id })
+    );
   }
 
   _render() {
@@ -817,15 +919,19 @@ class KidsTasksTaskListCard extends HTMLElement {
           <div class="task-right">
             <span class="pts-badge">${t.points} pts</span>
             ${isPending ? `
-              <button class="kt-btn kt-btn-validate sm" data-id="${t.task_id}" data-action="validate"
-                title="Valider">
+              <button class="kt-btn kt-btn-validate sm" data-id="${t.task_id}" data-action="validate" title="Valider">
                 <ha-icon icon="mdi:check" style="--mdc-icon-size:14px;"></ha-icon>
               </button>
-              <button class="kt-btn kt-btn-reject sm" data-id="${t.task_id}" data-action="reject"
-                title="Rejeter">
+              <button class="kt-btn kt-btn-reject sm" data-id="${t.task_id}" data-action="reject" title="Rejeter">
                 <ha-icon icon="mdi:close" style="--mdc-icon-size:14px;"></ha-icon>
               </button>
             ` : ''}
+            <button class="kt-btn sm icon-btn" data-id="${t.task_id}" data-action="edit-task" title="Modifier">
+              <ha-icon icon="mdi:pencil" style="--mdc-icon-size:14px;"></ha-icon>
+            </button>
+            <button class="kt-btn sm icon-btn" data-id="${t.task_id}" data-action="delete-task" title="Supprimer">
+              <ha-icon icon="mdi:trash-can-outline" style="--mdc-icon-size:14px;"></ha-icon>
+            </button>
           </div>
         </div>
         ${i < tasks.length - 1 ? '<div class="kt-divider"></div>' : ''}
@@ -857,6 +963,8 @@ class KidsTasksTaskListCard extends HTMLElement {
           font-weight:   600;
         }
         .header-right { display: flex; align-items: center; gap: 8px; }
+        .icon-btn { background: var(--kt-surface); color: var(--kt-text-muted); padding: 4px 6px; }
+        .icon-btn:hover { color: var(--primary-color); }
       </style>
 
       <div class="kt-card">
@@ -884,10 +992,24 @@ class KidsTasksTaskListCard extends HTMLElement {
       });
     });
 
-    this.shadowRoot.querySelectorAll('button[data-action]').forEach(btn => {
+    this.shadowRoot.querySelectorAll('button[data-action="validate"], button[data-action="reject"]').forEach(btn => {
       btn.addEventListener('click', () => {
         const svc = btn.dataset.action === 'validate' ? 'validate_task' : 'reject_task';
         callService(this._hass, 'kids_tasks', svc, { task_id: btn.dataset.id });
+      });
+    });
+
+    this.shadowRoot.querySelectorAll('button[data-action="edit-task"]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const task = allTasks.find(t => t.task_id === btn.dataset.id);
+        if (task) this._openEditTaskDialog(task);
+      });
+    });
+
+    this.shadowRoot.querySelectorAll('button[data-action="delete-task"]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const task = allTasks.find(t => t.task_id === btn.dataset.id);
+        if (task) this._openDeleteTaskConfirm(task);
       });
     });
   }
@@ -897,7 +1019,6 @@ customElements.define('kids-tasks-task-list-card', KidsTasksTaskListCard);
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // Card 4 — KidsTasksRewardCard
-// Visual reward catalog with per-child affordability check.
 // ═══════════════════════════════════════════════════════════════════════════════
 
 class KidsTasksRewardCard extends HTMLElement {
@@ -934,19 +1055,142 @@ class KidsTasksRewardCard extends HTMLElement {
     };
   }
 
+  _openAddRewardDialog() {
+    const content = `
+      <div>
+        <div style="${ROW_STYLE}">
+          <label style="${LABEL_STYLE}">Nom</label>
+          <input id="kt-name" type="text" placeholder="Nom de la recompense" style="${FIELD_STYLE}">
+        </div>
+        <div style="${ROW_STYLE}">
+          <label style="${LABEL_STYLE}">Description (optionnel)</label>
+          <input id="kt-desc" type="text" placeholder="Description courte" style="${FIELD_STYLE}">
+        </div>
+        <div style="${ROW_STYLE}">
+          <label style="${LABEL_STYLE}">Cout (points)</label>
+          <input id="kt-cost" type="number" value="50" min="1" max="9999" style="${FIELD_STYLE}">
+        </div>
+        <div style="${ROW_STYLE}">
+          <label style="${LABEL_STYLE}">Categorie</label>
+          <select id="kt-cat" style="${FIELD_STYLE}">${rewardCategoryOptsHtml()}</select>
+        </div>
+        <div style="${ROW_STYLE}">
+          <label style="${LABEL_STYLE}">Icone (ex: mdi:gift)</label>
+          <input id="kt-icon" type="text" placeholder="mdi:gift" style="${FIELD_STYLE}">
+        </div>
+        <div style="${ROW_STYLE}">
+          <label style="${LABEL_STYLE}">Quantite limitee (optionnel)</label>
+          <input id="kt-qty" type="number" placeholder="Laisser vide si illimite" min="1" style="${FIELD_STYLE}">
+        </div>
+        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:6px;">
+          <button id="kt-cancel" style="padding:8px 18px;border-radius:8px;border:1.5px solid var(--divider-color);background:var(--secondary-background-color);color:var(--primary-text-color);font-size:14px;cursor:pointer;">Annuler</button>
+          <button id="kt-save" style="padding:8px 18px;border-radius:8px;border:none;background:var(--primary-color);color:var(--text-primary-color,#fff);font-size:14px;font-weight:600;cursor:pointer;">Ajouter</button>
+        </div>
+      </div>`;
+
+    const dlg = showModal(content, 'Nouvelle recompense');
+    dlg.querySelector('#kt-cancel')?.addEventListener('click', () => dlg.remove());
+    dlg.querySelector('#kt-save')?.addEventListener('click', () => {
+      const name = dlg.querySelector('#kt-name')?.value?.trim();
+      if (!name) { dlg.querySelector('#kt-name')?.focus(); return; }
+      const data = {
+        name,
+        cost:     parseInt(dlg.querySelector('#kt-cost')?.value || '50', 10),
+        category: dlg.querySelector('#kt-cat')?.value || 'fun',
+      };
+      const desc = dlg.querySelector('#kt-desc')?.value?.trim();
+      if (desc) data.description = desc;
+      const icon = dlg.querySelector('#kt-icon')?.value?.trim();
+      if (icon) data.icon = icon;
+      const qty = dlg.querySelector('#kt-qty')?.value?.trim();
+      if (qty) data.limited_quantity = parseInt(qty, 10);
+      callService(this._hass, 'kids_tasks', 'add_reward', data);
+      dlg.remove();
+    });
+  }
+
+  _openEditRewardDialog(reward) {
+    const qtyVal = reward.limited_quantity != null ? reward.limited_quantity : '';
+    const content = `
+      <div>
+        <div style="${ROW_STYLE}">
+          <label style="${LABEL_STYLE}">Nom</label>
+          <input id="kt-name" type="text" value="${reward.name || ''}" style="${FIELD_STYLE}">
+        </div>
+        <div style="${ROW_STYLE}">
+          <label style="${LABEL_STYLE}">Description (optionnel)</label>
+          <input id="kt-desc" type="text" value="${reward.description || ''}" style="${FIELD_STYLE}">
+        </div>
+        <div style="${ROW_STYLE}">
+          <label style="${LABEL_STYLE}">Cout (points)</label>
+          <input id="kt-cost" type="number" value="${reward.cost || 50}" min="1" max="9999" style="${FIELD_STYLE}">
+        </div>
+        <div style="${ROW_STYLE}">
+          <label style="${LABEL_STYLE}">Categorie</label>
+          <select id="kt-cat" style="${FIELD_STYLE}">${rewardCategoryOptsHtml((reward.category || '').toLowerCase())}</select>
+        </div>
+        <div style="${ROW_STYLE}">
+          <label style="${LABEL_STYLE}">Icone (ex: mdi:gift)</label>
+          <input id="kt-icon" type="text" value="${reward.icon || ''}" placeholder="mdi:gift" style="${FIELD_STYLE}">
+        </div>
+        <div style="${ROW_STYLE}">
+          <label style="${LABEL_STYLE}">Quantite limitee (optionnel)</label>
+          <input id="kt-qty" type="number" value="${qtyVal}" placeholder="Laisser vide si illimite" min="1" style="${FIELD_STYLE}">
+        </div>
+        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:6px;">
+          <button id="kt-cancel" style="padding:8px 18px;border-radius:8px;border:1.5px solid var(--divider-color);background:var(--secondary-background-color);color:var(--primary-text-color);font-size:14px;cursor:pointer;">Annuler</button>
+          <button id="kt-save" style="padding:8px 18px;border-radius:8px;border:none;background:var(--primary-color);color:var(--text-primary-color,#fff);font-size:14px;font-weight:600;cursor:pointer;">Sauvegarder</button>
+        </div>
+      </div>`;
+
+    const dlg = showModal(content, 'Modifier la recompense');
+    dlg.querySelector('#kt-cancel')?.addEventListener('click', () => dlg.remove());
+    dlg.querySelector('#kt-save')?.addEventListener('click', () => {
+      const name = dlg.querySelector('#kt-name')?.value?.trim();
+      if (!name) { dlg.querySelector('#kt-name')?.focus(); return; }
+      const data = {
+        reward_id: reward.reward_id,
+        name,
+        cost:      parseInt(dlg.querySelector('#kt-cost')?.value || '50', 10),
+        category:  dlg.querySelector('#kt-cat')?.value || 'fun',
+      };
+      const desc = dlg.querySelector('#kt-desc')?.value?.trim();
+      if (desc) data.description = desc;
+      const icon = dlg.querySelector('#kt-icon')?.value?.trim();
+      if (icon) data.icon = icon;
+      const qty = dlg.querySelector('#kt-qty')?.value?.trim();
+      data.limited_quantity = qty ? parseInt(qty, 10) : null;
+      callService(this._hass, 'kids_tasks', 'update_reward', data);
+      dlg.remove();
+    });
+  }
+
+  _openDeleteRewardConfirm(reward) {
+    confirmModal('Supprimer la recompense "' + reward.name + '" ?', () =>
+      callService(this._hass, 'kids_tasks', 'remove_reward', { reward_id: reward.reward_id })
+    );
+  }
+
   _render() {
     const state      = this._hass.states[this._config.entity];
-    const allRewards = (state?.attributes?.rewards || []).filter(r => r.active && r.is_available);
+    const isAdmin    = !this._config.child_entity;
+    const allRewards = isAdmin
+      ? (state?.attributes?.rewards || [])
+      : (state?.attributes?.rewards || []).filter(r => r.active && r.is_available);
     const child      = this._childInfo();
     const childPts   = child?.points ?? null;
 
+    const displayRewards = isAdmin
+      ? allRewards
+      : allRewards;
+
     const categories = ['all', ...new Set(
-      allRewards.map(r => (r.category || '').toLowerCase()).filter(Boolean)
+      displayRewards.map(r => (r.category || '').toLowerCase()).filter(Boolean)
     )];
 
     const filtered = this._filter === 'all'
-      ? allRewards
-      : allRewards.filter(r => (r.category || '').toLowerCase() === this._filter);
+      ? displayRewards
+      : displayRewards.filter(r => (r.category || '').toLowerCase() === this._filter);
 
     const catChips = categories.map(c => {
       const icon  = c === 'all' ? 'mdi:gift' : (REWARD_ICONS[c] || 'mdi:gift');
@@ -968,6 +1212,15 @@ class KidsTasksRewardCard extends HTMLElement {
 
       return `
         <div class="reward-tile">
+          ${isAdmin ? `
+            <div class="tile-actions">
+              <button class="icon-btn" data-id="${r.reward_id}" data-action="edit-reward" title="Modifier">
+                <ha-icon icon="mdi:pencil" style="--mdc-icon-size:13px;"></ha-icon>
+              </button>
+              <button class="icon-btn" data-id="${r.reward_id}" data-action="delete-reward" title="Supprimer">
+                <ha-icon icon="mdi:trash-can-outline" style="--mdc-icon-size:13px;"></ha-icon>
+              </button>
+            </div>` : ''}
           <div class="reward-icon">${rewardIconHtml(r, '30px')}</div>
           <div class="reward-name">${r.name}</div>
           ${r.description ? `<div class="reward-desc">${r.description}</div>` : ''}
@@ -976,12 +1229,13 @@ class KidsTasksRewardCard extends HTMLElement {
             ${r.cost} pts
           </div>
           ${qty}
+          ${!isAdmin ? `
           <button class="${btnClass}"
             data-id="${r.reward_id}"
             data-child="${child?.child_id || ''}"
             ${disabled ? 'disabled' : ''}>
             ${btnLabel}
-          </button>
+          </button>` : ''}
         </div>`;
     }).join('');
 
@@ -1034,6 +1288,10 @@ class KidsTasksRewardCard extends HTMLElement {
         }
         .reward-qty   { font-size: 10px; color: var(--kt-text-muted); }
         .kt-btn       { width: 100%; margin-top: 4px; padding: 6px 0; font-size: 12px; }
+        .tile-actions { display: flex; gap: 4px; align-self: flex-end; margin-bottom: 2px; }
+        .icon-btn     { background: var(--kt-surface); border: none; border-radius: 6px; padding: 3px 5px; cursor: pointer; color: var(--kt-text-muted); display: flex; align-items: center; }
+        .icon-btn:hover { color: var(--primary-color); }
+        .header-right { display: flex; align-items: center; gap: 8px; }
       </style>
 
       <div class="kt-card">
@@ -1042,7 +1300,10 @@ class KidsTasksRewardCard extends HTMLElement {
             <ha-icon icon="mdi:gift-outline" style="--mdc-icon-size:18px;"></ha-icon>
             Recompenses
           </span>
-          ${child ? `<span class="child-pts">${child.name} &middot; ${child.points} pts</span>` : ''}
+          <div class="header-right">
+            ${child ? `<span class="child-pts">${child.name} &middot; ${child.points} pts</span>` : ''}
+            ${isAdmin ? `<button class="kt-btn kt-btn-add sm" id="add-reward-btn">+ Ajouter</button>` : ''}
+          </div>
         </div>
         <div class="cat-row">${catChips}</div>
         <div class="kt-divider"></div>
@@ -1052,6 +1313,8 @@ class KidsTasksRewardCard extends HTMLElement {
         }
       </div>`;
 
+    this.shadowRoot.querySelector('#add-reward-btn')?.addEventListener('click', () => this._openAddRewardDialog());
+
     this.shadowRoot.querySelectorAll('.kt-chip[data-cat]').forEach(chip => {
       chip.addEventListener('click', () => {
         this._filter = chip.dataset.cat;
@@ -1059,7 +1322,7 @@ class KidsTasksRewardCard extends HTMLElement {
       });
     });
 
-    this.shadowRoot.querySelectorAll('button[data-id]:not([disabled])').forEach(btn => {
+    this.shadowRoot.querySelectorAll('button[data-id]:not([disabled]):not([data-action])').forEach(btn => {
       btn.addEventListener('click', () => {
         callService(this._hass, 'kids_tasks', 'claim_reward', {
           reward_id: btn.dataset.id,
@@ -1067,10 +1330,212 @@ class KidsTasksRewardCard extends HTMLElement {
         });
       });
     });
+
+    if (isAdmin) {
+      this.shadowRoot.querySelectorAll('[data-action="edit-reward"]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const r = allRewards.find(x => x.reward_id === btn.dataset.id);
+          if (r) this._openEditRewardDialog(r);
+        });
+      });
+      this.shadowRoot.querySelectorAll('[data-action="delete-reward"]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const r = allRewards.find(x => x.reward_id === btn.dataset.id);
+          if (r) this._openDeleteRewardConfirm(r);
+        });
+      });
+    }
   }
 }
 
 customElements.define('kids-tasks-reward-card', KidsTasksRewardCard);
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Card 5 — KidsTasksChildrenCard
+// ═══════════════════════════════════════════════════════════════════════════════
+
+class KidsTasksChildrenCard extends HTMLElement {
+  constructor() {
+    super();
+    this.attachShadow({ mode: 'open' });
+    this._renderTimer = null;
+  }
+
+  setConfig(config) {
+    this._config = { entity: 'sensor.kidtasks_all_children_list', ...config };
+  }
+
+  set hass(hass) {
+    this._hass = hass;
+    scheduleRender(this);
+  }
+
+  getCardSize() { return 3; }
+
+  disconnectedCallback() {
+    if (this._renderTimer) clearTimeout(this._renderTimer);
+  }
+
+  _openAddChildDialog() {
+    const content = `
+      <div>
+        <div style="${ROW_STYLE}">
+          <label style="${LABEL_STYLE}">Nom</label>
+          <input id="kt-name" type="text" placeholder="Prenom de l'enfant" style="${FIELD_STYLE}">
+        </div>
+        <div style="${ROW_STYLE}">
+          <label style="${LABEL_STYLE}">Avatar (emoji ou URL)</label>
+          <input id="kt-avatar" type="text" placeholder="Ex: ou https://..." style="${FIELD_STYLE}">
+        </div>
+        <div style="${ROW_STYLE}">
+          <label style="${LABEL_STYLE}">Couleur debut du gradient</label>
+          <input id="kt-grad-start" type="color" value="#6b73ff" style="width:60px;height:36px;border:none;border-radius:8px;cursor:pointer;background:none;">
+        </div>
+        <div style="${ROW_STYLE}">
+          <label style="${LABEL_STYLE}">Couleur fin du gradient</label>
+          <input id="kt-grad-end" type="color" value="#9c27b0" style="width:60px;height:36px;border:none;border-radius:8px;cursor:pointer;background:none;">
+        </div>
+        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:6px;">
+          <button id="kt-cancel" style="padding:8px 18px;border-radius:8px;border:1.5px solid var(--divider-color);background:var(--secondary-background-color);color:var(--primary-text-color);font-size:14px;cursor:pointer;">Annuler</button>
+          <button id="kt-save" style="padding:8px 18px;border-radius:8px;border:none;background:var(--primary-color);color:var(--text-primary-color,#fff);font-size:14px;font-weight:600;cursor:pointer;">Ajouter</button>
+        </div>
+      </div>`;
+
+    const dlg = showModal(content, 'Ajouter un enfant');
+    dlg.querySelector('#kt-cancel')?.addEventListener('click', () => dlg.remove());
+    dlg.querySelector('#kt-save')?.addEventListener('click', () => {
+      const name = dlg.querySelector('#kt-name')?.value?.trim();
+      if (!name) { dlg.querySelector('#kt-name')?.focus(); return; }
+      callService(this._hass, 'kids_tasks', 'add_child', {
+        name,
+        avatar:               dlg.querySelector('#kt-avatar')?.value?.trim() || '',
+        card_gradient_start:  dlg.querySelector('#kt-grad-start')?.value || '#6b73ff',
+        card_gradient_end:    dlg.querySelector('#kt-grad-end')?.value   || '#9c27b0',
+      });
+      dlg.remove();
+    });
+  }
+
+  _openEditChildDialog(child) {
+    const gradStart = child.card_gradient_start || '#6b73ff';
+    const gradEnd   = child.card_gradient_end   || '#9c27b0';
+    const content = `
+      <div>
+        <div style="${ROW_STYLE}">
+          <label style="${LABEL_STYLE}">Nom</label>
+          <input id="kt-name" type="text" value="${child.name || ''}" style="${FIELD_STYLE}">
+        </div>
+        <div style="${ROW_STYLE}">
+          <label style="${LABEL_STYLE}">Avatar (emoji ou URL)</label>
+          <input id="kt-avatar" type="text" value="${child.avatar || ''}" style="${FIELD_STYLE}">
+        </div>
+        <div style="${ROW_STYLE}">
+          <label style="${LABEL_STYLE}">Couleur debut du gradient</label>
+          <input id="kt-grad-start" type="color" value="${gradStart}" style="width:60px;height:36px;border:none;border-radius:8px;cursor:pointer;background:none;">
+        </div>
+        <div style="${ROW_STYLE}">
+          <label style="${LABEL_STYLE}">Couleur fin du gradient</label>
+          <input id="kt-grad-end" type="color" value="${gradEnd}" style="width:60px;height:36px;border:none;border-radius:8px;cursor:pointer;background:none;">
+        </div>
+        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:6px;">
+          <button id="kt-cancel" style="padding:8px 18px;border-radius:8px;border:1.5px solid var(--divider-color);background:var(--secondary-background-color);color:var(--primary-text-color);font-size:14px;cursor:pointer;">Annuler</button>
+          <button id="kt-save" style="padding:8px 18px;border-radius:8px;border:none;background:var(--primary-color);color:var(--text-primary-color,#fff);font-size:14px;font-weight:600;cursor:pointer;">Sauvegarder</button>
+        </div>
+      </div>`;
+
+    const dlg = showModal(content, 'Modifier l\'enfant');
+    dlg.querySelector('#kt-cancel')?.addEventListener('click', () => dlg.remove());
+    dlg.querySelector('#kt-save')?.addEventListener('click', () => {
+      const name = dlg.querySelector('#kt-name')?.value?.trim();
+      if (!name) { dlg.querySelector('#kt-name')?.focus(); return; }
+      callService(this._hass, 'kids_tasks', 'update_child', {
+        child_id:             child.id,
+        name,
+        avatar:               dlg.querySelector('#kt-avatar')?.value?.trim() || '',
+        card_gradient_start:  dlg.querySelector('#kt-grad-start')?.value || '#6b73ff',
+        card_gradient_end:    dlg.querySelector('#kt-grad-end')?.value   || '#9c27b0',
+      });
+      dlg.remove();
+    });
+  }
+
+  _openDeleteChildConfirm(child) {
+    confirmModal('Supprimer "' + child.name + '" ? Toutes les donnees associees seront perdues.', () =>
+      callService(this._hass, 'kids_tasks', 'remove_child', { child_id: child.id })
+    );
+  }
+
+  _render() {
+    const state    = this._hass.states[this._config.entity];
+    const children = state?.attributes?.children || [];
+
+    const rows = children.map((c, i) => `
+      <div class="child-row">
+        <div class="child-avatar">${avatarHtml(c.avatar, c.avatar_type, 36)}</div>
+        <div class="child-info">
+          <div class="child-name">${c.name}</div>
+          <div class="child-meta">Niv. ${c.level} &middot; ${c.points} pts &middot; ${c.coins} pieces</div>
+        </div>
+        <div class="child-actions">
+          <button class="icon-btn" data-id="${c.id}" data-action="edit-child" title="Modifier">
+            <ha-icon icon="mdi:pencil" style="--mdc-icon-size:16px;"></ha-icon>
+          </button>
+          <button class="icon-btn" data-id="${c.id}" data-action="delete-child" title="Supprimer">
+            <ha-icon icon="mdi:trash-can-outline" style="--mdc-icon-size:16px;"></ha-icon>
+          </button>
+        </div>
+      </div>
+      ${i < children.length - 1 ? '<div class="kt-divider"></div>' : ''}
+    `).join('');
+
+    this.shadowRoot.innerHTML = `
+      <style>
+        ${BASE_STYLES}
+        .child-row     { display: flex; align-items: center; padding: 10px 16px; gap: 12px; }
+        .child-avatar  { flex-shrink: 0; display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 50%; overflow: hidden; background: var(--kt-surface); }
+        .child-info    { flex: 1; min-width: 0; }
+        .child-name    { font-size: 14px; font-weight: 600; }
+        .child-meta    { font-size: 11px; color: var(--kt-text-muted); margin-top: 2px; }
+        .child-actions { display: flex; gap: 6px; flex-shrink: 0; }
+        .icon-btn      { background: var(--kt-surface); border: none; border-radius: 6px; padding: 5px 7px; cursor: pointer; color: var(--kt-text-muted); display: flex; align-items: center; }
+        .icon-btn:hover { color: var(--primary-color); }
+        .header-right  { display: flex; align-items: center; gap: 8px; }
+      </style>
+
+      <div class="kt-card">
+        <div class="kt-header">
+          Enfants
+          <div class="header-right">
+            <span class="kt-badge">${children.length}</span>
+            <button class="kt-btn kt-btn-add sm" id="add-child-btn">+ Ajouter</button>
+          </div>
+        </div>
+        <div class="kt-divider"></div>
+        ${children.length === 0
+          ? '<div class="kt-empty">Aucun enfant configure</div>'
+          : rows
+        }
+      </div>`;
+
+    this.shadowRoot.getElementById('add-child-btn')?.addEventListener('click', () => this._openAddChildDialog());
+
+    this.shadowRoot.querySelectorAll('[data-action="edit-child"]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const child = children.find(c => c.id === btn.dataset.id);
+        if (child) this._openEditChildDialog(child);
+      });
+    });
+
+    this.shadowRoot.querySelectorAll('[data-action="delete-child"]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const child = children.find(c => c.id === btn.dataset.id);
+        if (child) this._openDeleteChildConfirm(child);
+      });
+    });
+  }
+}
+
+customElements.define('kids-tasks-children-card', KidsTasksChildrenCard);
 
 // ─── HACS / Lovelace card registration ───────────────────────────────────────
 
@@ -1095,5 +1560,10 @@ window.customCards.push(
     type:        'kids-tasks-reward-card',
     name:        'Kids Tasks — Recompenses',
     description: 'Catalogue de recompenses avec echange en 1 tap',
+  },
+  {
+    type:        'kids-tasks-children-card',
+    name:        'Kids Tasks — Gestion des enfants',
+    description: 'Liste et gestion complete des enfants (ajouter, modifier, supprimer)',
   }
 );
