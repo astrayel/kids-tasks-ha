@@ -123,6 +123,7 @@ def _push(
         "source": DOMAIN,
         "statistic_id": statistic_id,
         "unit_of_measurement": unit,
+        "unit_class": None,
     }
     if mean_type is not None:
         kwargs["mean_type"] = mean_type
