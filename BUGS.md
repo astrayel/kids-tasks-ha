@@ -6,34 +6,50 @@ Suivi des problèmes identifiés non encore résolus.
 
 ## [BUG-001] Les cartes personnalisées n'apparaissent pas dans le sélecteur de tuiles HA
 
-**Statut** : Ouvert  
+**Statut** : Ouvert — cause identifiée  
 **Sévérité** : Haute  
-**Composant** : `www/kids_tasks/kids-tasks-card.js`  
+**Composant** : `install.py`, `www/kids_tasks/kids-tasks-card.js`  
 **Signalé le** : 2026-05-23
 
 ### Symptôme
 
 Les 4 cartes (`kids-tasks-child-card`, `kids-tasks-validation-card`, `kids-tasks-task-list-card`, `kids-tasks-reward-card`) n'apparaissent pas dans la liste des tuiles proposées lors de l'ajout d'une carte à un dashboard Lovelace.
 
-### Cause probable
+### Cause identifiée
 
-HA utilise `window.customCards` pour peupler le sélecteur de tuiles. Plusieurs raisons possibles :
+**`install.py` copie le fichier JS mais n'enregistre pas la ressource Lovelace.**
 
-1. La ressource `/local/kids_tasks/kids-tasks-card.js` n'est pas déclarée dans Lovelace (Paramètres → Tableaux de bord → Ressources)
-2. Le fichier JS est chargé après que HA scanne `window.customCards` au démarrage
-3. Le champ `preview: true` absent des entrées `window.customCards` — certaines versions HA l'exigent pour afficher la carte dans le picker
+HA ne charge un fichier JS de carte personnalisée que si celui-ci est déclaré en tant que **ressource Lovelace** (Settings → Dashboards → Resources, type `module`). Sans cette déclaration, le navigateur ne charge jamais le fichier, `window.customCards` reste vide, et les cartes n'apparaissent pas dans le picker.
 
-### Pistes de résolution
+`install.py` (lignes 67-81) se contente d'afficher des instructions manuelles :
 
-- [ ] Vérifier que la ressource est bien déclarée avec le type `module`
-- [ ] Ajouter `preview: true` dans chaque entrée de `window.customCards`
-- [ ] Tester l'enregistrement via `customElements.whenDefined()` pour s'assurer que le push dans `window.customCards` se fait après la définition de l'élément
-- [ ] Vérifier dans la console du navigateur que `window.customCards` contient bien les 4 entrées après le chargement de la page
+```python
+print("   Ajoutez cette ressource dans Home Assistant:")
+print("   URL: /local/kids_tasks/kids-tasks-card.js")
+print("   Type: Module JavaScript")
+```
+
+Il n'appelle aucune API HA pour enregistrer la ressource automatiquement.
+
+Le code `window.customCards` dans le JS est lui **correct** : les 4 entrées sont présentes, la syntaxe est valide, et le push se fait bien après tous les `customElements.define()`.
+
+### Correction à apporter
+
+Deux options :
+
+**Option A — Déclaration manuelle (court terme)**  
+L'utilisateur doit ajouter manuellement dans HA :
+- Settings → Dashboards → Resources → Add Resource
+- URL : `/local/kids_tasks/kids-tasks-card.js`
+- Type : JavaScript Module
+
+**Option B — Automatisation via `install.py` (long terme)**  
+Écrire dans le fichier `.storage/lovelace_resources` de HA pour déclarer la ressource automatiquement, ou utiliser l'API REST HA si disponible.
 
 ### Références
 
-- [HA Custom Cards documentation](https://developers.home-assistant.io/docs/frontend/custom-ui/custom-card/)
-- `www/kids_tasks/kids-tasks-card.js` — section HACS / Lovelace registration (fin du fichier)
+- `install.py` — fonction `update_lovelace_resources()`, ligne ~67
+- `www/kids_tasks/kids-tasks-card.js` — bloc `window.customCards` (fin du fichier)
 
 ---
 
