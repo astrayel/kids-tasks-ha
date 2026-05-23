@@ -9,6 +9,8 @@ from dataclasses import dataclass, field
 from datetime import datetime, time
 from typing import Any
 
+from homeassistant.util import dt as dt_util
+
 from .const import TASK_STATUS_TODO, FREQUENCY_DAILY, FREQUENCY_NONE
 
 
@@ -234,7 +236,7 @@ class Child:
     def get_effective_avatar(self, hass=None) -> str:
         """Get the effective avatar based on avatar_type."""
         if self.avatar_type == "emoji":
-            return self.avatar or "👶"
+            return self.avatar or ""
         elif self.avatar_type == "url" and self.avatar_data:
             return self.avatar_data
         elif self.avatar_type == "inline" and self.avatar_data:
@@ -242,8 +244,8 @@ class Child:
         elif self.avatar_type == "person_entity" and self.person_entity_id and hass:
             person_entity = hass.states.get(self.person_entity_id)
             if person_entity and 'entity_picture' in person_entity.attributes:
-                return person_entity.attributes.get('entity_picture', self.avatar or "👶")
-        return self.avatar or "👶"
+                return person_entity.attributes.get('entity_picture', self.avatar or "")
+        return self.avatar or ""
     
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
@@ -429,24 +431,22 @@ class Task:
         """Check if deadline has passed and update deadline_passed flag."""
         if not self.deadline_time or self.status != TASK_STATUS_TODO:
             return False
-            
-        now = datetime.now()
+
+        now = dt_util.now()
         today = now.date()
-        
+
         # Parse deadline time (format "HH:MM")
         try:
             deadline_hour, deadline_minute = map(int, self.deadline_time.split(':'))
             deadline_datetime = datetime.combine(today, time(deadline_hour, deadline_minute))
-            
-            # Si l'heure limite est dépassée et que la tâche n'est pas encore marquée comme dépassée
-            if now > deadline_datetime and not self.deadline_passed:
+            # Compare as naive datetimes using HA-timezone "now"
+            now_naive = now.replace(tzinfo=None)
+            if now_naive > deadline_datetime and not self.deadline_passed:
                 self.deadline_passed = True
-                return True  # Deadline vient d'être dépassée
-                
+                return True
         except (ValueError, AttributeError):
-            # Format d'heure invalide
             return False
-            
+
         return False
     
     def suspend(self, until_date: datetime | None = None) -> None:
@@ -462,9 +462,10 @@ class Task:
     def check_suspension_expiry(self) -> bool:
         """Check if suspension has expired and auto-resume if needed."""
         if self.suspended and self.suspended_until:
-            if datetime.now() >= self.suspended_until:
+            now_naive = dt_util.now().replace(tzinfo=None)
+            if now_naive >= self.suspended_until:
                 self.resume()
-                return True  # Task was auto-resumed
+                return True
         return False
     
     def is_available(self) -> bool:

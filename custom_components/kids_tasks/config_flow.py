@@ -57,15 +57,11 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     @staticmethod 
     def async_get_options_flow(config_entry):
         """Get the options flow for this handler."""
-        return KidsTasksOptionsFlow(config_entry)
+        return KidsTasksOptionsFlow()
 
 
 class KidsTasksOptionsFlow(config_entries.OptionsFlow):
     """Handle Kids Tasks options."""
-
-    def __init__(self, config_entry) -> None:
-        """Initialize options flow."""
-        self.config_entry = config_entry
 
     async def async_step_init(self, user_input=None):
         """Manage the options."""
@@ -103,7 +99,7 @@ class KidsTasksOptionsFlow(config_entries.OptionsFlow):
 
         if user_input is not None:
             # Get coordinator to add the task
-            coordinator = self.hass.data[DOMAIN][self.config_entry.entry_id]["coordinator"]
+            coordinator = self.config_entry.runtime_data.coordinator
             
             try:
                 import uuid
@@ -129,7 +125,7 @@ class KidsTasksOptionsFlow(config_entries.OptionsFlow):
                 errors["base"] = "unknown"
 
         # Get list of children for selection
-        coordinator = self.hass.data[DOMAIN][self.config_entry.entry_id]["coordinator"]
+        coordinator = self.config_entry.runtime_data.coordinator
         children_options = [{"value": "", "label": "Unassigned"}]
         for child_id, child in coordinator.children.items():
             children_options.append({
@@ -197,7 +193,7 @@ class KidsTasksOptionsFlow(config_entries.OptionsFlow):
                 import uuid
                 from .models import Child
                 
-                coordinator = self.hass.data[DOMAIN][self.config_entry.entry_id]["coordinator"]
+                coordinator = self.config_entry.runtime_data.coordinator
                 
                 child_id = str(uuid.uuid4())
                 child = Child(
@@ -248,7 +244,7 @@ class KidsTasksOptionsFlow(config_entries.OptionsFlow):
                 import uuid
                 from .models import Reward
                 
-                coordinator = self.hass.data[DOMAIN][self.config_entry.entry_id]["coordinator"]
+                coordinator = self.config_entry.runtime_data.coordinator
                 
                 reward_id = str(uuid.uuid4())
                 reward = Reward(

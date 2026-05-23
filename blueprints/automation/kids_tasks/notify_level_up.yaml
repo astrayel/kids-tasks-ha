@@ -1,0 +1,54 @@
+blueprint:
+  name: "Kids Tasks — Félicitations montée de niveau"
+  description: >
+    Envoie une notification de félicitations quand un enfant monte de niveau.
+    Se déclenche sur l'événement kids_tasks_level_up.
+  domain: automation
+  source_url: https://github.com/astrayel/kids-tasks-ha/blob/main/blueprints/automation/kids_tasks/notify_level_up.yaml
+  input:
+    notify_service:
+      name: Service de notification
+      description: >
+        Service notify à appeler.
+        Ex : notify.mobile_app_mon_telephone ou notify.family_group
+      selector:
+        text:
+    notification_title:
+      name: Titre de la notification
+      default: "🎉 Niveau supérieur !"
+      selector:
+        text:
+    play_sound:
+      name: Jouer un son (apps mobiles HA)
+      description: Active un son de célébration sur les apps mobiles compatibles.
+      default: false
+      selector:
+        boolean:
+
+variables:
+  notify_service: !input notify_service
+  notification_title: !input notification_title
+  play_sound: !input play_sound
+
+trigger:
+  - platform: event
+    event_type: kids_tasks_level_up
+
+action:
+  - variables:
+      child_name: "{{ trigger.event.data.get('child_name', 'Un enfant') }}"
+      new_level: "{{ trigger.event.data.get('new_level', '?') }}"
+      child_points: "{{ trigger.event.data.get('points', 0) }}"
+  - service: "{{ notify_service }}"
+    data:
+      title: "{{ notification_title }}"
+      message: >
+        {{ child_name }} atteint le niveau {{ new_level }} avec {{ child_points }} points !
+        Continuez comme ça ! 🌟
+      data:
+        tag: "kids_tasks_levelup_{{ child_name | lower | replace(' ', '_') }}"
+        group: kids-tasks
+        sound: "{{ 'US-EN-Congratulations.wav' if play_sound else 'none' }}"
+
+mode: queued
+max: 10
