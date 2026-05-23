@@ -74,3 +74,44 @@ Perte irréversible des données utilisateur si le fichier `.storage/kids_tasks.
 - `custom_components/kids_tasks/coordinator/_storage.py` — `_migrate_data()`, `_load_data()`
 - `custom_components/kids_tasks/const.py` — `STORAGE_VERSION = 2`, `STORAGE_KEY`
 - `custom_components/kids_tasks/__init__.py` — `async_remove_entry()`
+
+---
+
+## [BUG-003] Statistiques : `Invalid statistic_id` + erreur listener coordinator
+
+**Statut** : Ouvert  
+**Sévérité** : Haute  
+**Composant** : `custom_components/kids_tasks/statistics.py`  
+**Signalé le** : 2026-05-23
+
+### Logs observés
+
+```
+WARNING  Failed to record statistics: Invalid statistic_id
+ERROR    Unexpected error updating listener 139741625821632 for kids_tasks
+```
+
+### Cause identifiée
+
+HA impose que le segment après `:` dans un `statistic_id` ne contienne que des caractères `[a-z0-9_]`. Les IDs d'enfants sont des UUID au format `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx` — les **tirets `-` sont invalides**.
+
+Le code actuel construit par exemple :
+```
+kids_tasks:child_3f2a1b4c-8e7d-4f9a-b2c1-0d5e6f7a8b9c_points
+```
+ce qui déclenche l'erreur `Invalid statistic_id`.
+
+L'erreur listener est une conséquence : l'exception levée dans `_maybe_record_statistics()` remonte jusqu'au coordinator malgré le `try/except`, probablement parce que `async_add_external_statistics` appelle un callback interne de manière synchrone avant que l'exception soit rattrapée.
+
+### Correction à apporter
+
+Dans `statistics.py`, sanitiser le `child_id` avant de l'utiliser dans le `statistic_id` :
+
+```python
+safe_id = child_id.replace("-", "_")
+statistic_id=f"{DOMAIN}:child_{safe_id}_points"
+```
+
+### Références
+
+- `custom_components/kids_tasks/statistics.py` — fonction `async_record_statistics()`, tous les appels à `_push()`
