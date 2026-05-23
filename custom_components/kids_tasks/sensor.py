@@ -93,6 +93,7 @@ async def async_setup_entry(
         PendingValidationsSensor(coordinator),
         TotalTasksCompletedTodaySensor(coordinator),
         ActiveTasksSensor(coordinator),
+        AllChildrenListSensor(coordinator),
     ])
     
     async_add_entities(entities)
@@ -495,6 +496,44 @@ class AllRewardsListSensor(CoordinatorEntity, SensorEntity):
             "active_count": sum(1 for reward in all_rewards if reward["active"]),
             "available_count": sum(1 for reward in all_rewards if reward["is_available"] and reward["active"])
         }
+
+
+class AllChildrenListSensor(CoordinatorEntity, SensorEntity):
+    """Sensor exposing all children as attributes for card dropdowns."""
+
+    def __init__(self, coordinator: KidsTasksDataUpdateCoordinator) -> None:
+        """Initialize the sensor."""
+        super().__init__(coordinator)
+        self._attr_unique_id = "kidtasks_all_children_list"
+        self._attr_icon = "mdi:account-group"
+        self.entity_id = "sensor.kidtasks_all_children_list"
+
+    @property
+    def name(self) -> str:
+        """Return the name of the sensor."""
+        return "Liste de Tous les Enfants"
+
+    @property
+    def native_value(self) -> int:
+        """Return the total number of children."""
+        return len(self.coordinator.data.get("children", {}))
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return the state attributes with all children details."""
+        children = []
+        for child_id, child_data in self.coordinator.data.get("children", {}).items():
+            children.append({
+                "id": child_id,
+                "name": child_data.get("name", ""),
+                "avatar": child_data.get("avatar", ""),
+                "avatar_type": child_data.get("avatar_type", "emoji"),
+                "level": child_data.get("level", 1),
+                "points": child_data.get("points", 0),
+                "coins": child_data.get("coins", 0),
+            })
+        children.sort(key=lambda x: x["name"])
+        return {"children": children, "total_count": len(children)}
 
 
 class TaskSensor(CoordinatorEntity, SensorEntity):
