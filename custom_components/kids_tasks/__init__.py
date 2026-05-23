@@ -6,10 +6,10 @@
 from __future__ import annotations
 
 import logging
-import shutil
 from dataclasses import dataclass
 from pathlib import Path
 
+from homeassistant.components.http import StaticPathConfig
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
@@ -31,6 +31,8 @@ PLATFORMS: list[Platform] = [
     Platform.SWITCH,
 ]
 
+_FRONTEND_REGISTERED = False
+
 
 @dataclass
 class KidsTasksData:
@@ -41,17 +43,16 @@ class KidsTasksData:
 KidsTasksConfigEntry = ConfigEntry[KidsTasksData]
 
 
-def _deploy_frontend(config_dir: str) -> None:
-    """Copy the bundled JS card file to the HA www directory."""
-    src = Path(__file__).parent / "lovelace" / "kids-tasks-card.js"
-    dst = Path(config_dir) / "www" / "kids_tasks" / "kids-tasks-card.js"
-    dst.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(src, dst)
-
-
 async def async_setup_entry(hass: HomeAssistant, entry: KidsTasksConfigEntry) -> bool:
     """Set up Kids Tasks from a config entry."""
-    await hass.async_add_executor_job(_deploy_frontend, hass.config.config_dir)
+    global _FRONTEND_REGISTERED
+    if not _FRONTEND_REGISTERED:
+        lovelace_dir = Path(__file__).parent / "lovelace"
+        await hass.http.async_register_static_paths([
+            StaticPathConfig("/kids_tasks_lovelace", str(lovelace_dir), cache_headers=False)
+        ])
+        _FRONTEND_REGISTERED = True
+        _LOGGER.debug("Registered static path /kids_tasks_lovelace -> %s", lovelace_dir)
 
     store = Store(hass, STORAGE_VERSION, STORAGE_KEY)
     coordinator = KidsTasksDataUpdateCoordinator(hass, store, entry.entry_id)

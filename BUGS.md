@@ -17,22 +17,27 @@ Les 4 cartes (`kids-tasks-child-card`, `kids-tasks-validation-card`, `kids-tasks
 
 ### Cause identifiée
 
-Deux problèmes distincts :
+Trois problèmes distincts :
 
 1. **Le JS n'était pas embarqué dans le composant.** Lors d'une installation HACS ou manuelle (copie de `custom_components/kids_tasks/`), le dossier `www/` du dépôt n'est pas inclus. Le fichier n'arrivait donc jamais dans `config/www/kids_tasks/`.
 
 2. **`install.py` ne copiait pas les sous-répertoires.** La boucle `source_dir.glob("*")` ne descendait pas dans `coordinator/`, `services/`, etc. Ces packages n'étaient pas déployés, ce qui causait des `ImportError` au démarrage.
 
+3. **La copie dans `www/` est fragile.** HA enregistre la route statique `/local/` → `config/www/` **au démarrage**. Si le dossier `www/` n'existait pas à ce moment-là, la route n'est jamais créée — même si le fichier est copié ensuite, il reste inaccessible (404) jusqu'au prochain redémarrage complet de HA.
+
 ### Correction appliquée
 
-- **JS embarqué dans le composant** : le fichier est maintenant dans `custom_components/kids_tasks/lovelace/kids-tasks-card.js` et copié automatiquement vers `config/www/kids_tasks/` par `_deploy_frontend()` appelé dans `async_setup_entry`.
+- **JS embarqué dans le composant** : le fichier est dans `custom_components/kids_tasks/lovelace/kids-tasks-card.js`.
+- **Chemin statique dédié** : `async_setup_entry` enregistre `/kids_tasks_lovelace` → répertoire `lovelace/` du composant via `hass.http.async_register_static_paths()`. Cette route est indépendante de `www/` et fonctionne même si `www/` n'existait pas au démarrage.
+- **Flag module-level** `_FRONTEND_REGISTERED` : évite le double-enregistrement lors des rechargements de l'intégration (qui lèverait une `RuntimeError`).
 - **`install.py` corrigé** : utilise `shutil.copytree()` pour tous les sous-répertoires non-`__pycache__`.
-- La déclaration de la ressource Lovelace reste manuelle (Settings → Dashboards → Resources, URL `/local/kids_tasks/kids-tasks-card.js`, type `JavaScript Module`).
+- La ressource Lovelace doit être déclarée manuellement une seule fois : Settings → Dashboards → Resources, URL `/kids_tasks_lovelace/kids-tasks-card.js`, type `JavaScript Module`.
 
 ### Références
 
+- `custom_components/kids_tasks/__init__.py` — `async_setup_entry()`, flag `_FRONTEND_REGISTERED`
+- `custom_components/kids_tasks/lovelace/kids-tasks-card.js` — fichier JS bundlé
 - `install.py` — fonction `update_lovelace_resources()`, ligne ~67
-- `www/kids_tasks/kids-tasks-card.js` — bloc `window.customCards` (fin du fichier)
 
 ---
 

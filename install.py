@@ -63,19 +63,22 @@ def install_frontend(hass_config_dir):
 
 def update_lovelace_resources(hass_config_dir):
     """Propose la configuration Lovelace"""
-    
-    print("\n🎨 Configuration de l'interface:")
+
+    print("\nConfiguration de l'interface:")
     print("   Ajoutez cette ressource dans Home Assistant:")
-    print("   Configuration → Lovelace Dashboards → Ressources")
+    print("   Parametres -> Tableaux de bord -> Ressources")
     print()
-    print("   URL: /local/kids_tasks/kids-tasks-card.js")
+    print("   URL: /kids_tasks_lovelace/kids-tasks-card.js")
     print("   Type: Module JavaScript")
     print()
     print("   Ou ajoutez dans configuration.yaml:")
     print("   lovelace:")
     print("     resources:")
-    print("       - url: /local/kids_tasks/kids-tasks-card.js")
+    print("       - url: /kids_tasks_lovelace/kids-tasks-card.js")
     print("         type: module")
+    print()
+    print("   Note: le chemin /kids_tasks_lovelace/ est enregistre automatiquement")
+    print("   par l'integration au demarrage. Aucune copie dans www/ necessaire.")
 
 def main():
     print("🏠 Installation Kids Tasks Manager pour Home Assistant")
