@@ -34,14 +34,14 @@ lovelace:
 
 ---
 
-## Carte 1 — Enfant (`kids-tasks-child-card`)
+## Carte 1 — Enfant (`kids-tasks-child-summary-card`)
 
 Vue compacte d'un enfant : avatar, niveau, barre XP, tâches du jour, bouton de validation rapide.
 
 ### Configuration YAML
 
 ```yaml
-type: kids-tasks-child-card
+type: kids-tasks-child-summary-card
 entity: sensor.kidtasks_leo_points   # capteur de points de l'enfant (requis)
 ```
 
@@ -65,9 +65,9 @@ entity: sensor.kidtasks_leo_points   # capteur de points de l'enfant (requis)
 type: grid
 columns: 2
 cards:
-  - type: kids-tasks-child-card
+  - type: kids-tasks-child-summary-card
     entity: sensor.kidtasks_leo_points
-  - type: kids-tasks-child-card
+  - type: kids-tasks-child-summary-card
     entity: sensor.kidtasks_emma_points
 ```
 
@@ -169,9 +169,9 @@ views:
       - type: grid
         columns: 2
         cards:
-          - type: kids-tasks-child-card
+          - type: kids-tasks-child-summary-card
             entity: sensor.kidtasks_leo_points
-          - type: kids-tasks-child-card
+          - type: kids-tasks-child-summary-card
             entity: sensor.kidtasks_emma_points
 
   - title: Tâches

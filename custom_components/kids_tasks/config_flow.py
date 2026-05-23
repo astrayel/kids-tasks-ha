@@ -54,14 +54,18 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             errors=errors,
         )
 
-    @staticmethod 
+    @staticmethod
     def async_get_options_flow(config_entry):
         """Get the options flow for this handler."""
-        return KidsTasksOptionsFlow()
+        return KidsTasksOptionsFlow(config_entry)
 
 
-class KidsTasksOptionsFlow(config_entries.OptionsFlow):
+class KidsTasksOptionsFlow(config_entries.OptionsFlowWithConfigEntry):
     """Handle Kids Tasks options."""
+
+    def __init__(self, config_entry) -> None:
+        """Store config entry for access to runtime data."""
+        super().__init__(config_entry)
 
     async def async_step_init(self, user_input=None):
         """Manage the options."""

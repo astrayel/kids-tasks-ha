@@ -9,7 +9,6 @@ import logging
 from dataclasses import dataclass
 from pathlib import Path
 
-from homeassistant.components.http import StaticPathConfig
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
@@ -47,6 +46,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: KidsTasksConfigEntry) ->
     """Set up Kids Tasks from a config entry."""
     global _FRONTEND_REGISTERED
     if not _FRONTEND_REGISTERED:
+        from homeassistant.components.http import StaticPathConfig  # noqa: PLC0415
         lovelace_dir = Path(__file__).parent / "lovelace"
         await hass.http.async_register_static_paths([
             StaticPathConfig("/kids_tasks_lovelace", str(lovelace_dir), cache_headers=False)
