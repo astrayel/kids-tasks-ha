@@ -36,20 +36,17 @@ def install_integration(hass_config_dir):
     # Créer le répertoire cible
     target_dir.mkdir(parents=True, exist_ok=True)
     
-    # Copier tous les fichiers Python et de configuration
+    # Copier tous les fichiers Python et de configuration (niveau racine)
     for file_path in source_dir.glob("*"):
-        if file_path.suffix in [".py", ".json", ".yaml"]:
+        if file_path.is_file() and file_path.suffix in [".py", ".json", ".yaml"]:
             shutil.copy2(file_path, target_dir)
-            print(f"   ✅ {file_path.name}")
-    
-    # Copier les traductions
-    if (source_dir / "translations").exists():
-        shutil.copytree(
-            source_dir / "translations", 
-            target_dir / "translations", 
-            dirs_exist_ok=True
-        )
-        print(f"   ✅ translations/")
+            print(f"   Copie {file_path.name}")
+
+    # Copier tous les sous-répertoires Python (coordinator/, services/, translations/, lovelace/, etc.)
+    for sub in source_dir.iterdir():
+        if sub.is_dir() and not sub.name.startswith("__"):
+            shutil.copytree(sub, target_dir / sub.name, dirs_exist_ok=True)
+            print(f"   Copie {sub.name}/")
 
 def install_frontend(hass_config_dir):
     """Installe l'interface frontend"""

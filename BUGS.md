@@ -6,9 +6,9 @@ Suivi des problèmes identifiés non encore résolus.
 
 ## [BUG-001] Les cartes personnalisées n'apparaissent pas dans le sélecteur de tuiles HA
 
-**Statut** : Ouvert — cause identifiée  
+**Statut** : Corrigé (commit sur `dev`)  
 **Sévérité** : Haute  
-**Composant** : `install.py`, `www/kids_tasks/kids-tasks-card.js`  
+**Composant** : `__init__.py`, `install.py`  
 **Signalé le** : 2026-05-23
 
 ### Symptôme
@@ -17,34 +17,17 @@ Les 4 cartes (`kids-tasks-child-card`, `kids-tasks-validation-card`, `kids-tasks
 
 ### Cause identifiée
 
-**`install.py` copie le fichier JS mais n'enregistre pas la ressource Lovelace.**
+Deux problèmes distincts :
 
-HA ne charge un fichier JS de carte personnalisée que si celui-ci est déclaré en tant que **ressource Lovelace** (Settings → Dashboards → Resources, type `module`). Sans cette déclaration, le navigateur ne charge jamais le fichier, `window.customCards` reste vide, et les cartes n'apparaissent pas dans le picker.
+1. **Le JS n'était pas embarqué dans le composant.** Lors d'une installation HACS ou manuelle (copie de `custom_components/kids_tasks/`), le dossier `www/` du dépôt n'est pas inclus. Le fichier n'arrivait donc jamais dans `config/www/kids_tasks/`.
 
-`install.py` (lignes 67-81) se contente d'afficher des instructions manuelles :
+2. **`install.py` ne copiait pas les sous-répertoires.** La boucle `source_dir.glob("*")` ne descendait pas dans `coordinator/`, `services/`, etc. Ces packages n'étaient pas déployés, ce qui causait des `ImportError` au démarrage.
 
-```python
-print("   Ajoutez cette ressource dans Home Assistant:")
-print("   URL: /local/kids_tasks/kids-tasks-card.js")
-print("   Type: Module JavaScript")
-```
+### Correction appliquée
 
-Il n'appelle aucune API HA pour enregistrer la ressource automatiquement.
-
-Le code `window.customCards` dans le JS est lui **correct** : les 4 entrées sont présentes, la syntaxe est valide, et le push se fait bien après tous les `customElements.define()`.
-
-### Correction à apporter
-
-Deux options :
-
-**Option A — Déclaration manuelle (court terme)**  
-L'utilisateur doit ajouter manuellement dans HA :
-- Settings → Dashboards → Resources → Add Resource
-- URL : `/local/kids_tasks/kids-tasks-card.js`
-- Type : JavaScript Module
-
-**Option B — Automatisation via `install.py` (long terme)**  
-Écrire dans le fichier `.storage/lovelace_resources` de HA pour déclarer la ressource automatiquement, ou utiliser l'API REST HA si disponible.
+- **JS embarqué dans le composant** : le fichier est maintenant dans `custom_components/kids_tasks/lovelace/kids-tasks-card.js` et copié automatiquement vers `config/www/kids_tasks/` par `_deploy_frontend()` appelé dans `async_setup_entry`.
+- **`install.py` corrigé** : utilise `shutil.copytree()` pour tous les sous-répertoires non-`__pycache__`.
+- La déclaration de la ressource Lovelace reste manuelle (Settings → Dashboards → Resources, URL `/local/kids_tasks/kids-tasks-card.js`, type `JavaScript Module`).
 
 ### Références
 

@@ -6,7 +6,9 @@
 from __future__ import annotations
 
 import logging
+import shutil
 from dataclasses import dataclass
+from pathlib import Path
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
@@ -39,8 +41,18 @@ class KidsTasksData:
 KidsTasksConfigEntry = ConfigEntry[KidsTasksData]
 
 
+def _deploy_frontend(config_dir: str) -> None:
+    """Copy the bundled JS card file to the HA www directory."""
+    src = Path(__file__).parent / "lovelace" / "kids-tasks-card.js"
+    dst = Path(config_dir) / "www" / "kids_tasks" / "kids-tasks-card.js"
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(src, dst)
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: KidsTasksConfigEntry) -> bool:
     """Set up Kids Tasks from a config entry."""
+    await hass.async_add_executor_job(_deploy_frontend, hass.config.config_dir)
+
     store = Store(hass, STORAGE_VERSION, STORAGE_KEY)
     coordinator = KidsTasksDataUpdateCoordinator(hass, store, entry.entry_id)
     await coordinator.async_config_entry_first_refresh()
