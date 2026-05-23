@@ -93,6 +93,53 @@ Perte irréversible des données utilisateur si le fichier `.storage/kids_tasks.
 
 ---
 
+## [BUG-004] `AttributeError: 'State' object has no attribute 'unique_id'` dans switch.py
+
+**Statut** : Corrigé (commit sur `dev`)  
+**Sévérité** : Haute — 148 occurrences, erreur à chaque refresh du coordinator  
+**Composant** : `custom_components/kids_tasks/switch.py`  
+**Signalé le** : 2026-05-23
+
+### Symptôme
+
+```
+Unexpected error updating listener for kids_tasks
+AttributeError: 'State' object has no attribute 'unique_id'
+  File "switch.py", line 30, in _add_new_switches
+      e.unique_id
+```
+
+### Cause
+
+`_add_new_switches()` itérait sur `hass.states.async_all()` qui retourne des objets `State`. Ces objets exposent `entity_id` mais **pas** `unique_id`. Or le code tentait de lire `e.unique_id` pour construire le set des switches déjà existants.
+
+### Correction appliquée
+
+Remplacement par l'entity registry qui expose bien `unique_id` :
+
+```python
+# Avant (incorrect)
+existing = {
+    e.unique_id
+    for e in hass.states.async_all()
+    if e.entity_id.startswith("switch.kidtasks_")
+}
+
+# Après (correct)
+registry = er.async_get(hass)
+existing = {
+    e.unique_id
+    for e in er.async_entries_for_config_entry(registry, entry.entry_id)
+    if e.domain == "switch"
+}
+```
+
+### Références
+
+- `custom_components/kids_tasks/switch.py` — fonction `_add_new_switches()`, ligne ~29
+
+---
+
 ## [BUG-003] Statistiques : `Invalid statistic_id` + erreur listener coordinator
 
 **Statut** : Ouvert  

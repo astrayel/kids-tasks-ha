@@ -7,6 +7,7 @@ from typing import Any
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -26,10 +27,11 @@ async def async_setup_entry(
     coordinator: KidsTasksDataUpdateCoordinator = entry.runtime_data.coordinator
 
     def _add_new_switches() -> None:
+        registry = er.async_get(hass)
         existing = {
             e.unique_id
-            for e in hass.states.async_all()
-            if e.entity_id.startswith("switch.kidtasks_")
+            for e in er.async_entries_for_config_entry(registry, entry.entry_id)
+            if e.domain == "switch"
         }
         new_entities = []
         for task_id, task in coordinator.tasks.items():
