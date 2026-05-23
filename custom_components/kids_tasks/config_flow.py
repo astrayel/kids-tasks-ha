@@ -106,6 +106,7 @@ class KidsTasksOptionsFlow(config_entries.OptionsFlow):
                 from .models import Task
                 
                 task_id = str(uuid.uuid4())
+                child_id = user_input.get("assigned_child_id", "")
                 task = Task(
                     id=task_id,
                     name=user_input["name"],
@@ -113,7 +114,7 @@ class KidsTasksOptionsFlow(config_entries.OptionsFlow):
                     category=user_input.get("category", "other"),
                     points=user_input.get("points", 10),
                     frequency=user_input.get("frequency", "daily"),
-                    assigned_child_id=user_input.get("assigned_child_id"),
+                    assigned_child_ids=[child_id] if child_id else [],
                     validation_required=user_input.get("validation_required", True),
                 )
                 await coordinator.async_add_task(task)

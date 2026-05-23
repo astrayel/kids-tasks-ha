@@ -1,7 +1,7 @@
 """Calendar platform for Kids Tasks — exposes task deadlines as HA calendar events."""
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from typing import Any
 
 from homeassistant.components.calendar import CalendarEntity, CalendarEvent
@@ -48,8 +48,26 @@ class KidsTasksCalendar(CoordinatorEntity, CalendarEntity):
     def event(self) -> CalendarEvent | None:
         """Return the next upcoming event."""
         now = dt_util.now()
-        upcoming = [e for e in self._build_events(now, now + timedelta(days=7)) if e.start >= now]
-        return min(upcoming, key=lambda e: e.start) if upcoming else None
+        today = now.date()
+        upcoming = []
+        for e in self._build_events(now, now + timedelta(days=7)):
+            start = e.start
+            if isinstance(start, datetime):
+                if start >= now:
+                    upcoming.append(e)
+            else:
+                if start >= today:
+                    upcoming.append(e)
+        if not upcoming:
+            return None
+
+        def _sort_key(e: CalendarEvent) -> datetime:
+            s = e.start
+            if isinstance(s, datetime):
+                return s
+            return dt_util.as_local(datetime.combine(s, datetime.min.time()))
+
+        return min(upcoming, key=_sort_key)
 
     async def async_get_events(
         self,
@@ -111,8 +129,8 @@ class KidsTasksCalendar(CoordinatorEntity, CalendarEntity):
                 event_date = today
                 if start_date.date() <= event_date <= end_date.date():
                     events.append(CalendarEvent(
-                        start=datetime.combine(event_date, datetime.min.time()),
-                        end=datetime.combine(event_date + timedelta(days=1), datetime.min.time()),
+                        start=event_date,
+                        end=event_date + timedelta(days=1),
                         summary=summary,
                         description=description,
                         uid=f"kidtasks_daily_{task_id}_{event_date.isoformat()}",
@@ -133,8 +151,8 @@ class KidsTasksCalendar(CoordinatorEntity, CalendarEntity):
                     event_date = today + timedelta(days=days_ahead)
                     if start_date.date() <= event_date <= end_date.date():
                         events.append(CalendarEvent(
-                            start=datetime.combine(event_date, datetime.min.time()),
-                            end=datetime.combine(event_date + timedelta(days=1), datetime.min.time()),
+                            start=event_date,
+                            end=event_date + timedelta(days=1),
                             summary=summary,
                             description=description,
                             uid=f"kidtasks_weekly_{task_id}_{event_date.isoformat()}",

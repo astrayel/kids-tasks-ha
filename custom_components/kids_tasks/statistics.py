@@ -47,11 +47,12 @@ async def async_record_statistics(hass: HomeAssistant, coordinator) -> None:
     # ------------------------------------------------------------------ #
     for child_id, child in children.items():
         name = child.name
+        safe_id = child_id.replace("-", "_")
 
         # Current point balance
         _push(
             hass, async_add_external_statistics, StatisticMetaData, StatisticData,
-            statistic_id=f"{DOMAIN}:child_{child_id}_points",
+            statistic_id=f"{DOMAIN}:child_{safe_id}_points",
             name=f"{name} - Points",
             unit="pts", start=start, value=float(child.points), mean_type=_mean_type,
         )
@@ -59,7 +60,7 @@ async def async_record_statistics(hass: HomeAssistant, coordinator) -> None:
         # Current level
         _push(
             hass, async_add_external_statistics, StatisticMetaData, StatisticData,
-            statistic_id=f"{DOMAIN}:child_{child_id}_level",
+            statistic_id=f"{DOMAIN}:child_{safe_id}_level",
             name=f"{name} - Niveau",
             unit=None, start=start, value=float(child.level), mean_type=_mean_type,
         )
@@ -74,7 +75,7 @@ async def async_record_statistics(hass: HomeAssistant, coordinator) -> None:
         )
         _push(
             hass, async_add_external_statistics, StatisticMetaData, StatisticData,
-            statistic_id=f"{DOMAIN}:child_{child_id}_tasks_done",
+            statistic_id=f"{DOMAIN}:child_{safe_id}_tasks_done",
             name=f"{name} - Taches Completees",
             unit=None, start=start, value=float(done), mean_type=_mean_type,
         )
@@ -123,6 +124,7 @@ def _push(
         "source": DOMAIN,
         "statistic_id": statistic_id,
         "unit_of_measurement": unit,
+        "unit_class": None,
     }
     if mean_type is not None:
         kwargs["mean_type"] = mean_type
