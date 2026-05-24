@@ -1,0 +1,69 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Kids Tasks Setup",
+        "description": "Configure your kids task management system",
+        "data": {
+          "name": "Installation name",
+          "validation_required": "Parental validation required by default",
+          "notifications_enabled": "Notifications enabled"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect",
+      "invalid_config": "Invalid configuration",
+      "unknown": "Unexpected error",
+      "invalid_auth": "Invalid authentication",
+      "timeout": "Connection timeout"
+    },
+    "abort": {
+      "already_configured": "Integration is already configured",
+      "single_instance_allowed": "Only a single instance is allowed"
+    }
+  },
+  "options": {
+    "step": {
+      "main_menu": {
+        "title": "Kids Tasks — Options",
+        "data": {
+          "action": "Action"
+        }
+      },
+      "add_task": {
+        "title": "Add a task",
+        "data": {
+          "name": "Name",
+          "description": "Description",
+          "category": "Category",
+          "points": "Points",
+          "frequency": "Frequency",
+          "assigned_child_id": "Assigned child",
+          "validation_required": "Parental validation required"
+        }
+      },
+      "add_child": {
+        "title": "Add a child",
+        "data": {
+          "name": "Name",
+          "avatar": "Avatar (emoji or URL)",
+          "initial_points": "Initial points"
+        }
+      },
+      "add_reward": {
+        "title": "Add a reward",
+        "data": {
+          "name": "Name",
+          "description": "Description",
+          "cost": "Cost (points)",
+          "category": "Category",
+          "limited_quantity": "Limited quantity (optional)"
+        }
+      }
+    },
+    "error": {
+      "unknown": "Unexpected error"
+    }
+  }
+}
