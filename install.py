@@ -41,24 +41,6 @@ def install_integration(hass_config_dir):
             print(f"   Copie {sub.name}/")
 
 
-def print_lovelace_instructions():
-    """Affiche les instructions pour déclarer la ressource Lovelace."""
-    print("\nConfiguration de l'interface:")
-    print("   L'integration enregistre automatiquement le chemin statique")
-    print("   /kids_tasks_lovelace/ au demarrage. Il suffit d'ajouter")
-    print("   la ressource une seule fois dans Home Assistant :")
-    print()
-    print("   Via l'UI : Parametres -> Tableaux de bord -> Ressources -> Ajouter")
-    print("   URL  : /kids_tasks_lovelace/kids-tasks-card.js")
-    print("   Type : Module JavaScript")
-    print()
-    print("   Ou dans configuration.yaml :")
-    print("   lovelace:")
-    print("     resources:")
-    print("       - url: /kids_tasks_lovelace/kids-tasks-card.js")
-    print("         type: module")
-
-
 def main():
     print("Installation Kids Tasks Manager pour Home Assistant")
     print("=" * 60)
@@ -77,11 +59,9 @@ def main():
 
     try:
         install_integration(hass_config_dir)
-        print_lovelace_instructions()
         print("\nInstallation terminee !")
         print("   1. Redemarrez Home Assistant")
-        print("   2. Ajoutez la ressource Lovelace (voir ci-dessus)")
-        print("   3. Configurez l'integration dans Parametres -> Integrations")
+        print("   2. Configurez l'integration dans Parametres -> Integrations")
     except Exception as e:
         print(f"Erreur lors de l'installation : {e}")
         sys.exit(1)

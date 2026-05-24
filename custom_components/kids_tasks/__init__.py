@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from pathlib import Path
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
@@ -30,9 +29,6 @@ PLATFORMS: list[Platform] = [
     Platform.SWITCH,
 ]
 
-_FRONTEND_REGISTERED = False
-
-
 @dataclass
 class KidsTasksData:
     """Runtime data stored on the config entry."""
@@ -44,16 +40,6 @@ KidsTasksConfigEntry = ConfigEntry[KidsTasksData]
 
 async def async_setup_entry(hass: HomeAssistant, entry: KidsTasksConfigEntry) -> bool:
     """Set up Kids Tasks from a config entry."""
-    global _FRONTEND_REGISTERED
-    if not _FRONTEND_REGISTERED:
-        from homeassistant.components.http import StaticPathConfig  # noqa: PLC0415
-        lovelace_dir = Path(__file__).parent / "lovelace"
-        await hass.http.async_register_static_paths([
-            StaticPathConfig("/kids_tasks_lovelace", str(lovelace_dir), cache_headers=False)
-        ])
-        _FRONTEND_REGISTERED = True
-        _LOGGER.debug("Registered static path /kids_tasks_lovelace -> %s", lovelace_dir)
-
     store = Store(hass, STORAGE_VERSION, STORAGE_KEY)
     coordinator = KidsTasksDataUpdateCoordinator(hass, store, entry.entry_id)
     await coordinator.async_config_entry_first_refresh()
