@@ -1,3 +1,10 @@
+const KT_VERSION = '1.1.0';
+console.info(
+  `%c KIDS-TASKS-CARD %c v${KT_VERSION} `,
+  'background:#6b73ff;color:#fff;font-weight:700;padding:2px 4px;border-radius:3px 0 0 3px;',
+  'background:#9c27b0;color:#fff;font-weight:400;padding:2px 4px;border-radius:0 3px 3px 0;'
+);
+
 const CATEGORY_ICONS = {
   bedroom:  'mdi:bed',
   hygiene:  'mdi:shower',
