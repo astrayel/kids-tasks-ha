@@ -1,4 +1,4 @@
-const KT_VERSION = '1.1.0';
+const KT_VERSION = '1.2.0';
 console.info(
   `%c KIDS-TASKS-CARD %c v${KT_VERSION} `,
   'background:#6b73ff;color:#fff;font-weight:700;padding:2px 4px;border-radius:3px 0 0 3px;',
@@ -346,6 +346,36 @@ function catRawFromDisplay(display) {
   return (display || 'other').toLowerCase();
 }
 
+const WEEK_DAYS = [
+  { v: 'mon', l: 'Lun' }, { v: 'tue', l: 'Mar' }, { v: 'wed', l: 'Mer' },
+  { v: 'thu', l: 'Jeu' }, { v: 'fri', l: 'Ven' }, { v: 'sat', l: 'Sam' },
+  { v: 'sun', l: 'Dim' },
+];
+
+function childCheckboxesHtml(hass, selectedIds = []) {
+  const children = hass.states['sensor.kidtasks_all_children_list']?.attributes?.children || [];
+  if (!children.length) return '<span style="font-size:12px;color:var(--secondary-text-color);">Aucun enfant configure</span>';
+  return children.map(c => `
+    <label style="display:flex;align-items:center;gap:8px;margin-bottom:6px;cursor:pointer;font-size:14px;">
+      <input type="checkbox" class="kt-child-cb" value="${c.id}" ${selectedIds.includes(c.id) ? 'checked' : ''}
+        style="width:16px;height:16px;accent-color:var(--primary-color);cursor:pointer;">
+      ${c.name}
+    </label>`).join('');
+}
+
+function getCheckedChildIds(dlg) {
+  return Array.from(dlg.querySelectorAll('.kt-child-cb:checked')).map(cb => cb.value);
+}
+
+function weekDayCheckboxesHtml(selectedDays = []) {
+  return WEEK_DAYS.map(d => `
+    <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:12px;background:var(--secondary-background-color);padding:4px 8px;border-radius:6px;">
+      <input type="checkbox" class="kt-wday" value="${d.v}" ${(selectedDays||[]).includes(d.v) ? 'checked' : ''}
+        style="accent-color:var(--primary-color);cursor:pointer;">
+      ${d.l}
+    </label>`).join('');
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // Card 1 — KidsTasksChildSummaryCard
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -390,44 +420,48 @@ class KidsTasksChildSummaryCard extends HTMLElement {
   }
 
   _openEditChildDialog(childId, attrs) {
-    const gradStart = attrs.card_gradient_start || '#6b73ff';
-    const gradEnd   = attrs.card_gradient_end   || '#9c27b0';
-    const content = `
+    const gradStart  = attrs.card_gradient_start || '#6b73ff';
+    const gradEnd    = attrs.card_gradient_end   || '#9c27b0';
+    const avatarType = attrs.avatar_type || 'emoji';
+    const dlg = showModal(`
       <div>
-        <div style="${ROW_STYLE}">
-          <label style="${LABEL_STYLE}">Nom</label>
-          <input id="kt-name" type="text" value="${attrs.name || ''}" style="${FIELD_STYLE}">
-        </div>
-        <div style="${ROW_STYLE}">
-          <label style="${LABEL_STYLE}">Avatar (emoji ou URL)</label>
-          <input id="kt-avatar" type="text" value="${attrs.avatar || ''}" style="${FIELD_STYLE}">
-        </div>
-        <div style="${ROW_STYLE}">
-          <label style="${LABEL_STYLE}">Couleur debut du gradient</label>
-          <input id="kt-grad-start" type="color" value="${gradStart}" style="width:60px;height:36px;border:none;border-radius:8px;cursor:pointer;background:none;">
-        </div>
-        <div style="${ROW_STYLE}">
-          <label style="${LABEL_STYLE}">Couleur fin du gradient</label>
-          <input id="kt-grad-end" type="color" value="${gradEnd}" style="width:60px;height:36px;border:none;border-radius:8px;cursor:pointer;background:none;">
+        <div style="${ROW_STYLE}"><label style="${LABEL_STYLE}">Nom</label>
+          <input id="kt-name" type="text" value="${attrs.name || ''}" style="${FIELD_STYLE}"></div>
+        <div style="${ROW_STYLE}"><label style="${LABEL_STYLE}">Type d'avatar</label>
+          <select id="kt-avatar-type" style="${FIELD_STYLE}">
+            <option value="emoji"  ${avatarType==='emoji'  ?'selected':''}>Emoji</option>
+            <option value="url"    ${avatarType==='url'    ?'selected':''}>URL image</option>
+          </select></div>
+        <div style="${ROW_STYLE}"><label style="${LABEL_STYLE}">Avatar</label>
+          <input id="kt-avatar" type="text" value="${attrs.avatar || ''}" placeholder="Ex: ou https://..." style="${FIELD_STYLE}"></div>
+        <div style="${ROW_STYLE}"><label style="${LABEL_STYLE}">Entite personne HA (optionnel)</label>
+          <input id="kt-person" type="text" value="${attrs.person_entity_id || ''}" placeholder="person.prenom" style="${FIELD_STYLE}"></div>
+        <div style="display:flex;gap:10px;${ROW_STYLE}">
+          <div style="flex:1"><label style="${LABEL_STYLE}">Couleur debut gradient</label>
+            <input id="kt-grad-start" type="color" value="${gradStart}" style="width:60px;height:36px;border:none;border-radius:8px;cursor:pointer;background:none;"></div>
+          <div style="flex:1"><label style="${LABEL_STYLE}">Couleur fin gradient</label>
+            <input id="kt-grad-end" type="color" value="${gradEnd}" style="width:60px;height:36px;border:none;border-radius:8px;cursor:pointer;background:none;"></div>
         </div>
         <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:6px;">
           <button id="kt-cancel" style="padding:8px 18px;border-radius:8px;border:1.5px solid var(--divider-color);background:var(--secondary-background-color);color:var(--primary-text-color);font-size:14px;cursor:pointer;">Annuler</button>
           <button id="kt-save" style="padding:8px 18px;border-radius:8px;border:none;background:var(--primary-color);color:var(--text-primary-color,#fff);font-size:14px;font-weight:600;cursor:pointer;">Sauvegarder</button>
         </div>
-      </div>`;
-
-    const dlg = showModal(content, 'Modifier l\'enfant');
+      </div>`, "Modifier l'enfant");
     dlg.querySelector('#kt-cancel')?.addEventListener('click', () => dlg.remove());
     dlg.querySelector('#kt-save')?.addEventListener('click', () => {
       const name = dlg.querySelector('#kt-name')?.value?.trim();
       if (!name) { dlg.querySelector('#kt-name')?.focus(); return; }
-      callService(this._hass, 'kids_tasks', 'update_child', {
-        child_id:             childId,
+      const payload = {
+        child_id:            childId,
         name,
-        avatar:               dlg.querySelector('#kt-avatar')?.value?.trim() || '',
-        card_gradient_start:  dlg.querySelector('#kt-grad-start')?.value || '#6b73ff',
-        card_gradient_end:    dlg.querySelector('#kt-grad-end')?.value   || '#9c27b0',
-      });
+        avatar:              dlg.querySelector('#kt-avatar')?.value?.trim() || '',
+        avatar_type:         dlg.querySelector('#kt-avatar-type')?.value || 'emoji',
+        card_gradient_start: dlg.querySelector('#kt-grad-start')?.value || '#6b73ff',
+        card_gradient_end:   dlg.querySelector('#kt-grad-end')?.value   || '#9c27b0',
+      };
+      const person = dlg.querySelector('#kt-person')?.value?.trim();
+      if (person) payload.person_entity_id = person;
+      callService(this._hass, 'kids_tasks', 'update_child', payload);
       dlg.remove();
     });
   }
@@ -766,122 +800,159 @@ class KidsTasksTaskListCard extends HTMLElement {
   }
 
   _openAddDialog() {
-    const childOpts = childOptsHtml(this._hass);
-
-    const content = `
+    const dlg = showModal(`
       <div>
-        <div style="${ROW_STYLE}">
-          <label style="${LABEL_STYLE}">Nom</label>
-          <input id="kt-name" type="text" placeholder="Nom de la tache" style="${FIELD_STYLE}">
+        <div style="${ROW_STYLE}"><label style="${LABEL_STYLE}">Nom</label>
+          <input id="kt-name" type="text" placeholder="Nom de la tache" style="${FIELD_STYLE}"></div>
+        <div style="${ROW_STYLE}"><label style="${LABEL_STYLE}">Description (optionnel)</label>
+          <input id="kt-desc" type="text" placeholder="" style="${FIELD_STYLE}"></div>
+        <div style="${ROW_STYLE}"><label style="${LABEL_STYLE}">Categorie</label>
+          <select id="kt-cat" style="${FIELD_STYLE}">${taskCategoryOptsHtml()}</select></div>
+        <div style="display:flex;gap:10px;${ROW_STYLE}">
+          <div style="flex:1"><label style="${LABEL_STYLE}">Points</label>
+            <input id="kt-pts" type="number" value="10" min="0" max="999" style="${FIELD_STYLE}"></div>
+          <div style="flex:1"><label style="${LABEL_STYLE}">Pieces</label>
+            <input id="kt-coins" type="number" value="0" min="0" max="999" style="${FIELD_STYLE}"></div>
         </div>
-        <div style="${ROW_STYLE}">
-          <label style="${LABEL_STYLE}">Categorie</label>
-          <select id="kt-cat" style="${FIELD_STYLE}">${taskCategoryOptsHtml()}</select>
+        <div style="${ROW_STYLE}"><label style="${LABEL_STYLE}">Frequence</label>
+          <select id="kt-freq" style="${FIELD_STYLE}">${taskFreqOptsHtml()}</select></div>
+        <div id="kt-wdays-row" style="${ROW_STYLE}display:none;">
+          <label style="${LABEL_STYLE}">Jours (hebdo)</label>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;">${weekDayCheckboxesHtml()}</div>
         </div>
-        <div style="${ROW_STYLE}">
-          <label style="${LABEL_STYLE}">Points</label>
-          <input id="kt-pts" type="number" value="10" min="1" max="999" style="${FIELD_STYLE}">
+        <div style="display:flex;gap:10px;${ROW_STYLE}">
+          <div style="flex:1"><label style="${LABEL_STYLE}">Heure limite (optionnel)</label>
+            <input id="kt-deadline" type="time" style="${FIELD_STYLE}"></div>
+          <div style="flex:1"><label style="${LABEL_STYLE}">Penalite (pts)</label>
+            <input id="kt-penalty" type="number" value="0" min="0" max="999" style="${FIELD_STYLE}"></div>
         </div>
-        <div style="${ROW_STYLE}">
-          <label style="${LABEL_STYLE}">Frequence</label>
-          <select id="kt-freq" style="${FIELD_STYLE}">${taskFreqOptsHtml()}</select>
-        </div>
-        ${childOpts ? `
-        <div style="${ROW_STYLE}">
-          <label style="${LABEL_STYLE}">Assigner a (optionnel)</label>
-          <select id="kt-child" style="${FIELD_STYLE}">
-            <option value="">— Non assigne —</option>
-            ${childOpts}
-          </select>
-        </div>` : ''}
+        <div style="${ROW_STYLE}"><label style="${LABEL_STYLE}">Validation parentale requise</label>
+          <input id="kt-valid" type="checkbox" checked style="width:16px;height:16px;accent-color:var(--primary-color);cursor:pointer;"></div>
+        <div style="${ROW_STYLE}"><label style="${LABEL_STYLE}">Assigner a (optionnel)</label>
+          <div>${childCheckboxesHtml(this._hass)}</div></div>
         <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:6px;">
           <button id="kt-cancel" style="padding:8px 18px;border-radius:8px;border:1.5px solid var(--divider-color);background:var(--secondary-background-color);color:var(--primary-text-color);font-size:14px;cursor:pointer;">Annuler</button>
           <button id="kt-save" style="padding:8px 18px;border-radius:8px;border:none;background:var(--primary-color);color:var(--text-primary-color,#fff);font-size:14px;font-weight:600;cursor:pointer;">Ajouter</button>
         </div>
-      </div>`;
+      </div>`, 'Nouvelle tache');
 
-    const dlg = showModal(content, 'Nouvelle tache');
+    const freqSel = dlg.querySelector('#kt-freq');
+    const wdRow   = dlg.querySelector('#kt-wdays-row');
+    freqSel?.addEventListener('change', () => {
+      wdRow.style.display = freqSel.value === 'weekly' ? ROW_STYLE : 'none';
+    });
 
     dlg.querySelector('#kt-cancel')?.addEventListener('click', () => dlg.remove());
-
     dlg.querySelector('#kt-save')?.addEventListener('click', () => {
       const name = dlg.querySelector('#kt-name')?.value?.trim();
       if (!name) { dlg.querySelector('#kt-name')?.focus(); return; }
-
+      const deadline = dlg.querySelector('#kt-deadline')?.value;
       const data = {
         name,
-        category:  dlg.querySelector('#kt-cat')?.value  || 'other',
-        points:    parseInt(dlg.querySelector('#kt-pts')?.value || '10', 10),
-        frequency: dlg.querySelector('#kt-freq')?.value || 'daily',
+        description:        dlg.querySelector('#kt-desc')?.value?.trim() || '',
+        category:           dlg.querySelector('#kt-cat')?.value  || 'other',
+        points:             parseInt(dlg.querySelector('#kt-pts')?.value    || '10',  10),
+        coins:              parseInt(dlg.querySelector('#kt-coins')?.value  || '0',   10),
+        frequency:          dlg.querySelector('#kt-freq')?.value || 'daily',
+        validation_required: dlg.querySelector('#kt-valid')?.checked !== false,
+        assigned_child_ids: getCheckedChildIds(dlg),
       };
-      const childId = dlg.querySelector('#kt-child')?.value;
-      if (childId) data.assigned_child_ids = [childId];
-
+      if (data.frequency === 'weekly') {
+        data.weekly_days = Array.from(dlg.querySelectorAll('.kt-wday:checked')).map(cb => cb.value);
+      }
+      if (deadline) {
+        data.deadline_time   = deadline;
+        data.penalty_points  = parseInt(dlg.querySelector('#kt-penalty')?.value || '0', 10);
+      }
       callService(this._hass, 'kids_tasks', 'add_task', data);
       dlg.remove();
     });
   }
 
   _openEditTaskDialog(task) {
-    const catRaw  = catRawFromDisplay(task.category);
-    const freqRaw = freqRawFromDisplay(task.frequency);
-    const firstChild = Array.isArray(task.assigned_child_ids) ? task.assigned_child_ids[0] || '' : '';
-    const childOpts = childOptsHtml(this._hass);
+    const catRaw      = catRawFromDisplay(task.category);
+    const freqRaw     = freqRawFromDisplay(task.frequency);
+    const assignedIds = Array.isArray(task.assigned_child_ids) ? task.assigned_child_ids : [];
+    const weeklyDays  = Array.isArray(task.weekly_days) ? task.weekly_days : [];
+    const isWeekly    = freqRaw === 'weekly';
 
-    const childSelectHtml = childOpts ? `
-      <div style="${ROW_STYLE}">
-        <label style="${LABEL_STYLE}">Assigner a (optionnel)</label>
-        <select id="kt-child" style="${FIELD_STYLE}">
-          <option value="">— Non assigne —</option>
-          ${(this._hass.states['sensor.kidtasks_all_children_list']?.attributes?.children || [])
-            .map(c => `<option value="${c.id}"${c.id === firstChild ? ' selected' : ''}>${c.name}</option>`)
-            .join('')}
-        </select>
-      </div>` : '';
-
-    const content = `
+    const dlg = showModal(`
       <div>
-        <div style="${ROW_STYLE}">
-          <label style="${LABEL_STYLE}">Nom</label>
-          <input id="kt-name" type="text" value="${task.name || ''}" style="${FIELD_STYLE}">
+        <div style="${ROW_STYLE}"><label style="${LABEL_STYLE}">Nom</label>
+          <input id="kt-name" type="text" value="${task.name || ''}" style="${FIELD_STYLE}"></div>
+        <div style="${ROW_STYLE}"><label style="${LABEL_STYLE}">Description</label>
+          <input id="kt-desc" type="text" value="${task.description || ''}" style="${FIELD_STYLE}"></div>
+        <div style="${ROW_STYLE}"><label style="${LABEL_STYLE}">Categorie</label>
+          <select id="kt-cat" style="${FIELD_STYLE}">${taskCategoryOptsHtml(catRaw)}</select></div>
+        <div style="display:flex;gap:10px;${ROW_STYLE}">
+          <div style="flex:1"><label style="${LABEL_STYLE}">Points</label>
+            <input id="kt-pts" type="number" value="${task.points || 10}" min="0" max="999" style="${FIELD_STYLE}"></div>
+          <div style="flex:1"><label style="${LABEL_STYLE}">Pieces</label>
+            <input id="kt-coins" type="number" value="${task.coins || 0}" min="0" max="999" style="${FIELD_STYLE}"></div>
         </div>
-        <div style="${ROW_STYLE}">
-          <label style="${LABEL_STYLE}">Categorie</label>
-          <select id="kt-cat" style="${FIELD_STYLE}">${taskCategoryOptsHtml(catRaw)}</select>
+        <div style="${ROW_STYLE}"><label style="${LABEL_STYLE}">Frequence</label>
+          <select id="kt-freq" style="${FIELD_STYLE}">${taskFreqOptsHtml(freqRaw)}</select></div>
+        <div id="kt-wdays-row" style="${ROW_STYLE}${isWeekly ? '' : 'display:none;'}">
+          <label style="${LABEL_STYLE}">Jours (hebdo)</label>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;">${weekDayCheckboxesHtml(weeklyDays)}</div>
         </div>
-        <div style="${ROW_STYLE}">
-          <label style="${LABEL_STYLE}">Points</label>
-          <input id="kt-pts" type="number" value="${task.points || 10}" min="1" max="999" style="${FIELD_STYLE}">
+        <div style="display:flex;gap:10px;${ROW_STYLE}">
+          <div style="flex:1"><label style="${LABEL_STYLE}">Heure limite</label>
+            <input id="kt-deadline" type="time" value="${task.deadline_time || ''}" style="${FIELD_STYLE}"></div>
+          <div style="flex:1"><label style="${LABEL_STYLE}">Penalite (pts)</label>
+            <input id="kt-penalty" type="number" value="${task.penalty_points || 0}" min="0" max="999" style="${FIELD_STYLE}"></div>
         </div>
-        <div style="${ROW_STYLE}">
-          <label style="${LABEL_STYLE}">Frequence</label>
-          <select id="kt-freq" style="${FIELD_STYLE}">${taskFreqOptsHtml(freqRaw)}</select>
+        <div style="display:flex;gap:20px;${ROW_STYLE}">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px;">
+            <input id="kt-valid" type="checkbox" ${task.validation_required !== false ? 'checked' : ''}
+              style="width:16px;height:16px;accent-color:var(--primary-color);cursor:pointer;">
+            Validation requise
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px;">
+            <input id="kt-active" type="checkbox" ${task.active !== false ? 'checked' : ''}
+              style="width:16px;height:16px;accent-color:var(--primary-color);cursor:pointer;">
+            Active
+          </label>
         </div>
-        ${childSelectHtml}
+        <div style="${ROW_STYLE}"><label style="${LABEL_STYLE}">Assigner a</label>
+          <div>${childCheckboxesHtml(this._hass, assignedIds)}</div></div>
         <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:6px;">
           <button id="kt-cancel" style="padding:8px 18px;border-radius:8px;border:1.5px solid var(--divider-color);background:var(--secondary-background-color);color:var(--primary-text-color);font-size:14px;cursor:pointer;">Annuler</button>
           <button id="kt-save" style="padding:8px 18px;border-radius:8px;border:none;background:var(--primary-color);color:var(--text-primary-color,#fff);font-size:14px;font-weight:600;cursor:pointer;">Sauvegarder</button>
         </div>
-      </div>`;
+      </div>`, 'Modifier la tache');
 
-    const dlg = showModal(content, 'Modifier la tache');
+    const freqSel = dlg.querySelector('#kt-freq');
+    const wdRow   = dlg.querySelector('#kt-wdays-row');
+    freqSel?.addEventListener('change', () => {
+      wdRow.style.display = freqSel.value === 'weekly' ? ROW_STYLE : 'none';
+    });
 
     dlg.querySelector('#kt-cancel')?.addEventListener('click', () => dlg.remove());
-
     dlg.querySelector('#kt-save')?.addEventListener('click', () => {
       const name = dlg.querySelector('#kt-name')?.value?.trim();
       if (!name) { dlg.querySelector('#kt-name')?.focus(); return; }
-
+      const deadline = dlg.querySelector('#kt-deadline')?.value;
+      const freq     = dlg.querySelector('#kt-freq')?.value || 'daily';
       const data = {
-        task_id:   task.task_id,
+        task_id:            task.task_id,
         name,
-        category:  dlg.querySelector('#kt-cat')?.value  || 'other',
-        points:    parseInt(dlg.querySelector('#kt-pts')?.value || '10', 10),
-        frequency: dlg.querySelector('#kt-freq')?.value || 'daily',
+        description:        dlg.querySelector('#kt-desc')?.value?.trim() || '',
+        category:           dlg.querySelector('#kt-cat')?.value || 'other',
+        points:             parseInt(dlg.querySelector('#kt-pts')?.value   || '10', 10),
+        coins:              parseInt(dlg.querySelector('#kt-coins')?.value || '0',  10),
+        frequency:          freq,
+        validation_required: dlg.querySelector('#kt-valid')?.checked !== false,
+        active:             dlg.querySelector('#kt-active')?.checked !== false,
+        assigned_child_ids: getCheckedChildIds(dlg),
       };
-      const childId = dlg.querySelector('#kt-child')?.value;
-      data.assigned_child_ids = childId ? [childId] : [];
-
+      if (freq === 'weekly') {
+        data.weekly_days = Array.from(dlg.querySelectorAll('.kt-wday:checked')).map(cb => cb.value);
+      }
+      if (deadline) {
+        data.deadline_time  = deadline;
+        data.penalty_points = parseInt(dlg.querySelector('#kt-penalty')?.value || '0', 10);
+      }
       callService(this._hass, 'kids_tasks', 'update_task', data);
       dlg.remove();
     });
@@ -1063,53 +1134,50 @@ class KidsTasksRewardCard extends HTMLElement {
   }
 
   _openAddRewardDialog() {
-    const content = `
+    const dlg = showModal(`
       <div>
-        <div style="${ROW_STYLE}">
-          <label style="${LABEL_STYLE}">Nom</label>
-          <input id="kt-name" type="text" placeholder="Nom de la recompense" style="${FIELD_STYLE}">
+        <div style="${ROW_STYLE}"><label style="${LABEL_STYLE}">Nom</label>
+          <input id="kt-name" type="text" placeholder="Nom de la recompense" style="${FIELD_STYLE}"></div>
+        <div style="${ROW_STYLE}"><label style="${LABEL_STYLE}">Description (optionnel)</label>
+          <input id="kt-desc" type="text" style="${FIELD_STYLE}"></div>
+        <div style="display:flex;gap:10px;${ROW_STYLE}">
+          <div style="flex:1"><label style="${LABEL_STYLE}">Cout (points)</label>
+            <input id="kt-cost" type="number" value="50" min="0" max="9999" style="${FIELD_STYLE}"></div>
+          <div style="flex:1"><label style="${LABEL_STYLE}">Cout (pieces)</label>
+            <input id="kt-coin-cost" type="number" value="0" min="0" max="9999" style="${FIELD_STYLE}"></div>
         </div>
-        <div style="${ROW_STYLE}">
-          <label style="${LABEL_STYLE}">Description (optionnel)</label>
-          <input id="kt-desc" type="text" placeholder="Description courte" style="${FIELD_STYLE}">
+        <div style="${ROW_STYLE}"><label style="${LABEL_STYLE}">Categorie</label>
+          <select id="kt-cat" style="${FIELD_STYLE}">${rewardCategoryOptsHtml()}</select></div>
+        <div style="display:flex;gap:10px;${ROW_STYLE}">
+          <div style="flex:1"><label style="${LABEL_STYLE}">Icone (mdi:...)</label>
+            <input id="kt-icon" type="text" placeholder="mdi:gift" style="${FIELD_STYLE}"></div>
+          <div style="flex:1"><label style="${LABEL_STYLE}">Quantite limitee</label>
+            <input id="kt-qty" type="number" placeholder="Illimitee" min="1" max="999" style="${FIELD_STYLE}"></div>
         </div>
-        <div style="${ROW_STYLE}">
-          <label style="${LABEL_STYLE}">Cout (points)</label>
-          <input id="kt-cost" type="number" value="50" min="1" max="9999" style="${FIELD_STYLE}">
-        </div>
-        <div style="${ROW_STYLE}">
-          <label style="${LABEL_STYLE}">Categorie</label>
-          <select id="kt-cat" style="${FIELD_STYLE}">${rewardCategoryOptsHtml()}</select>
-        </div>
-        <div style="${ROW_STYLE}">
-          <label style="${LABEL_STYLE}">Icone (ex: mdi:gift)</label>
-          <input id="kt-icon" type="text" placeholder="mdi:gift" style="${FIELD_STYLE}">
-        </div>
-        <div style="${ROW_STYLE}">
-          <label style="${LABEL_STYLE}">Quantite limitee (optionnel)</label>
-          <input id="kt-qty" type="number" placeholder="Laisser vide si illimite" min="1" style="${FIELD_STYLE}">
-        </div>
+        <div style="${ROW_STYLE}"><label style="${LABEL_STYLE}">Type</label>
+          <select id="kt-type" style="${FIELD_STYLE}">
+            <option value="real">Reelle</option>
+            <option value="cosmetic">Cosmetique</option>
+          </select></div>
         <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:6px;">
           <button id="kt-cancel" style="padding:8px 18px;border-radius:8px;border:1.5px solid var(--divider-color);background:var(--secondary-background-color);color:var(--primary-text-color);font-size:14px;cursor:pointer;">Annuler</button>
           <button id="kt-save" style="padding:8px 18px;border-radius:8px;border:none;background:var(--primary-color);color:var(--text-primary-color,#fff);font-size:14px;font-weight:600;cursor:pointer;">Ajouter</button>
         </div>
-      </div>`;
-
-    const dlg = showModal(content, 'Nouvelle recompense');
+      </div>`, 'Nouvelle recompense');
     dlg.querySelector('#kt-cancel')?.addEventListener('click', () => dlg.remove());
     dlg.querySelector('#kt-save')?.addEventListener('click', () => {
       const name = dlg.querySelector('#kt-name')?.value?.trim();
       if (!name) { dlg.querySelector('#kt-name')?.focus(); return; }
+      const qty  = dlg.querySelector('#kt-qty')?.value;
       const data = {
         name,
-        cost:     parseInt(dlg.querySelector('#kt-cost')?.value || '50', 10),
-        category: dlg.querySelector('#kt-cat')?.value || 'fun',
+        description: dlg.querySelector('#kt-desc')?.value?.trim() || '',
+        cost:        parseInt(dlg.querySelector('#kt-cost')?.value      || '50', 10),
+        coin_cost:   parseInt(dlg.querySelector('#kt-coin-cost')?.value || '0',  10),
+        category:    dlg.querySelector('#kt-cat')?.value  || 'fun',
+        icon:        dlg.querySelector('#kt-icon')?.value?.trim() || '',
+        reward_type: dlg.querySelector('#kt-type')?.value || 'real',
       };
-      const desc = dlg.querySelector('#kt-desc')?.value?.trim();
-      if (desc) data.description = desc;
-      const icon = dlg.querySelector('#kt-icon')?.value?.trim();
-      if (icon) data.icon = icon;
-      const qty = dlg.querySelector('#kt-qty')?.value?.trim();
       if (qty) data.limited_quantity = parseInt(qty, 10);
       callService(this._hass, 'kids_tasks', 'add_reward', data);
       dlg.remove();
@@ -1117,56 +1185,60 @@ class KidsTasksRewardCard extends HTMLElement {
   }
 
   _openEditRewardDialog(reward) {
-    const qtyVal = reward.limited_quantity != null ? reward.limited_quantity : '';
-    const content = `
+    const dlg = showModal(`
       <div>
-        <div style="${ROW_STYLE}">
-          <label style="${LABEL_STYLE}">Nom</label>
-          <input id="kt-name" type="text" value="${reward.name || ''}" style="${FIELD_STYLE}">
+        <div style="${ROW_STYLE}"><label style="${LABEL_STYLE}">Nom</label>
+          <input id="kt-name" type="text" value="${reward.name || ''}" style="${FIELD_STYLE}"></div>
+        <div style="${ROW_STYLE}"><label style="${LABEL_STYLE}">Description</label>
+          <input id="kt-desc" type="text" value="${reward.description || ''}" style="${FIELD_STYLE}"></div>
+        <div style="display:flex;gap:10px;${ROW_STYLE}">
+          <div style="flex:1"><label style="${LABEL_STYLE}">Cout (points)</label>
+            <input id="kt-cost" type="number" value="${reward.cost || 0}" min="0" max="9999" style="${FIELD_STYLE}"></div>
+          <div style="flex:1"><label style="${LABEL_STYLE}">Cout (pieces)</label>
+            <input id="kt-coin-cost" type="number" value="${reward.coin_cost || 0}" min="0" max="9999" style="${FIELD_STYLE}"></div>
         </div>
-        <div style="${ROW_STYLE}">
-          <label style="${LABEL_STYLE}">Description (optionnel)</label>
-          <input id="kt-desc" type="text" value="${reward.description || ''}" style="${FIELD_STYLE}">
+        <div style="${ROW_STYLE}"><label style="${LABEL_STYLE}">Categorie</label>
+          <select id="kt-cat" style="${FIELD_STYLE}">${rewardCategoryOptsHtml((reward.category||'').toLowerCase())}</select></div>
+        <div style="display:flex;gap:10px;${ROW_STYLE}">
+          <div style="flex:1"><label style="${LABEL_STYLE}">Icone (mdi:...)</label>
+            <input id="kt-icon" type="text" value="${reward.icon || ''}" placeholder="mdi:gift" style="${FIELD_STYLE}"></div>
+          <div style="flex:1"><label style="${LABEL_STYLE}">Quantite limitee</label>
+            <input id="kt-qty" type="number" value="${reward.limited_quantity != null ? reward.limited_quantity : ''}" placeholder="Illimitee" min="1" max="999" style="${FIELD_STYLE}"></div>
         </div>
+        <div style="${ROW_STYLE}"><label style="${LABEL_STYLE}">Type</label>
+          <select id="kt-type" style="${FIELD_STYLE}">
+            <option value="real"     ${reward.reward_type==='real'     ?'selected':''}>Reelle</option>
+            <option value="cosmetic" ${reward.reward_type==='cosmetic' ?'selected':''}>Cosmetique</option>
+          </select></div>
         <div style="${ROW_STYLE}">
-          <label style="${LABEL_STYLE}">Cout (points)</label>
-          <input id="kt-cost" type="number" value="${reward.cost || 50}" min="1" max="9999" style="${FIELD_STYLE}">
-        </div>
-        <div style="${ROW_STYLE}">
-          <label style="${LABEL_STYLE}">Categorie</label>
-          <select id="kt-cat" style="${FIELD_STYLE}">${rewardCategoryOptsHtml((reward.category || '').toLowerCase())}</select>
-        </div>
-        <div style="${ROW_STYLE}">
-          <label style="${LABEL_STYLE}">Icone (ex: mdi:gift)</label>
-          <input id="kt-icon" type="text" value="${reward.icon || ''}" placeholder="mdi:gift" style="${FIELD_STYLE}">
-        </div>
-        <div style="${ROW_STYLE}">
-          <label style="${LABEL_STYLE}">Quantite limitee (optionnel)</label>
-          <input id="kt-qty" type="number" value="${qtyVal}" placeholder="Laisser vide si illimite" min="1" style="${FIELD_STYLE}">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px;">
+            <input id="kt-active" type="checkbox" ${reward.active !== false ? 'checked' : ''}
+              style="width:16px;height:16px;accent-color:var(--primary-color);cursor:pointer;">
+            Active
+          </label>
         </div>
         <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:6px;">
           <button id="kt-cancel" style="padding:8px 18px;border-radius:8px;border:1.5px solid var(--divider-color);background:var(--secondary-background-color);color:var(--primary-text-color);font-size:14px;cursor:pointer;">Annuler</button>
           <button id="kt-save" style="padding:8px 18px;border-radius:8px;border:none;background:var(--primary-color);color:var(--text-primary-color,#fff);font-size:14px;font-weight:600;cursor:pointer;">Sauvegarder</button>
         </div>
-      </div>`;
-
-    const dlg = showModal(content, 'Modifier la recompense');
+      </div>`, 'Modifier la recompense');
     dlg.querySelector('#kt-cancel')?.addEventListener('click', () => dlg.remove());
     dlg.querySelector('#kt-save')?.addEventListener('click', () => {
       const name = dlg.querySelector('#kt-name')?.value?.trim();
       if (!name) { dlg.querySelector('#kt-name')?.focus(); return; }
+      const qty  = dlg.querySelector('#kt-qty')?.value;
       const data = {
-        reward_id: reward.reward_id,
+        reward_id:   reward.reward_id,
         name,
-        cost:      parseInt(dlg.querySelector('#kt-cost')?.value || '50', 10),
-        category:  dlg.querySelector('#kt-cat')?.value || 'fun',
+        description: dlg.querySelector('#kt-desc')?.value?.trim() || '',
+        cost:        parseInt(dlg.querySelector('#kt-cost')?.value      || '0', 10),
+        coin_cost:   parseInt(dlg.querySelector('#kt-coin-cost')?.value || '0', 10),
+        category:    dlg.querySelector('#kt-cat')?.value  || 'fun',
+        icon:        dlg.querySelector('#kt-icon')?.value?.trim() || '',
+        reward_type: dlg.querySelector('#kt-type')?.value || 'real',
+        active:      dlg.querySelector('#kt-active')?.checked !== false,
       };
-      const desc = dlg.querySelector('#kt-desc')?.value?.trim();
-      if (desc) data.description = desc;
-      const icon = dlg.querySelector('#kt-icon')?.value?.trim();
-      if (icon) data.icon = icon;
-      const qty = dlg.querySelector('#kt-qty')?.value?.trim();
-      data.limited_quantity = qty ? parseInt(qty, 10) : null;
+      if (qty) data.limited_quantity = parseInt(qty, 10);
       callService(this._hass, 'kids_tasks', 'update_reward', data);
       dlg.remove();
     });
@@ -1384,90 +1456,97 @@ class KidsTasksChildrenCard extends HTMLElement {
   }
 
   _openAddChildDialog() {
-    const content = `
+    const dlg = showModal(`
       <div>
-        <div style="${ROW_STYLE}">
-          <label style="${LABEL_STYLE}">Nom</label>
-          <input id="kt-name" type="text" placeholder="Prenom de l'enfant" style="${FIELD_STYLE}">
-        </div>
-        <div style="${ROW_STYLE}">
-          <label style="${LABEL_STYLE}">Avatar (emoji ou URL)</label>
-          <input id="kt-avatar" type="text" placeholder="Ex: ou https://..." style="${FIELD_STYLE}">
-        </div>
-        <div style="${ROW_STYLE}">
-          <label style="${LABEL_STYLE}">Couleur debut du gradient</label>
-          <input id="kt-grad-start" type="color" value="#6b73ff" style="width:60px;height:36px;border:none;border-radius:8px;cursor:pointer;background:none;">
-        </div>
-        <div style="${ROW_STYLE}">
-          <label style="${LABEL_STYLE}">Couleur fin du gradient</label>
-          <input id="kt-grad-end" type="color" value="#9c27b0" style="width:60px;height:36px;border:none;border-radius:8px;cursor:pointer;background:none;">
+        <div style="${ROW_STYLE}"><label style="${LABEL_STYLE}">Nom</label>
+          <input id="kt-name" type="text" placeholder="Prenom" style="${FIELD_STYLE}"></div>
+        <div style="${ROW_STYLE}"><label style="${LABEL_STYLE}">Type d'avatar</label>
+          <select id="kt-avatar-type" style="${FIELD_STYLE}">
+            <option value="emoji">Emoji</option>
+            <option value="url">URL image</option>
+          </select></div>
+        <div style="${ROW_STYLE}"><label style="${LABEL_STYLE}">Avatar</label>
+          <input id="kt-avatar" type="text" placeholder="Ex: ou https://..." style="${FIELD_STYLE}"></div>
+        <div style="${ROW_STYLE}"><label style="${LABEL_STYLE}">Entite personne HA (optionnel)</label>
+          <input id="kt-person" type="text" placeholder="person.prenom" style="${FIELD_STYLE}"></div>
+        <div style="display:flex;gap:10px;${ROW_STYLE}">
+          <div style="flex:1"><label style="${LABEL_STYLE}">Couleur debut gradient</label>
+            <input id="kt-grad-start" type="color" value="#6b73ff" style="width:60px;height:36px;border:none;border-radius:8px;cursor:pointer;background:none;"></div>
+          <div style="flex:1"><label style="${LABEL_STYLE}">Couleur fin gradient</label>
+            <input id="kt-grad-end" type="color" value="#9c27b0" style="width:60px;height:36px;border:none;border-radius:8px;cursor:pointer;background:none;"></div>
         </div>
         <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:6px;">
           <button id="kt-cancel" style="padding:8px 18px;border-radius:8px;border:1.5px solid var(--divider-color);background:var(--secondary-background-color);color:var(--primary-text-color);font-size:14px;cursor:pointer;">Annuler</button>
           <button id="kt-save" style="padding:8px 18px;border-radius:8px;border:none;background:var(--primary-color);color:var(--text-primary-color,#fff);font-size:14px;font-weight:600;cursor:pointer;">Ajouter</button>
         </div>
-      </div>`;
-
-    const dlg = showModal(content, 'Ajouter un enfant');
+      </div>`, 'Nouvel enfant');
     dlg.querySelector('#kt-cancel')?.addEventListener('click', () => dlg.remove());
     dlg.querySelector('#kt-save')?.addEventListener('click', () => {
       const name = dlg.querySelector('#kt-name')?.value?.trim();
       if (!name) { dlg.querySelector('#kt-name')?.focus(); return; }
-      callService(this._hass, 'kids_tasks', 'add_child', {
+      const payload = {
         name,
-        avatar:               dlg.querySelector('#kt-avatar')?.value?.trim() || '',
-        card_gradient_start:  dlg.querySelector('#kt-grad-start')?.value || '#6b73ff',
-        card_gradient_end:    dlg.querySelector('#kt-grad-end')?.value   || '#9c27b0',
-      });
+        avatar:              dlg.querySelector('#kt-avatar')?.value?.trim() || '',
+        avatar_type:         dlg.querySelector('#kt-avatar-type')?.value || 'emoji',
+        card_gradient_start: dlg.querySelector('#kt-grad-start')?.value || '#6b73ff',
+        card_gradient_end:   dlg.querySelector('#kt-grad-end')?.value   || '#9c27b0',
+      };
+      const person = dlg.querySelector('#kt-person')?.value?.trim();
+      if (person) payload.person_entity_id = person;
+      callService(this._hass, 'kids_tasks', 'add_child', payload);
       dlg.remove();
     });
   }
 
   _openEditChildDialog(child) {
-    const gradStart = child.card_gradient_start || '#6b73ff';
-    const gradEnd   = child.card_gradient_end   || '#9c27b0';
-    const content = `
+    const gradStart  = child.card_gradient_start || '#6b73ff';
+    const gradEnd    = child.card_gradient_end   || '#9c27b0';
+    const avatarType = child.avatar_type || 'emoji';
+    const dlg = showModal(`
       <div>
-        <div style="${ROW_STYLE}">
-          <label style="${LABEL_STYLE}">Nom</label>
-          <input id="kt-name" type="text" value="${child.name || ''}" style="${FIELD_STYLE}">
-        </div>
-        <div style="${ROW_STYLE}">
-          <label style="${LABEL_STYLE}">Avatar (emoji ou URL)</label>
-          <input id="kt-avatar" type="text" value="${child.avatar || ''}" style="${FIELD_STYLE}">
-        </div>
-        <div style="${ROW_STYLE}">
-          <label style="${LABEL_STYLE}">Couleur debut du gradient</label>
-          <input id="kt-grad-start" type="color" value="${gradStart}" style="width:60px;height:36px;border:none;border-radius:8px;cursor:pointer;background:none;">
-        </div>
-        <div style="${ROW_STYLE}">
-          <label style="${LABEL_STYLE}">Couleur fin du gradient</label>
-          <input id="kt-grad-end" type="color" value="${gradEnd}" style="width:60px;height:36px;border:none;border-radius:8px;cursor:pointer;background:none;">
+        <div style="${ROW_STYLE}"><label style="${LABEL_STYLE}">Nom</label>
+          <input id="kt-name" type="text" value="${child.name || ''}" style="${FIELD_STYLE}"></div>
+        <div style="${ROW_STYLE}"><label style="${LABEL_STYLE}">Type d'avatar</label>
+          <select id="kt-avatar-type" style="${FIELD_STYLE}">
+            <option value="emoji" ${avatarType==='emoji'?'selected':''}>Emoji</option>
+            <option value="url"   ${avatarType==='url'  ?'selected':''}>URL image</option>
+          </select></div>
+        <div style="${ROW_STYLE}"><label style="${LABEL_STYLE}">Avatar</label>
+          <input id="kt-avatar" type="text" value="${child.avatar || ''}" style="${FIELD_STYLE}"></div>
+        <div style="${ROW_STYLE}"><label style="${LABEL_STYLE}">Entite personne HA (optionnel)</label>
+          <input id="kt-person" type="text" value="${child.person_entity_id || ''}" placeholder="person.prenom" style="${FIELD_STYLE}"></div>
+        <div style="display:flex;gap:10px;${ROW_STYLE}">
+          <div style="flex:1"><label style="${LABEL_STYLE}">Couleur debut gradient</label>
+            <input id="kt-grad-start" type="color" value="${gradStart}" style="width:60px;height:36px;border:none;border-radius:8px;cursor:pointer;background:none;"></div>
+          <div style="flex:1"><label style="${LABEL_STYLE}">Couleur fin gradient</label>
+            <input id="kt-grad-end" type="color" value="${gradEnd}" style="width:60px;height:36px;border:none;border-radius:8px;cursor:pointer;background:none;"></div>
         </div>
         <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:6px;">
           <button id="kt-cancel" style="padding:8px 18px;border-radius:8px;border:1.5px solid var(--divider-color);background:var(--secondary-background-color);color:var(--primary-text-color);font-size:14px;cursor:pointer;">Annuler</button>
           <button id="kt-save" style="padding:8px 18px;border-radius:8px;border:none;background:var(--primary-color);color:var(--text-primary-color,#fff);font-size:14px;font-weight:600;cursor:pointer;">Sauvegarder</button>
         </div>
-      </div>`;
-
-    const dlg = showModal(content, 'Modifier l\'enfant');
+      </div>`, "Modifier l'enfant");
     dlg.querySelector('#kt-cancel')?.addEventListener('click', () => dlg.remove());
     dlg.querySelector('#kt-save')?.addEventListener('click', () => {
       const name = dlg.querySelector('#kt-name')?.value?.trim();
       if (!name) { dlg.querySelector('#kt-name')?.focus(); return; }
-      callService(this._hass, 'kids_tasks', 'update_child', {
-        child_id:             child.id,
+      const payload = {
+        child_id:            child.id,
         name,
-        avatar:               dlg.querySelector('#kt-avatar')?.value?.trim() || '',
-        card_gradient_start:  dlg.querySelector('#kt-grad-start')?.value || '#6b73ff',
-        card_gradient_end:    dlg.querySelector('#kt-grad-end')?.value   || '#9c27b0',
-      });
+        avatar:              dlg.querySelector('#kt-avatar')?.value?.trim() || '',
+        avatar_type:         dlg.querySelector('#kt-avatar-type')?.value || 'emoji',
+        card_gradient_start: dlg.querySelector('#kt-grad-start')?.value || '#6b73ff',
+        card_gradient_end:   dlg.querySelector('#kt-grad-end')?.value   || '#9c27b0',
+      };
+      const person = dlg.querySelector('#kt-person')?.value?.trim();
+      if (person) payload.person_entity_id = person;
+      callService(this._hass, 'kids_tasks', 'update_child', payload);
       dlg.remove();
     });
   }
 
   _openDeleteChildConfirm(child) {
-    confirmModal('Supprimer "' + child.name + '" ? Toutes les donnees associees seront perdues.', () =>
+    confirmModal('Supprimer l\'enfant "' + child.name + '" ? Cette action est irreversible.', () =>
       callService(this._hass, 'kids_tasks', 'remove_child', { child_id: child.id })
     );
   }
