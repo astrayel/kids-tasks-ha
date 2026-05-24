@@ -25,16 +25,45 @@
   },
   "options": {
     "step": {
-      "init": {
-        "title": "Options Kids Tasks",
-        "description": "Configurez les options avancées",
+      "main_menu": {
+        "title": "Kids Tasks — Options",
         "data": {
-          "validation_required": "Validation parentale requise",
-          "notifications_enabled": "Notifications activées",
-          "auto_reset_tasks": "Réinitialisation automatique des tâches",
-          "points_multiplier": "Multiplicateur de points"
+          "action": "Action"
+        }
+      },
+      "add_task": {
+        "title": "Ajouter une tâche",
+        "data": {
+          "name": "Nom",
+          "description": "Description",
+          "category": "Catégorie",
+          "points": "Points",
+          "frequency": "Fréquence",
+          "assigned_child_id": "Enfant assigné",
+          "validation_required": "Validation parentale requise"
+        }
+      },
+      "add_child": {
+        "title": "Ajouter un enfant",
+        "data": {
+          "name": "Nom",
+          "avatar": "Avatar (emoji ou URL)",
+          "initial_points": "Points initiaux"
+        }
+      },
+      "add_reward": {
+        "title": "Ajouter une récompense",
+        "data": {
+          "name": "Nom",
+          "description": "Description",
+          "cost": "Coût (points)",
+          "category": "Catégorie",
+          "limited_quantity": "Quantité limitée (optionnel)"
         }
       }
+    },
+    "error": {
+      "unknown": "Erreur inattendue"
     }
   },
   "entity": {

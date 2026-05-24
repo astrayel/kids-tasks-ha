@@ -19,6 +19,24 @@ from .const import DOMAIN, CATEGORIES, FREQUENCIES
 
 _LOGGER = logging.getLogger(__name__)
 
+CATEGORY_LABELS_FR = {
+    "bedroom":  "Chambre",
+    "hygiene":  "Hygiène",
+    "kitchen":  "Cuisine",
+    "homework": "Devoirs",
+    "outdoor":  "Extérieur",
+    "music":    "Musique",
+    "other":    "Autre",
+}
+
+FREQUENCY_LABELS_FR = {
+    "daily":   "Quotidienne",
+    "weekly":  "Hebdomadaire",
+    "monthly": "Mensuelle",
+    "once":    "Unique",
+    "none":    "Aucune",
+}
+
 STEP_USER_DATA_SCHEMA = vol.Schema(
     {
         vol.Required("name", default="Kids Tasks"): str,
@@ -87,9 +105,9 @@ class KidsTasksOptionsFlow(config_entries.OptionsFlowWithConfigEntry):
                 vol.Required("action"): selector.SelectSelector(
                     selector.SelectSelectorConfig(
                         options=[
-                            {"value": "add_task", "label": "Add Task"},
-                            {"value": "add_child", "label": "Add Child"},
-                            {"value": "add_reward", "label": "Add Reward"},
+                            {"value": "add_task",   "label": "Ajouter une tâche"},
+                            {"value": "add_child",  "label": "Ajouter un enfant"},
+                            {"value": "add_reward", "label": "Ajouter une récompense"},
                         ],
                         mode=selector.SelectSelectorMode.LIST,
                     )
@@ -131,7 +149,7 @@ class KidsTasksOptionsFlow(config_entries.OptionsFlowWithConfigEntry):
 
         # Get list of children for selection
         coordinator = self.config_entry.runtime_data.coordinator
-        children_options = [{"value": "", "label": "Unassigned"}]
+        children_options = [{"value": "", "label": "Non assigné"}]
         for child_id, child in coordinator.children.items():
             children_options.append({
                 "value": child_id,
@@ -155,7 +173,7 @@ class KidsTasksOptionsFlow(config_entries.OptionsFlowWithConfigEntry):
                 vol.Optional("category", default="other"): selector.SelectSelector(
                     selector.SelectSelectorConfig(
                         options=[
-                            {"value": cat, "label": cat.title()} 
+                            {"value": cat, "label": CATEGORY_LABELS_FR.get(cat, cat)}
                             for cat in CATEGORIES
                         ],
                         mode=selector.SelectSelectorMode.DROPDOWN,
@@ -172,7 +190,7 @@ class KidsTasksOptionsFlow(config_entries.OptionsFlowWithConfigEntry):
                 vol.Optional("frequency", default="daily"): selector.SelectSelector(
                     selector.SelectSelectorConfig(
                         options=[
-                            {"value": freq, "label": freq.title()}
+                            {"value": freq, "label": FREQUENCY_LABELS_FR.get(freq, freq)}
                             for freq in FREQUENCIES
                         ],
                         mode=selector.SelectSelectorMode.DROPDOWN,
@@ -294,13 +312,13 @@ class KidsTasksOptionsFlow(config_entries.OptionsFlowWithConfigEntry):
                 vol.Optional("category", default="fun"): selector.SelectSelector(
                     selector.SelectSelectorConfig(
                         options=[
-                            {"value": "fun", "label": "Fun"},
-                            {"value": "screen_time", "label": "Screen Time"},
-                            {"value": "outing", "label": "Outing"},
-                            {"value": "treat", "label": "Treat"},
-                            {"value": "privilege", "label": "Privilege"},
-                            {"value": "toy", "label": "Toy"},
-                            {"value": "other", "label": "Other"},
+                            {"value": "fun",         "label": "Fun"},
+                            {"value": "screen_time", "label": "Temps d'écran"},
+                            {"value": "outing",      "label": "Sortie"},
+                            {"value": "treat",       "label": "Friandise"},
+                            {"value": "privilege",   "label": "Privilège"},
+                            {"value": "toy",         "label": "Jouet"},
+                            {"value": "other",       "label": "Autre"},
                         ],
                         mode=selector.SelectSelectorMode.DROPDOWN,
                     )
