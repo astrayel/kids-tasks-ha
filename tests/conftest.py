@@ -15,13 +15,32 @@ FIXED_DATE = FIXED_NOW.date()
 
 @pytest.fixture(autouse=True)
 def fixed_time():
-    """Patch dt_util.now() to a fixed value for deterministic tests."""
-    with (
-        patch("custom_components.kids_tasks.models.dt_util.now", return_value=FIXED_NOW),
-        patch("custom_components.kids_tasks.coordinator.dt_util.now", return_value=FIXED_NOW),
-        patch("custom_components.kids_tasks.sensor.dt_util.now", return_value=FIXED_NOW),
-    ):
-        yield FIXED_NOW
+    """Patch dt_util.now() to a fixed value for deterministic tests.
+
+    Falls back gracefully when a module is not yet loaded (e.g. service tests
+    that don't import models at top-level, or missing optional HA deps).
+    """
+    targets = [
+        "custom_components.kids_tasks.models.dt_util.now",
+        "custom_components.kids_tasks.coordinator.dt_util.now",
+        "custom_components.kids_tasks.sensor.dt_util.now",
+    ]
+    active = []
+    for target in targets:
+        try:
+            p = patch(target, return_value=FIXED_NOW)
+            p.start()
+            active.append(p)
+        except (ImportError, AttributeError, ModuleNotFoundError):
+            pass
+
+    yield FIXED_NOW
+
+    for p in active:
+        try:
+            p.stop()
+        except RuntimeError:
+            pass
 
 
 @pytest.fixture
