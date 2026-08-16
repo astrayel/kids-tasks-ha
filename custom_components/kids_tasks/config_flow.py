@@ -78,12 +78,23 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return KidsTasksOptionsFlow(config_entry)
 
 
-class KidsTasksOptionsFlow(config_entries.OptionsFlowWithConfigEntry):
-    """Handle Kids Tasks options."""
+class KidsTasksOptionsFlow(config_entries.OptionsFlow):
+    """Handle Kids Tasks options.
 
-    def __init__(self, config_entry) -> None:
+    ``OptionsFlowWithConfigEntry`` is deprecated since Home Assistant 2024.11.
+    The entry is kept here and exposed through an explicit property so the
+    flow behaves identically whether or not the running Home Assistant
+    version injects one itself.
+    """
+
+    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
         """Store config entry for access to runtime data."""
-        super().__init__(config_entry)
+        self._config_entry = config_entry
+
+    @property
+    def config_entry(self) -> config_entries.ConfigEntry:
+        """Return the config entry this options flow belongs to."""
+        return self._config_entry
 
     async def async_step_init(self, user_input=None):
         """Manage the options."""

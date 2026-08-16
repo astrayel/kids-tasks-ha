@@ -793,7 +793,9 @@ reset_all_monthly_tasks:
 
 backup_data:
   name: Backup Data
-  description: Create a backup of all kids tasks data
+  description: >-
+    Create a backup of all kids tasks data. Returns the backup as a service
+    response, under the key backup_data — pass it to restore_data to recover.
   fields:
     include_history:
       name: Include History

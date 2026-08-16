@@ -43,41 +43,46 @@ Trois problèmes distincts :
 
 ## [BUG-002] Perte totale des données après mise à jour vers v2.0.0
 
-**Statut** : Ouvert  
+**Statut** : Corrigé  
 **Sévérité** : Critique  
-**Composant** : `coordinator/_storage.py`, `const.py`  
-**Signalé le** : 2026-05-23
+**Composant** : `storage.py` (nouveau), `coordinator/_storage.py`, `__init__.py`  
+**Signalé le** : 2026-05-23 — **corrigé le** : 2026-08-16
 
 ### Symptôme
 
 Après installation de la branche `dev` (v2.0.0), toutes les données sont perdues : enfants, tâches, récompenses, points, historique, configuration des cartes. L'intégration repart de zéro comme lors d'une première installation.
 
-### Causes candidates à investiguer
+### Cause confirmée
 
-1. **Migration v1 → v2 défectueuse** — `_migrate_data()` dans `coordinator/_storage.py` est appelée quand `STORAGE_VERSION` passe de 1 à 2. Si la fonction retourne un dict vide ou mal formé au lieu des données migrées, toutes les données sont silencieusement écrasées.
+`Store.async_load()` compare **lui-même** la version inscrite dans le fichier `.storage` avant de rendre la main. Quand elle est inférieure à celle demandée, il appelle `_async_migrate_func()`, dont l'implémentation par défaut lève `NotImplementedError`.
 
-2. **Clé de stockage modifiée** — `STORAGE_KEY = f"{DOMAIN}.storage"` est identique entre v1 et v2, mais vérifier que le fichier `.storage/kids_tasks.storage` est bien présent sur le système après la mise à jour.
+`_migrate_data()` s'exécutait sur le **résultat** de `store.async_load()` — donc après le point où l'exception est levée. Sur toute installation v1 existante, la migration n'était jamais atteinte : le chargement échouait, le coordinator repartait avec des dictionnaires vides, et le premier appel de service déclenchait un `async_save_data()` qui écrasait le fichier par des données vides.
 
-3. **`async_remove_entry` appelé par erreur** — cette fonction dans `__init__.py` appelle `storage.async_remove()` et supprime toutes les entités. Elle ne doit être appelée que lors d'une désinstallation, pas d'un rechargement. À vérifier dans les logs HA au moment du redémarrage.
+### Correction appliquée
 
-4. **Rechargement de l'intégration** — si l'intégration est rechargée (plutôt que HA redémarré) pendant la mise à jour, des race conditions entre `async_unload_entry` et `async_setup_entry` pourraient corrompre l'état en mémoire avant la sauvegarde.
+1. **`storage.py`** — nouveau module. `KidsTasksStore(Store)` implémente `_async_migrate_func()`, qui délègue à `migrate_payload()`. La migration s'exécute désormais là où Home Assistant l'attend, avant que les données ne soient rendues.
+2. **`migrate_payload()`** est idempotente et pure : elle sert aussi bien au chargement qu'à la restauration d'une sauvegarde. Elle renomme `assigned_child_id` → `assigned_child_ids` et ajoute `coins = 0`.
+3. **Garde anti-écrasement** — `async_save_data()` refuse d'écrire tant que `_storage_loaded` est faux. Même si un chargement échoue pour une autre raison à l'avenir, aucune sauvegarde ne peut plus effacer les données existantes.
+4. **`backup_data`** renvoie désormais la sauvegarde en réponse de service (`SupportsResponse.ONLY`) au lieu de la tronquer dans le journal — elle est enfin récupérable.
 
-### Données à collecter pour diagnostiquer
+### Couverture de test
 
-- [ ] Contenu du fichier `.storage/kids_tasks.storage` **avant** et **après** la mise à jour (backup HA ou accès SSH)
-- [ ] Logs HA complets au moment du redémarrage — chercher `kids_tasks` et `storage`
-- [ ] Vérifier si `async_remove_entry` apparaît dans les logs
-- [ ] Vérifier la valeur de `version` dans `.storage/kids_tasks.storage` (doit passer de 1 à 2 après migration)
+`tests/test_storage.py` — 16 tests : migration v1 → v2 champ par champ, idempotence, préservation des données existantes, refus de sauvegarde avant chargement, et vérification explicite que `_async_migrate_func` ne lève pas `NotImplementedError`.
 
-### Risque
+### Pistes écartées
 
-Perte irréversible des données utilisateur si le fichier `.storage/kids_tasks.storage` a été écrasé ou supprimé. Bloquerait toute mise à jour v1 → v2 en production.
+- **Clé de stockage modifiée** — `STORAGE_KEY` est identique entre v1 et v2, la piste ne tient pas.
+- **`async_remove_entry` appelé par erreur** — Home Assistant ne l'appelle que sur suppression explicite de l'intégration, jamais sur un rechargement. Un commentaire le rappelle désormais dans le code.
+
+### Note de reprise
+
+Si des données ont déjà été perdues sur une installation, le fichier `.storage/kids_tasks.storage` a été écrasé et n'est récupérable que via une sauvegarde Home Assistant antérieure à la mise à jour.
 
 ### Références
 
-- `custom_components/kids_tasks/coordinator/_storage.py` — `_migrate_data()`, `_load_data()`
-- `custom_components/kids_tasks/const.py` — `STORAGE_VERSION = 2`, `STORAGE_KEY`
-- `custom_components/kids_tasks/__init__.py` — `async_remove_entry()`
+- `custom_components/kids_tasks/storage.py` — `KidsTasksStore`, `migrate_payload()`
+- `custom_components/kids_tasks/coordinator/_storage.py` — `_load_data()`, `async_save_data()`
+- `tests/test_storage.py`
 
 ---
 
@@ -130,7 +135,7 @@ existing = {
 
 ## [BUG-003] Statistiques : `Invalid statistic_id` + erreur listener coordinator
 
-**Statut** : Ouvert  
+**Statut** : Corrigé  
 **Sévérité** : Haute  
 **Composant** : `custom_components/kids_tasks/statistics.py`  
 **Signalé le** : 2026-05-23
@@ -154,9 +159,9 @@ ce qui déclenche l'erreur `Invalid statistic_id`.
 
 L'erreur listener est une conséquence : l'exception levée dans `_maybe_record_statistics()` remonte jusqu'au coordinator malgré le `try/except`, probablement parce que `async_add_external_statistics` appelle un callback interne de manière synchrone avant que l'exception soit rattrapée.
 
-### Correction à apporter
+### Correction appliquée
 
-Dans `statistics.py`, sanitiser le `child_id` avant de l'utiliser dans le `statistic_id` :
+Dans `statistics.py`, le `child_id` est sanitisé avant d'être utilisé dans le `statistic_id` :
 
 ```python
 safe_id = child_id.replace("-", "_")

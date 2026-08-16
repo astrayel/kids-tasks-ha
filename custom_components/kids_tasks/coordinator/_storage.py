@@ -9,25 +9,20 @@ from homeassistant.util import dt as dt_util
 
 from ..const import DOMAIN, STORAGE_VERSION
 from ..models import Child, Task, Reward
+from ..storage import migrate_payload
 
 _LOGGER = logging.getLogger("custom_components.kids_tasks.coordinator")
 
 
 class StorageMixin:
     async def _migrate_data(self, data: dict) -> dict:
-        """Migrate storage data to the current schema version."""
-        version = data.get("version", 1)
+        """Migrate a payload to the current schema version.
 
-        if version < 2:
-            # v1 → v2: rename assigned_child_id (str) → assigned_child_ids (list)
-            for task in data.get("tasks", {}).values():
-                if "assigned_child_ids" not in task:
-                    legacy_id = task.pop("assigned_child_id", None)
-                    task["assigned_child_ids"] = [legacy_id] if legacy_id else []
-            data["version"] = 2
-            _LOGGER.info("Migrated Kids Tasks storage from v1 to v2")
-
-        return data
+        The Store itself migrates on load (see ``storage.KidsTasksStore``);
+        this remains the entry point for payloads that arrive outside that
+        path — restored backups above all — and is idempotent.
+        """
+        return migrate_payload(data, data.get("version", 1))
 
     async def _load_data(self) -> None:
         """Load data from storage."""
@@ -77,8 +72,24 @@ class StorageMixin:
             except ValueError:
                 self.last_monthly_reset = None
 
+        # Only from here on is it safe to write: everything the store held is
+        # now in memory, so a save can no longer erase it.
+        self._storage_loaded = True
+
     async def async_save_data(self) -> None:
-        """Save data to storage."""
+        """Save data to storage.
+
+        Refuses to write before a successful load. Without this guard a save
+        triggered by any service call while loading had failed would persist
+        empty dictionaries over the user's real data.
+        """
+        if not getattr(self, "_storage_loaded", False):
+            _LOGGER.error(
+                "Refusing to save Kids Tasks data before storage was loaded — "
+                "this would overwrite existing data"
+            )
+            return
+
         data = {
             "version": STORAGE_VERSION,
             "children": {child_id: child.to_dict() for child_id, child in self.children.items()},

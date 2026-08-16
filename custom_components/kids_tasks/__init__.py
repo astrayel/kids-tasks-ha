@@ -12,11 +12,11 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
-from homeassistant.helpers.storage import Store
 
-from .const import DOMAIN, STORAGE_VERSION, STORAGE_KEY
+from .const import DOMAIN
 from .coordinator import KidsTasksDataUpdateCoordinator
 from .services import async_setup_services
+from .storage import async_get_store
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -40,7 +40,7 @@ KidsTasksConfigEntry = ConfigEntry[KidsTasksData]
 
 async def async_setup_entry(hass: HomeAssistant, entry: KidsTasksConfigEntry) -> bool:
     """Set up Kids Tasks from a config entry."""
-    store = Store(hass, STORAGE_VERSION, STORAGE_KEY)
+    store = async_get_store(hass)
     coordinator = KidsTasksDataUpdateCoordinator(hass, store, entry.entry_id)
     await coordinator.async_config_entry_first_refresh()
 
@@ -61,8 +61,12 @@ async def async_unload_entry(hass: HomeAssistant, entry: KidsTasksConfigEntry) -
 
 
 async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """Remove a config entry."""
-    storage = Store(hass, STORAGE_VERSION, STORAGE_KEY)
+    """Remove a config entry.
+
+    Only called when the integration is deleted by the user — never on a
+    reload — so wiping the store here is intentional.
+    """
+    storage = async_get_store(hass)
     await storage.async_remove()
 
     registry = er.async_get(hass)
