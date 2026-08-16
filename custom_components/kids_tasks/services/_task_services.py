@@ -61,12 +61,16 @@ SERVICE_COMPLETE_TASK_SCHEMA = vol.Schema(
 SERVICE_VALIDATE_TASK_SCHEMA = vol.Schema(
     {
         vol.Required("task_id"): cv.string,
+        # Omit to validate every child waiting on this task.
+        vol.Optional("child_id"): cv.string,
     }
 )
 
 SERVICE_REJECT_TASK_SCHEMA = vol.Schema(
     {
         vol.Required("task_id"): cv.string,
+        # Omit to reject the task for every assigned child.
+        vol.Optional("child_id"): cv.string,
         vol.Optional("reason"): cv.string,
     }
 )
@@ -170,12 +174,21 @@ def register_task_services(
 
     async def validate_task_service(call: ServiceCall) -> None:
         task_id = call.data["task_id"]
-        success = await coordinator.async_validate_task(task_id)
+        child_id = call.data.get("child_id")
+        success = await coordinator.async_validate_task(task_id, child_id)
         if not success:
-            _LOGGER.warning("Task validation failed: %s", task_id)
+            _LOGGER.warning(
+                "Task validation failed: %s (child: %s)", task_id, child_id or "all"
+            )
 
     async def reject_task_service(call: ServiceCall) -> None:
-        await coordinator.async_reject_task(call.data["task_id"])
+        success = await coordinator.async_reject_task(
+            call.data["task_id"],
+            call.data.get("child_id"),
+            call.data.get("reason"),
+        )
+        if not success:
+            _LOGGER.warning("Task rejection failed: %s", call.data["task_id"])
 
     async def reset_task_service(call: ServiceCall) -> None:
         task_id = call.data["task_id"]

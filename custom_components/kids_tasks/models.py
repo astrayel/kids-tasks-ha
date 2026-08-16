@@ -413,11 +413,31 @@ class Task:
         self.completed_by_child_id = None  # Reset completion info
         # Reset all child statuses
         for child_status in self.child_statuses.values():
-            child_status.status = TASK_STATUS_TODO
-            child_status.completed_at = None
-            child_status.validated_at = None
-            child_status.penalty_applied_at = None
-            child_status.penalty_applied = False
+            self._reset_child_status(child_status)
+
+    def reset_for_child(self, child_id: str) -> bool:
+        """Reset the task for a single child, leaving the others untouched.
+
+        Returns False when the child has no status on this task.
+        """
+        child_status = self.child_statuses.get(child_id)
+        if child_status is None:
+            return False
+
+        self._reset_child_status(child_status)
+        if self.completed_by_child_id == child_id:
+            self.completed_by_child_id = None
+        self._update_global_status()
+        return True
+
+    @staticmethod
+    def _reset_child_status(child_status: TaskChildStatus) -> None:
+        """Clear one child's progress on this task."""
+        child_status.status = TASK_STATUS_TODO
+        child_status.completed_at = None
+        child_status.validated_at = None
+        child_status.penalty_applied_at = None
+        child_status.penalty_applied = False
     
     def get_assigned_child_ids(self) -> list[str]:
         """Get list of assigned child IDs."""

@@ -161,123 +161,100 @@ class BusinessMixin:
 
         if new_status == "validated":
             # Award points and coins only to the child who completed the task
-            child = self.children.get(child_id)
-            if child:
-                # Add points with tracking
-                level_up = False
-                if task.points > 0:
-                    level_up = child.add_points(
-                        task.points,
-                        description=f"Tâche '{task.name}' terminée",
-                        action_type="task_completed",
-                        related_entity_id=task.id,
-                        related_entity_name=task.name
-                    )
-                # Add coins (no tracking for coins yet)
-                if task.coins > 0:
-                    child.add_coins(task.coins)
-
-                # Fire events
-                self.hass.bus.async_fire(
-                    f"{DOMAIN}_task_completed",
-                    {
-                        "task_id": task_id,
-                        "child_id": child.id,
-                        "points_awarded": task.points,
-                        "coins_awarded": task.coins,
-                    }
-                )
-
-                if level_up:
-                    self.hass.bus.async_fire(
-                        f"{DOMAIN}_level_up",
-                        {
-                            "child_id": child.id,
-                            "new_level": child.level,
-                        }
-                    )
+            self._award_task(task, child_id, "task_completed", "terminée")
 
         await self.async_save_data()
         await self.async_request_refresh()
         return True
 
-    async def async_validate_task(self, task_id: str) -> bool:
-        """Validate a pending task for all children who completed it."""
-        _LOGGER.info("DEBUG VALIDATION: Starting validation for task %s", task_id)
+    async def async_validate_task(self, task_id: str, child_id: str | None = None) -> bool:
+        """Validate a pending task.
 
+        When ``child_id`` is given, only that child is validated and only that
+        child is awarded — the other children assigned to the same task keep
+        waiting. Without it, every child pending validation is validated at
+        once, which is the historical behaviour.
+        """
         if task_id not in self.tasks:
-            _LOGGER.error("DEBUG VALIDATION: Task %s not found", task_id)
+            _LOGGER.error("Cannot validate unknown task %s", task_id)
             return False
 
         task = self.tasks[task_id]
+
+        if child_id is not None:
+            if child_id not in task.child_statuses:
+                _LOGGER.error(
+                    "Child %s has nothing pending on task %s", child_id, task_id
+                )
+                return False
+            targets = [child_id]
+        else:
+            targets = [
+                cid
+                for cid, status in task.child_statuses.items()
+                if status.status == "pending_validation"
+            ]
+
         validated_any = False
-
-        _LOGGER.info("DEBUG VALIDATION: Task %s has child_statuses: %s", task_id, list(task.child_statuses.keys()))
-        _LOGGER.info("DEBUG VALIDATION: Global task status: %s", task.status)
-
-        # Use new system with individual child statuses only
-        for child_id, child_status in task.child_statuses.items():
-            _LOGGER.info("DEBUG VALIDATION: Child %s has status: %s", child_id, child_status.status)
-            if child_status.status == "pending_validation":
-                _LOGGER.info("DEBUG VALIDATION: Validating for child %s", child_id)
-                if task.validate_for_child(child_id):
-                    validated_any = True
-                    _LOGGER.info("DEBUG VALIDATION: Successfully validated for child %s", child_id)
-
-                    # Award points and coins to the child who completed the task
-                    child = self.children.get(child_id)
-                    if child:
-                        # Add points with tracking
-                        level_up = False
-                        if task.points > 0:
-                            level_up = child.add_points(
-                                task.points,
-                                description=f"Tâche '{task.name}' validée",
-                                action_type="task_validated",
-                                related_entity_id=task.id,
-                                related_entity_name=task.name
-                            )
-                        # Add coins (no tracking for coins yet)
-                        if task.coins > 0:
-                            child.add_coins(task.coins)
-
-                        # Fire events
-                        self.hass.bus.async_fire(
-                            f"{DOMAIN}_task_validated",
-                            {
-                                "task_id": task_id,
-                                "child_id": child.id,
-                                "points_awarded": task.points,
-                                "coins_awarded": task.coins,
-                            }
-                        )
-
-                        if level_up:
-                            self.hass.bus.async_fire(
-                                f"{DOMAIN}_level_up",
-                                {
-                                    "child_id": child.id,
-                                    "new_level": child.level,
-                                }
-                            )
+        for target_id in targets:
+            if not task.validate_for_child(target_id):
+                continue
+            validated_any = True
+            self._award_task(task, target_id, "task_validated", "validée")
 
         if validated_any:
-            # Clear any persistent notification for this task
-            try:
-                await self.hass.services.async_call(
-                    "persistent_notification",
-                    "dismiss",
-                    {
-                        "notification_id": f"kids_tasks_validation_{task_id}",
-                    }
-                )
-            except Exception as e:
-                _LOGGER.debug("Could not dismiss notification (may not exist): %s", e)
-
+            await self._dismiss_validation_notification(task_id)
             await self.async_save_data()
             await self.async_request_refresh()
 
         return validated_any
+
+    def _award_task(self, task, child_id: str, action_type: str, verb: str) -> None:
+        """Credit a child for a task and fire the matching events."""
+        child = self.children.get(child_id)
+        if not child:
+            return
+
+        level_up = False
+        if task.points > 0:
+            level_up = child.add_points(
+                task.points,
+                description=f"Tâche '{task.name}' {verb}",
+                action_type=action_type,
+                related_entity_id=task.id,
+                related_entity_name=task.name,
+            )
+        if task.coins > 0:
+            child.add_coins(task.coins)
+
+        self.hass.bus.async_fire(
+            f"{DOMAIN}_{action_type}",
+            {
+                "task_id": task.id,
+                "task_name": task.name,
+                "child_id": child.id,
+                "child_name": child.name,
+                "points_awarded": task.points,
+                "coins_awarded": task.coins,
+            },
+        )
+
+        if level_up:
+            self.hass.bus.async_fire(
+                f"{DOMAIN}_level_up",
+                {"child_id": child.id, "new_level": child.level},
+            )
+
+    async def _dismiss_validation_notification(self, task_id: str) -> None:
+        """Clear the persistent notification raised when the task was submitted."""
+        try:
+            await self.hass.services.async_call(
+                "persistent_notification",
+                "dismiss",
+                {"notification_id": f"kids_tasks_validation_{task_id}"},
+            )
+        except Exception as e:
+            _LOGGER.debug("Could not dismiss notification (may not exist): %s", e)
 
     async def async_add_reward(self, reward: Reward) -> None:
         """Add a new reward."""
@@ -385,37 +362,40 @@ class BusinessMixin:
         await self.async_request_refresh()
         return True
 
-    async def async_activate_cosmetic(self, child_id: str, cosmetic_type: str, reward_id: str) -> bool:
-        """Activate a cosmetic item for a child."""
-        if child_id not in self.children or reward_id not in self.rewards:
-            return False
+    async def async_reject_task(
+        self, task_id: str, child_id: str | None = None, reason: str | None = None
+    ) -> bool:
+        """Reject a submitted task and set it back to todo.
 
-        child = self.children[child_id]
-        reward = self.rewards[reward_id]
-
-        # Check if it's a cosmetic reward
-        if reward.reward_type != "cosmetic":
-            return False
-
-        # Activate the cosmetic
-        success = child.activate_cosmetic(cosmetic_type, reward_id)
-
-        if success:
-            await self.async_save_data()
-            await self.async_request_refresh()
-
-        return success
-
-    async def async_reject_task(self, task_id: str) -> bool:
-        """Reject a task and reset it to todo for all assigned children."""
+        When ``child_id`` is given only that child is reset; the siblings
+        assigned to the same task are left alone. Without it the whole task
+        is reset, which is the historical behaviour.
+        """
         if task_id not in self.tasks:
             return False
 
         task = self.tasks[task_id]
 
-        # Use the task's reset method to properly reset all child statuses
-        task.reset()
+        if child_id is not None:
+            if not task.reset_for_child(child_id):
+                _LOGGER.error(
+                    "Child %s has nothing to reject on task %s", child_id, task_id
+                )
+                return False
+        else:
+            task.reset()
 
+        self.hass.bus.async_fire(
+            f"{DOMAIN}_task_rejected",
+            {
+                "task_id": task_id,
+                "task_name": task.name,
+                "child_id": child_id,
+                "reason": reason,
+            },
+        )
+
+        await self._dismiss_validation_notification(task_id)
         await self.async_save_data()
         await self.async_request_refresh()
         return True
