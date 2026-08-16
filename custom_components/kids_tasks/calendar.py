@@ -125,7 +125,8 @@ class KidsTasksCalendar(CoordinatorEntity, CalendarEntity):
             # Daily tasks → all-day event for today if not yet validated
             frequency = task.get("frequency", "")
             status = task.get("status", "todo")
-            if frequency == "daily" and status not in ("validated", "failed"):
+            # not_applicable = not scheduled today, so nothing to show.
+            if frequency == "daily" and status not in ("validated", "failed", "not_applicable"):
                 event_date = today
                 if start_date.date() <= event_date <= end_date.date():
                     events.append(CalendarEvent(
@@ -139,12 +140,16 @@ class KidsTasksCalendar(CoordinatorEntity, CalendarEntity):
             # Weekly tasks → all-day event on assigned days this week
             if frequency == "weekly":
                 weekly_days = task.get("weekly_days") or []
+                # Tasks store abbreviated day names ("mon"), matching
+                # strftime("%a") used by the resets; accept both forms.
                 day_map = {
                     "monday": 0, "tuesday": 1, "wednesday": 2, "thursday": 3,
                     "friday": 4, "saturday": 5, "sunday": 6,
+                    "mon": 0, "tue": 1, "wed": 2, "thu": 3,
+                    "fri": 4, "sat": 5, "sun": 6,
                 }
                 for day_name in weekly_days:
-                    day_num = day_map.get(day_name.lower())
+                    day_num = day_map.get(str(day_name).lower())
                     if day_num is None:
                         continue
                     days_ahead = (day_num - today.weekday()) % 7

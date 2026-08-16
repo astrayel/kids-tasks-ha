@@ -133,9 +133,12 @@ class TaskSwitch(CoordinatorEntity, SwitchEntity):
         )
 
     async def async_turn_off(self, **kwargs: Any) -> None:
-        """Reset the task to todo for this child."""
+        """Reset the task to todo for this child only.
+
+        This switch represents one child's row on the task, so turning it off
+        must not undo what the siblings assigned to the same task have done.
+        """
         task = self.coordinator.tasks.get(self._task_id)
-        if task:
-            task.reset()
+        if task and task.reset_for_child(self._child_id):
             await self.coordinator.async_save_data()
             await self.coordinator.async_request_refresh()
