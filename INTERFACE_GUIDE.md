@@ -1,201 +1,116 @@
 # Guide des cartes Lovelace — Kids Tasks Manager
 
-4 cartes indépendantes déclarées dans `www/kids_tasks/kids-tasks-card.js`.
+Les cartes ne sont **pas** dans ce dépôt. Elles vivent dans
+[kids-tasks-ha-card](https://github.com/astrayel/kids-tasks-ha-card) et
+s'installent séparément.
 
 ---
 
 ## Installation
 
-### 1. Copier le fichier JS
+### Via HACS (recommandé)
 
-```bash
-python install.py          # détection automatique
-# ou
-python install.py /path/to/homeassistant/config
-```
+1. HACS → menu (⋮) → **Dépôts personnalisés**
+2. URL : `https://github.com/astrayel/kids-tasks-ha-card`, catégorie **Lovelace**
+3. Installer « Kids Tasks Card »
+4. Redémarrer Home Assistant
 
-Le script copie `www/kids_tasks/kids-tasks-card.js` vers `config/www/kids_tasks/`.
+### Manuellement
 
-### 2. Déclarer la ressource Lovelace
-
-**Via l'UI** : Paramètres → Tableaux de bord → Ressources → Ajouter
-- URL : `/local/kids_tasks/kids-tasks-card.js`
-- Type : Module JavaScript
-
-**Via YAML** :
-```yaml
-lovelace:
-  resources:
-    - url: /local/kids_tasks/kids-tasks-card.js
-      type: module
-```
-
-### 3. Redémarrer Home Assistant
+1. Récupérer `dist/kids-tasks-card.js` depuis le dépôt des cartes
+2. Le copier dans `config/www/kids-tasks-card/`
+3. **Paramètres → Tableaux de bord → Ressources → Ajouter**
+   - URL : `/local/kids-tasks-card/kids-tasks-card.js`
+   - Type : Module JavaScript
 
 ---
 
-## Carte 1 — Enfant (`kids-tasks-child-summary-card`)
+## Les quatre cartes
 
-Vue compacte d'un enfant : avatar, niveau, barre XP, tâches du jour, bouton de validation rapide.
+### `custom:kids-tasks-child-card` — vue enfant
 
-### Configuration YAML
+Avatar, points, pièces, niveau, tâches du jour, récompenses et cosmétiques.
+C'est la seule carte à mettre sur le dashboard d'un enfant ou d'une tablette.
 
 ```yaml
-type: kids-tasks-child-summary-card
-entity: sensor.kidtasks_leo_points   # capteur de points de l'enfant (requis)
+type: custom:kids-tasks-child-card
+child_id: 3f2a1b4c-8e7d-4f9a-b2c1-0d5e6f7a8b9c
+title: Mes tâches          # optionnel
+show_rewards: true         # optionnel, défaut true
+show_cosmetics: true       # optionnel, défaut true
+show_completed: true       # optionnel, défaut true
 ```
 
-### Propriétés
+Le `child_id` se lit dans les attributs de `sensor.kidtasks_<prénom>_points`
+(Outils de développement → États).
 
-| Propriété | Requis | Description |
-|-----------|--------|-------------|
-| `entity`  | ✅ | `sensor.kidtasks_{nom}_points` de l'enfant |
+Les tâches affichées reflètent le statut **de cet enfant**, pas l'état global
+de la tâche : sur une tâche partagée, chacun voit son propre avancement.
 
-### Fonctionnement
+### `custom:kids-tasks-supervisor` — validation parentale
 
-- Affiche l'avatar, le nom, le niveau et les pièces de l'enfant
-- Barre de progression XP vers le niveau suivant
-- Chips des tâches du jour avec statut coloré (✅ validé / ⏳ en attente / ⬜ à faire)
-- Bouton « N à valider » si des tâches attendent — valide toutes en 1 tap
-- Le dégradé de couleur suit `card_gradient_start` / `card_gradient_end` définis sur l'enfant
-
-### Conseil : grille multi-enfants
+File des tâches en attente, gestes de balayage pour valider ou rejeter, vue
+d'ensemble des enfants, ajustement de points, historique global avec annulation.
 
 ```yaml
-type: grid
-columns: 2
-cards:
-  - type: kids-tasks-child-summary-card
-    entity: sensor.kidtasks_leo_points
-  - type: kids-tasks-child-summary-card
-    entity: sensor.kidtasks_emma_points
+type: custom:kids-tasks-supervisor
+title: Supervision         # optionnel
+show_navigation: true      # optionnel, défaut true
 ```
 
----
+Valider ou rejeter agit sur **un seul enfant** — celui de la ligne — et laisse
+ses frères et sœurs en attente.
 
-## Carte 2 — Validation parentale (`kids-tasks-validation-card`)
+Affiche « réservé aux parents » sur un compte non-administrateur.
 
-Liste uniquement les tâches `pending_validation`. Actions Valider / Rejeter directement sur chaque ligne.
+### `custom:kids-tasks-manager` — administration
 
-### Configuration YAML
+CRUD complet des enfants, tâches et récompenses, et gestion des cosmétiques.
 
 ```yaml
-type: kids-tasks-validation-card
-# entity optionnel — détecté automatiquement
+type: custom:kids-tasks-manager
+title: Administration      # optionnel
 ```
 
-### Propriétés
+Affiche « réservé aux parents » sur un compte non-administrateur.
 
-| Propriété | Requis | Description |
-|-----------|--------|-------------|
-| `entity`  | ❌ | Défaut : `sensor.kidtasks_pending_validations` |
+### `custom:kids-tasks-card` — tableau de bord général
 
-### Fonctionnement
-
-- Affiche icône de catégorie + nom de la tâche + enfant assigné + points
-- Boutons **✓ Valider** (vert) et **✗ Rejeter** (rouge) inline sur chaque ligne
-- Badge de compteur dans le header
-- Affiche « ✅ Tout est validé » si la queue est vide
-
----
-
-## Carte 3 — Liste de tâches (`kids-tasks-task-list-card`)
-
-Vue complète avec filtres par fréquence et statut. Pour dashboard parent.
-
-### Configuration YAML
+Vue d'ensemble de la famille, plutôt destinée à un écran partagé du salon.
 
 ```yaml
-type: kids-tasks-task-list-card
-# entity optionnel — détecté automatiquement
-```
-
-### Propriétés
-
-| Propriété | Requis | Description |
-|-----------|--------|-------------|
-| `entity`  | ❌ | Défaut : `sensor.kidtasks_all_tasks_list` |
-
-### Fonctionnement
-
-- Chips de filtre : **Tous** / **Quotidien** / **Hebdo** / **⏳ En attente** / **✅ Faits**
-- Chaque ligne : point de statut coloré + icône catégorie + nom + enfant assigné + badge points
-- Boutons Valider / Rejeter uniquement sur les tâches `pending_validation`
-
----
-
-## Carte 4 — Récompenses (`kids-tasks-reward-card`)
-
-Catalogue visuel en grille. Vue enfant (avec échange) ou vue admin (lecture seule).
-
-### Configuration YAML
-
-**Vue admin (sans échange)** :
-```yaml
-type: kids-tasks-reward-card
-```
-
-**Vue enfant (avec échange)** :
-```yaml
-type: kids-tasks-reward-card
-child_entity: sensor.kidtasks_emma_points
-```
-
-### Propriétés
-
-| Propriété       | Requis | Description |
-|-----------------|--------|-------------|
-| `entity`        | ❌ | Défaut : `sensor.kidtasks_all_rewards_list` |
-| `child_entity`  | ❌ | `sensor.kidtasks_{nom}_points` — active le bouton Échanger |
-
-### Fonctionnement
-
-- Grille responsive de tuiles (icône + nom + description + coût en points)
-- Bouton **Échanger** actif si l'enfant a assez de points, grisé sinon
-- Filtre par catégorie (🎉 fun, 📱 écran, 🚗 sortie, 👑 privilège, 🧸 jouet, 🍭 friandise)
-- Quantité restante affichée si `limited_quantity` défini
-
----
-
-## Exemple de dashboard complet
-
-```yaml
+type: custom:kids-tasks-card
 title: Kids Tasks
-views:
-  - title: Famille
-    cards:
-      - type: kids-tasks-validation-card
-
-      - type: grid
-        columns: 2
-        cards:
-          - type: kids-tasks-child-summary-card
-            entity: sensor.kidtasks_leo_points
-          - type: kids-tasks-child-summary-card
-            entity: sensor.kidtasks_emma_points
-
-  - title: Tâches
-    cards:
-      - type: kids-tasks-task-list-card
-
-  - title: Récompenses — Léo
-    cards:
-      - type: kids-tasks-reward-card
-        child_entity: sensor.kidtasks_leo_points
-
-  - title: Récompenses — Emma
-    cards:
-      - type: kids-tasks-reward-card
-        child_entity: sensor.kidtasks_emma_points
+show_completed: true
+show_rewards: true
 ```
+
+---
+
+## Dashboards types
+
+Voir [docs/dashboards.md](docs/dashboards.md) pour les trois configurations
+complètes — vue enfant, vue tablette partagée, vue parent — ainsi que
+l'exclusion recorder recommandée.
+
+---
+
+## Droits
+
+Masquer une carte n'est pas une protection. La garde réelle est côté serveur,
+dans l'intégration : voir [docs/permissions.md](docs/permissions.md).
 
 ---
 
 ## Dépannage
 
-| Symptôme | Cause probable | Solution |
-|----------|---------------|----------|
-| Carte non reconnue | Ressource JS non chargée | Vérifier l'URL dans Ressources Lovelace |
-| « Entité introuvable » | Intégration non configurée | Ajouter l'intégration Kids Tasks dans HA |
-| Bouton Échanger toujours grisé | `child_entity` manquant ou mauvais nom | Vérifier l'entity_id du capteur de points |
-| Tâches non affichées | Aucune tâche créée | Créer des tâches via `kids_tasks.add_task` |
+**La carte n'apparaît pas dans le sélecteur** — la ressource Lovelace n'est pas
+déclarée, ou le navigateur a mis l'ancienne version en cache. Vider le cache et
+recharger.
+
+**« Enfant non trouvé (ID: …) »** — le `child_id` de la configuration ne
+correspond à aucun enfant. Le relire dans les attributs du capteur de points.
+
+**Un bouton ne fait rien** — ouvrir la console du navigateur. Un appel de
+service refusé indique le régime de droits de l'appelant ; consulter
+`docs/permissions.md`.

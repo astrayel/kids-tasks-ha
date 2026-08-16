@@ -1,7 +1,9 @@
 {
   "domain": "kids_tasks",
   "name": "Kids Tasks Manager",
-  "codeowners": ["@astrayel"],
+  "codeowners": [
+    "@astrayel"
+  ],
   "config_flow": true,
   "dependencies": [],
   "documentation": "https://github.com/astrayel/kids-tasks-ha",
@@ -12,5 +14,5 @@
   "issue_tracker": "https://github.com/astrayel/kids-tasks-ha/issues",
   "requirements": [],
   "single_config_entry": true,
-  "version": "2.0.0"
+  "version": "2.1.0"
 }
