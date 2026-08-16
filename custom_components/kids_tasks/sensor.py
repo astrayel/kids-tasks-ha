@@ -148,7 +148,12 @@ class ChildPointsSensor(CoordinatorEntity, SensorEntity):
             "avatar_type": child_data.get("avatar_type", "emoji"),
             "avatar_data": child_data.get("avatar_data"),
             "card_gradient_start": child_data.get("card_gradient_start"),
-            "card_gradient_end": child_data.get("card_gradient_end")
+            "card_gradient_end": child_data.get("card_gradient_end"),
+            # Cosmetics the child owns and wears — the cards need both to tell
+            # "bought but not worn" from "not bought yet".
+            "cosmetic_collection": child_data.get("cosmetic_collection", {}),
+            "active_cosmetics": child_data.get("active_cosmetics", {}),
+            "cosmetic_items": child_data.get("cosmetic_items", []),
         }
 
 
