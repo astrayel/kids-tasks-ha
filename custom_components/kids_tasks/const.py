@@ -9,7 +9,10 @@ STORAGE_VERSION = 2
 STORAGE_KEY = f"{DOMAIN}.storage"
 
 # Default configuration
-DEFAULT_SCAN_INTERVAL = 30
+# 60s rather than 30s: every entity is re-evaluated and written to the
+# recorder on each cycle, and nothing here changes faster than a child can
+# tap a button — completions push a refresh immediately anyway.
+DEFAULT_SCAN_INTERVAL = 60
 DEFAULT_VALIDATION_REQUIRED = True
 DEFAULT_NOTIFICATIONS_ENABLED = True
 
@@ -20,6 +23,8 @@ TASK_STATUS_COMPLETED = "completed"
 TASK_STATUS_PENDING_VALIDATION = "pending_validation"
 TASK_STATUS_VALIDATED = "validated"
 TASK_STATUS_FAILED = "failed"
+# Day the task is not scheduled on — neither owed nor earned.
+TASK_STATUS_NOT_APPLICABLE = "not_applicable"
 
 TASK_STATUSES = [
     TASK_STATUS_TODO,
@@ -28,6 +33,7 @@ TASK_STATUSES = [
     TASK_STATUS_PENDING_VALIDATION,
     TASK_STATUS_VALIDATED,
     TASK_STATUS_FAILED,
+    TASK_STATUS_NOT_APPLICABLE,
 ]
 
 # Task frequencies

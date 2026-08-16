@@ -39,6 +39,18 @@ def get_safe_child_name(coordinator: KidsTasksDataUpdateCoordinator, child_id: s
     return safe_child_name
 
 
+CHILD_SUFFIXES = ("points_history", "tasks_today", "points", "level")
+
+
+def child_unique_id(child_id: str, suffix: str) -> str:
+    """Stable unique_id for a child's sensor.
+
+    Derived from the child's immutable id, never from their name: renaming a
+    child used to orphan their entities and lose all recorded history.
+    """
+    return f"kidtasks_child_{child_id}_{suffix}"
+
+
 def _child_device_info(coordinator: KidsTasksDataUpdateCoordinator, child_id: str) -> DeviceInfo:
     """Return DeviceInfo for a child profile device."""
     child_data = coordinator.data["children"].get(child_id, {})
@@ -107,7 +119,7 @@ class ChildPointsSensor(CoordinatorEntity, SensorEntity):
         super().__init__(coordinator)
         self.child_id = child_id
         safe_child_name = get_safe_child_name(coordinator, child_id)
-        self._attr_unique_id = f"kidtasks_{safe_child_name}_points"
+        self._attr_unique_id = child_unique_id(child_id, "points")
         self._attr_device_class = None
         self._attr_state_class = SensorStateClass.TOTAL
         self._attr_icon = "mdi:star"
@@ -165,7 +177,7 @@ class ChildLevelSensor(CoordinatorEntity, SensorEntity):
         super().__init__(coordinator)
         self.child_id = child_id
         safe_child_name = get_safe_child_name(coordinator, child_id)
-        self._attr_unique_id = f"kidtasks_{safe_child_name}_level"
+        self._attr_unique_id = child_unique_id(child_id, "level")
         self._attr_icon = "mdi:trophy"
         self.entity_id = f"sensor.kidtasks_{safe_child_name}_level"
 
@@ -194,7 +206,7 @@ class ChildTasksCompletedTodaySensor(CoordinatorEntity, SensorEntity):
         super().__init__(coordinator)
         self.child_id = child_id
         safe_child_name = get_safe_child_name(coordinator, child_id)
-        self._attr_unique_id = f"kidtasks_{safe_child_name}_tasks_today"
+        self._attr_unique_id = child_unique_id(child_id, "tasks_today")
         self._attr_icon = "mdi:check-circle"
         self.entity_id = f"sensor.kidtasks_{safe_child_name}_tasks_today"
 
@@ -585,7 +597,7 @@ class ChildPointsHistorySensor(CoordinatorEntity, SensorEntity):
         super().__init__(coordinator)
         self.child_id = child_id
         safe_child_name = get_safe_child_name(coordinator, child_id)
-        self._attr_unique_id = f"kidtasks_{safe_child_name}_points_history"
+        self._attr_unique_id = child_unique_id(child_id, "points_history")
         self._attr_device_class = None
         self._attr_state_class = None
         self._attr_icon = "mdi:history"

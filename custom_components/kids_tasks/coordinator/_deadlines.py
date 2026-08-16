@@ -27,7 +27,7 @@ class DeadlinesMixin:
                         child_status = task.get_status_for_child(child_id)
 
                         # Only apply penalty if the child hasn't completed/validated the task
-                        if child_status not in ["validated", "pending_validation"]:
+                        if child_status not in ("validated", "pending_validation", "not_applicable"):
                             child = self.children[child_id]
                             old_points = child.points
                             old_level = child.level

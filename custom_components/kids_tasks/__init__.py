@@ -11,27 +11,33 @@ from dataclasses import dataclass
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers import device_registry as dr, entity_registry as er
 
 from .const import DOMAIN
 from .coordinator import KidsTasksDataUpdateCoordinator
 from .services import async_setup_services
+from .sensor import CHILD_SUFFIXES, child_unique_id
 from .storage import async_get_store
 
 _LOGGER = logging.getLogger(__name__)
 
 PLATFORMS: list[Platform] = [
     Platform.SENSOR,
-    Platform.BUTTON,
     Platform.CALENDAR,
     Platform.SWITCH,
 ]
 
-# Platforms this integration used to provide. Their entities wrote straight to
-# the coordinator, bypassing the permission guard entirely — a child could set
-# a task to "validated" or raise its points from the entity UI. They are purged
-# from the registry on setup so no stale, unavailable rows are left behind.
-REMOVED_PLATFORMS: set[str] = {"number", "select"}
+# Platforms this integration used to provide, purged from the registry on
+# setup so no stale, unavailable rows are left behind.
+#
+# number/select wrote straight to the coordinator, bypassing the permission
+# guard entirely — a child could set a task to "validated" or raise its points
+# from the entity UI. button only ever created its entities at startup, so a
+# task added later had none, and the validate button was only created for
+# tasks already pending at boot. With three children and twenty tasks these
+# three platforms tripled the entity count for no benefit the cards don't
+# cover better.
+REMOVED_PLATFORMS: set[str] = {"number", "select", "button"}
 
 @dataclass
 class KidsTasksData:
@@ -50,12 +56,61 @@ async def async_setup_entry(hass: HomeAssistant, entry: KidsTasksConfigEntry) ->
 
     entry.runtime_data = KidsTasksData(coordinator=coordinator)
 
+    _async_migrate_child_unique_ids(hass, entry)
     _async_purge_removed_platforms(hass, entry)
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     await async_setup_services(hass, coordinator)
 
     return True
+
+
+def _async_migrate_child_unique_ids(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Re-key child sensors from the child's name to the child's id.
+
+    Child sensors used to be identified by a slug of the child's name, so
+    renaming a child created a fresh set of entities and orphaned the old
+    ones — losing their recorded history. The child is recovered from the
+    entity's device, whose identifier already carries the immutable child id,
+    so this works even for a child renamed before the migration ran.
+    """
+    registry = er.async_get(hass)
+    devices = dr.async_get(hass)
+    migrated = 0
+
+    for entity in er.async_entries_for_config_entry(registry, entry.entry_id):
+        if entity.domain != "sensor" or entity.unique_id.startswith("kidtasks_child_"):
+            continue
+        if entity.device_id is None:
+            continue
+
+        device = devices.async_get(entity.device_id)
+        if device is None:
+            continue
+
+        child_id = next(
+            (ident for domain, ident in device.identifiers
+             if domain == DOMAIN and ident != DOMAIN),
+            None,
+        )
+        if child_id is None:
+            continue
+
+        suffix = next(
+            (s for s in CHILD_SUFFIXES if entity.unique_id.endswith(f"_{s}")), None
+        )
+        if suffix is None:
+            continue
+
+        new_unique_id = child_unique_id(child_id, suffix)
+        if registry.async_get_entity_id("sensor", DOMAIN, new_unique_id):
+            continue  # already migrated on a previous run
+
+        registry.async_update_entity(entity.entity_id, new_unique_id=new_unique_id)
+        migrated += 1
+
+    if migrated:
+        _LOGGER.info("Re-keyed %d child sensors to id-based unique_ids", migrated)
 
 
 def _async_purge_removed_platforms(hass: HomeAssistant, entry: ConfigEntry) -> None:
