@@ -11,6 +11,7 @@ from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.helpers import config_validation as cv
 
 from ..const import DOMAIN, CATEGORIES, FREQUENCIES
+from ..permissions import build_registrar
 from ..models import Task, TaskChildStatus
 
 if TYPE_CHECKING:
@@ -127,6 +128,8 @@ def register_task_services(
     coordinator: KidsTasksDataUpdateCoordinator,
 ) -> None:
     """Register all task-related services."""
+
+    register = build_registrar(hass, coordinator)
 
     async def add_task_service(call: ServiceCall) -> None:
         try:
@@ -314,18 +317,18 @@ def register_task_services(
             _LOGGER.error("Failed to cleanup old entities: %s", e)
             raise
 
-    hass.services.async_register(DOMAIN, SERVICE_ADD_TASK, add_task_service, schema=SERVICE_ADD_TASK_SCHEMA)
-    hass.services.async_register(DOMAIN, SERVICE_COMPLETE_TASK, complete_task_service, schema=SERVICE_COMPLETE_TASK_SCHEMA)
-    hass.services.async_register(DOMAIN, SERVICE_VALIDATE_TASK, validate_task_service, schema=SERVICE_VALIDATE_TASK_SCHEMA)
-    hass.services.async_register(DOMAIN, SERVICE_REJECT_TASK, reject_task_service, schema=SERVICE_REJECT_TASK_SCHEMA)
-    hass.services.async_register(DOMAIN, SERVICE_RESET_TASK, reset_task_service, schema=SERVICE_RESET_TASK_SCHEMA)
-    hass.services.async_register(DOMAIN, SERVICE_UPDATE_TASK, update_task_service, schema=SERVICE_UPDATE_TASK_SCHEMA)
-    hass.services.async_register(DOMAIN, SERVICE_REMOVE_TASK, remove_task_service, schema=SERVICE_REMOVE_TASK_SCHEMA)
-    hass.services.async_register(DOMAIN, SERVICE_SUSPEND_TASK, suspend_task_service, schema=SERVICE_SUSPEND_TASK_SCHEMA)
-    hass.services.async_register(DOMAIN, SERVICE_RESUME_TASK, resume_task_service, schema=SERVICE_RESUME_TASK_SCHEMA)
-    hass.services.async_register(DOMAIN, SERVICE_LIST_TASKS, list_tasks_service)
-    hass.services.async_register(DOMAIN, SERVICE_RESET_ALL_DAILY_TASKS, reset_all_daily_tasks_service)
-    hass.services.async_register(DOMAIN, SERVICE_RESET_ALL_WEEKLY_TASKS, reset_all_weekly_tasks_service)
-    hass.services.async_register(DOMAIN, SERVICE_RESET_ALL_MONTHLY_TASKS, reset_all_monthly_tasks_service)
-    hass.services.async_register(DOMAIN, "reset_penalties", reset_penalties_service, schema=SERVICE_RESET_PENALTIES_SCHEMA)
-    hass.services.async_register(DOMAIN, SERVICE_CLEANUP_OLD_ENTITIES, cleanup_old_entities_service)
+    register(SERVICE_ADD_TASK, add_task_service, schema=SERVICE_ADD_TASK_SCHEMA)
+    register(SERVICE_COMPLETE_TASK, complete_task_service, schema=SERVICE_COMPLETE_TASK_SCHEMA)
+    register(SERVICE_VALIDATE_TASK, validate_task_service, schema=SERVICE_VALIDATE_TASK_SCHEMA)
+    register(SERVICE_REJECT_TASK, reject_task_service, schema=SERVICE_REJECT_TASK_SCHEMA)
+    register(SERVICE_RESET_TASK, reset_task_service, schema=SERVICE_RESET_TASK_SCHEMA)
+    register(SERVICE_UPDATE_TASK, update_task_service, schema=SERVICE_UPDATE_TASK_SCHEMA)
+    register(SERVICE_REMOVE_TASK, remove_task_service, schema=SERVICE_REMOVE_TASK_SCHEMA)
+    register(SERVICE_SUSPEND_TASK, suspend_task_service, schema=SERVICE_SUSPEND_TASK_SCHEMA)
+    register(SERVICE_RESUME_TASK, resume_task_service, schema=SERVICE_RESUME_TASK_SCHEMA)
+    register(SERVICE_LIST_TASKS, list_tasks_service)
+    register(SERVICE_RESET_ALL_DAILY_TASKS, reset_all_daily_tasks_service)
+    register(SERVICE_RESET_ALL_WEEKLY_TASKS, reset_all_weekly_tasks_service)
+    register(SERVICE_RESET_ALL_MONTHLY_TASKS, reset_all_monthly_tasks_service)
+    register("reset_penalties", reset_penalties_service, schema=SERVICE_RESET_PENALTIES_SCHEMA)
+    register(SERVICE_CLEANUP_OLD_ENTITIES, cleanup_old_entities_service)

@@ -9,10 +9,16 @@ from unittest.mock import AsyncMock, MagicMock, patch, call
 # Helpers
 # ---------------------------------------------------------------------------
 
-def make_call(data: dict) -> MagicMock:
-    """Build a minimal ServiceCall-like mock with a data dict."""
+def make_call(data: dict, user_id: str | None = None) -> MagicMock:
+    """Build a minimal ServiceCall-like mock with a data dict.
+
+    ``user_id`` defaults to None, which the permission guard treats as an
+    internal call (automation, script) and lets through — these tests cover
+    handler behaviour, not access control. See test_permissions.py for that.
+    """
     call_mock = MagicMock()
     call_mock.data = data
+    call_mock.context.user_id = user_id
     return call_mock
 
 

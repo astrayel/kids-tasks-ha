@@ -10,6 +10,7 @@ from homeassistant.core import HomeAssistant, ServiceCall, ServiceResponse, Supp
 from homeassistant.helpers import config_validation as cv
 
 from ..const import DOMAIN
+from ..permissions import build_registrar
 from ._child_services import register_child_services
 from ._task_services import register_task_services
 from ._reward_services import register_reward_services
@@ -53,6 +54,8 @@ def _register_system_services(
 ) -> None:
     """Register backup/restore/clear system services."""
 
+    register = build_registrar(hass, coordinator)
+
     async def backup_data_service(call: ServiceCall) -> ServiceResponse:
         """Return the full backup as the service response.
 
@@ -81,12 +84,11 @@ def _register_system_services(
             _LOGGER.error("Failed to clear data: %s", e)
             raise
 
-    hass.services.async_register(
-        DOMAIN,
+    register(
         SERVICE_BACKUP_DATA,
         backup_data_service,
         schema=SERVICE_BACKUP_DATA_SCHEMA,
         supports_response=SupportsResponse.ONLY,
     )
-    hass.services.async_register(DOMAIN, SERVICE_RESTORE_DATA, restore_data_service, schema=SERVICE_RESTORE_DATA_SCHEMA)
-    hass.services.async_register(DOMAIN, SERVICE_CLEAR_ALL_DATA, clear_all_data_service)
+    register(SERVICE_RESTORE_DATA, restore_data_service, schema=SERVICE_RESTORE_DATA_SCHEMA)
+    register(SERVICE_CLEAR_ALL_DATA, clear_all_data_service)

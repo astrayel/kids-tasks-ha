@@ -23,11 +23,15 @@ _LOGGER = logging.getLogger(__name__)
 PLATFORMS: list[Platform] = [
     Platform.SENSOR,
     Platform.BUTTON,
-    Platform.SELECT,
-    Platform.NUMBER,
     Platform.CALENDAR,
     Platform.SWITCH,
 ]
+
+# Platforms this integration used to provide. Their entities wrote straight to
+# the coordinator, bypassing the permission guard entirely — a child could set
+# a task to "validated" or raise its points from the entity UI. They are purged
+# from the registry on setup so no stale, unavailable rows are left behind.
+REMOVED_PLATFORMS: set[str] = {"number", "select"}
 
 @dataclass
 class KidsTasksData:
@@ -46,10 +50,26 @@ async def async_setup_entry(hass: HomeAssistant, entry: KidsTasksConfigEntry) ->
 
     entry.runtime_data = KidsTasksData(coordinator=coordinator)
 
+    _async_purge_removed_platforms(hass, entry)
+
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     await async_setup_services(hass, coordinator)
 
     return True
+
+
+def _async_purge_removed_platforms(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Drop registry entries belonging to platforms we no longer provide."""
+    registry = er.async_get(hass)
+    stale = [
+        entity.entity_id
+        for entity in er.async_entries_for_config_entry(registry, entry.entry_id)
+        if entity.domain in REMOVED_PLATFORMS
+    ]
+    for entity_id in stale:
+        registry.async_remove(entity_id)
+    if stale:
+        _LOGGER.info("Removed %d entities from retired platforms", len(stale))
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: KidsTasksConfigEntry) -> bool:
