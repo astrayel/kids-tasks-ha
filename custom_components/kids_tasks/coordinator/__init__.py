@@ -42,6 +42,7 @@ class KidsTasksDataUpdateCoordinator(
         self.last_monthly_reset = None
 
         self._initialized = False
+        self._storage_loaded = False
         self._reset_lock = asyncio.Lock()
         self._platform_add_entities: dict[str, AddEntitiesCallback] = {}
         self._last_statistics_hour: datetime | None = None

@@ -84,8 +84,16 @@ class TestChildPointsSensor:
     def test_name_includes_child_name(self):
         assert "Alice" in self._sensor().name
 
-    def test_unique_id_is_deterministic(self):
-        assert "alice" in self._sensor()._attr_unique_id
+    def test_unique_id_is_built_from_the_child_id(self):
+        assert self._sensor()._attr_unique_id == "kidtasks_child_c1_points"
+
+    def test_unique_id_does_not_contain_the_child_name(self):
+        """Renaming a child must not orphan their entities and lose history."""
+        assert "alice" not in self._sensor()._attr_unique_id.lower()
+
+    def test_entity_id_still_reads_from_the_name(self):
+        """The visible entity_id stays friendly; only the key is id-based."""
+        assert self._sensor().entity_id == "sensor.kidtasks_alice_points"
 
     def test_extra_attrs_contains_level(self):
         assert self._sensor(points=50, level=2).extra_state_attributes["level"] == 2

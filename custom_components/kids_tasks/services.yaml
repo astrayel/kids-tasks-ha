@@ -259,6 +259,14 @@ validate_task:
       required: true
       selector:
         text:
+    child_id:
+      name: Child ID
+      description: >-
+        Validate for this child only. Leave empty to validate every child
+        currently waiting on this task.
+      required: false
+      selector:
+        text:
 
 reject_task:
   name: Reject Task
@@ -268,6 +276,14 @@ reject_task:
       name: Task ID
       description: Unique identifier of the task to reject
       required: true
+      selector:
+        text:
+    child_id:
+      name: Child ID
+      description: >-
+        Reject for this child only. Leave empty to reset the task for every
+        assigned child.
+      required: false
       selector:
         text:
     reason:
@@ -793,7 +809,9 @@ reset_all_monthly_tasks:
 
 backup_data:
   name: Backup Data
-  description: Create a backup of all kids tasks data
+  description: >-
+    Create a backup of all kids tasks data. Returns the backup as a service
+    response, under the key backup_data — pass it to restore_data to recover.
   fields:
     include_history:
       name: Include History
@@ -828,4 +846,121 @@ list_tasks:
 list_children:
   name: List All Children
   description: List all children with their details (output will be shown in Home Assistant logs)
+  fields: {}
+
+set_points:
+  name: Set Points
+  description: Set a child's points to an exact value (recalculates their level)
+  fields:
+    child_id:
+      name: Child ID
+      description: Unique identifier of the child
+      required: true
+      selector:
+        text:
+    points:
+      name: Points
+      description: New total number of points
+      required: true
+      selector:
+        number:
+          min: 0
+          max: 100000
+          mode: box
+    description:
+      name: Description
+      description: Reason recorded in the child's points history
+      required: false
+      selector:
+        text:
+
+set_coins:
+  name: Set Coins
+  description: Set a child's coins to an exact value
+  fields:
+    child_id:
+      name: Child ID
+      description: Unique identifier of the child
+      required: true
+      selector:
+        text:
+    coins:
+      name: Coins
+      description: New total number of coins
+      required: true
+      selector:
+        number:
+          min: 0
+          max: 100000
+          mode: box
+
+set_level:
+  name: Set Level
+  description: >-
+    Set a child's level to an exact value. Points are recalculated to the
+    threshold of that level.
+  fields:
+    child_id:
+      name: Child ID
+      description: Unique identifier of the child
+      required: true
+      selector:
+        text:
+    level:
+      name: Level
+      description: New level (minimum 1)
+      required: true
+      selector:
+        number:
+          min: 1
+          max: 1000
+          mode: box
+    description:
+      name: Description
+      description: Reason recorded in the child's points history
+      required: false
+      selector:
+        text:
+
+get_child_history:
+  name: Get Child History
+  description: >-
+    Return a child's points history as a service response, newest entry first.
+  fields:
+    child_id:
+      name: Child ID
+      description: Unique identifier of the child
+      required: true
+      selector:
+        text:
+    limit:
+      name: Limit
+      description: Maximum number of entries to return
+      required: false
+      default: 20
+      selector:
+        number:
+          min: 1
+          max: 100
+          mode: box
+    since_date:
+      name: Since Date
+      description: Only return entries at or after this ISO date (YYYY-MM-DD)
+      required: false
+      selector:
+        text:
+    action_type:
+      name: Action Type
+      description: >-
+        Filter on a single action type, e.g. task_validated, task_penalty,
+        reward_claimed or manual_adjustment
+      required: false
+      selector:
+        text:
+
+cleanup_old_entities:
+  name: Cleanup Old Entities
+  description: >-
+    Remove registry entries left behind by children, tasks or rewards that no
+    longer exist
   fields: {}

@@ -5,5 +5,5 @@
   "render_readme": true,
   "zip_release": false,
   "hide_default_branch": false,
-  "homeassistant": "2024.1.0"
+  "homeassistant": "2024.11.0"
 }

@@ -7,10 +7,12 @@ from typing import TYPE_CHECKING
 
 import voluptuous as vol
 
-from homeassistant.core import HomeAssistant, ServiceCall
+from homeassistant.core import HomeAssistant, ServiceCall, ServiceResponse, SupportsResponse
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import config_validation as cv
 
 from ..const import DOMAIN
+from ..permissions import build_registrar
 from ..models import Child
 
 if TYPE_CHECKING:
@@ -155,6 +157,8 @@ def register_child_services(
 ) -> None:
     """Register all child-related services."""
 
+    register = build_registrar(hass, coordinator)
+
     async def add_child_service(call: ServiceCall) -> None:
         child_id = str(uuid.uuid4())
         child = Child(
@@ -241,40 +245,41 @@ def register_child_services(
             _LOGGER.error("Failed to list children: %s", e)
             raise
 
-    async def get_child_history_service(call: ServiceCall) -> None:
+    async def get_child_history_service(call: ServiceCall) -> ServiceResponse:
+        """Return the child's points history as the service response."""
+        child_id = call.data["child_id"]
         try:
             history = await coordinator.async_get_child_history(
-                call.data["child_id"],
+                child_id,
                 call.data.get("limit", 20),
                 call.data.get("since_date"),
                 call.data.get("action_type"),
             )
-            _LOGGER.info(
-                "Retrieved history for child %s: %d entries",
-                call.data["child_id"], len(history),
-            )
-            for entry in history:
-                _LOGGER.info(
-                    "History entry: %s - %s points (%s)",
-                    entry.get("description", "Unknown action"),
-                    entry.get("points_delta", 0),
-                    entry.get("timestamp", "Unknown time"),
-                )
         except Exception as e:
-            _LOGGER.error("Failed to get child history: %s", e)
-            raise
+            _LOGGER.error("Failed to get history for child %s: %s", child_id, e)
+            raise HomeAssistantError(
+                f"Could not read history for child {child_id}: {e}"
+            ) from e
 
-    hass.services.async_register(DOMAIN, SERVICE_ADD_CHILD, add_child_service, schema=SERVICE_ADD_CHILD_SCHEMA)
-    hass.services.async_register(DOMAIN, SERVICE_UPDATE_CHILD, update_child_service, schema=SERVICE_UPDATE_CHILD_SCHEMA)
-    hass.services.async_register(DOMAIN, SERVICE_REMOVE_CHILD, remove_child_service, schema=SERVICE_REMOVE_CHILD_SCHEMA)
-    hass.services.async_register(DOMAIN, SERVICE_ADD_POINTS, add_points_service, schema=SERVICE_ADD_POINTS_SCHEMA)
-    hass.services.async_register(DOMAIN, SERVICE_REMOVE_POINTS, remove_points_service, schema=SERVICE_REMOVE_POINTS_SCHEMA)
-    hass.services.async_register(DOMAIN, SERVICE_SET_POINTS, set_points_service, schema=SERVICE_SET_POINTS_SCHEMA)
-    hass.services.async_register(DOMAIN, SERVICE_SET_COINS, set_coins_service, schema=SERVICE_SET_COINS_SCHEMA)
-    hass.services.async_register(DOMAIN, SERVICE_SET_LEVEL, set_level_service, schema=SERVICE_SET_LEVEL_SCHEMA)
-    hass.services.async_register(DOMAIN, SERVICE_ADD_CURRENCY, add_currency_service, schema=SERVICE_ADD_CURRENCY_SCHEMA)
-    hass.services.async_register(DOMAIN, SERVICE_ADD_COINS, add_coins_service, schema=SERVICE_ADD_COINS_SCHEMA)
-    hass.services.async_register(DOMAIN, SERVICE_REMOVE_COINS, remove_coins_service, schema=SERVICE_REMOVE_COINS_SCHEMA)
-    hass.services.async_register(DOMAIN, SERVICE_ACTIVATE_COSMETIC, activate_cosmetic_service, schema=SERVICE_ACTIVATE_COSMETIC_SCHEMA)
-    hass.services.async_register(DOMAIN, SERVICE_LIST_CHILDREN, list_children_service)
-    hass.services.async_register(DOMAIN, SERVICE_GET_CHILD_HISTORY, get_child_history_service, schema=SERVICE_GET_CHILD_HISTORY_SCHEMA)
+        _LOGGER.debug("Retrieved history for child %s: %d entries", child_id, len(history))
+        return {"child_id": child_id, "count": len(history), "history": history}
+
+    register(SERVICE_ADD_CHILD, add_child_service, schema=SERVICE_ADD_CHILD_SCHEMA)
+    register(SERVICE_UPDATE_CHILD, update_child_service, schema=SERVICE_UPDATE_CHILD_SCHEMA)
+    register(SERVICE_REMOVE_CHILD, remove_child_service, schema=SERVICE_REMOVE_CHILD_SCHEMA)
+    register(SERVICE_ADD_POINTS, add_points_service, schema=SERVICE_ADD_POINTS_SCHEMA)
+    register(SERVICE_REMOVE_POINTS, remove_points_service, schema=SERVICE_REMOVE_POINTS_SCHEMA)
+    register(SERVICE_SET_POINTS, set_points_service, schema=SERVICE_SET_POINTS_SCHEMA)
+    register(SERVICE_SET_COINS, set_coins_service, schema=SERVICE_SET_COINS_SCHEMA)
+    register(SERVICE_SET_LEVEL, set_level_service, schema=SERVICE_SET_LEVEL_SCHEMA)
+    register(SERVICE_ADD_CURRENCY, add_currency_service, schema=SERVICE_ADD_CURRENCY_SCHEMA)
+    register(SERVICE_ADD_COINS, add_coins_service, schema=SERVICE_ADD_COINS_SCHEMA)
+    register(SERVICE_REMOVE_COINS, remove_coins_service, schema=SERVICE_REMOVE_COINS_SCHEMA)
+    register(SERVICE_ACTIVATE_COSMETIC, activate_cosmetic_service, schema=SERVICE_ACTIVATE_COSMETIC_SCHEMA)
+    register(SERVICE_LIST_CHILDREN, list_children_service)
+    register(
+        SERVICE_GET_CHILD_HISTORY,
+        get_child_history_service,
+        schema=SERVICE_GET_CHILD_HISTORY_SCHEMA,
+        supports_response=SupportsResponse.ONLY,
+    )

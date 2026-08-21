@@ -62,6 +62,9 @@ def main():
         print("\nInstallation terminee !")
         print("   1. Redemarrez Home Assistant")
         print("   2. Configurez l'integration dans Parametres -> Integrations")
+        print("   3. Installez les cartes Lovelace, dans un depot separe :")
+        print("      https://github.com/astrayel/kids-tasks-ha-card")
+        print("      (voir INTERFACE_GUIDE.md)")
     except Exception as e:
         print(f"Erreur lors de l'installation : {e}")
         sys.exit(1)

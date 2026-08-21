@@ -39,6 +39,18 @@ def get_safe_child_name(coordinator: KidsTasksDataUpdateCoordinator, child_id: s
     return safe_child_name
 
 
+CHILD_SUFFIXES = ("points_history", "tasks_today", "points", "level")
+
+
+def child_unique_id(child_id: str, suffix: str) -> str:
+    """Stable unique_id for a child's sensor.
+
+    Derived from the child's immutable id, never from their name: renaming a
+    child used to orphan their entities and lose all recorded history.
+    """
+    return f"kidtasks_child_{child_id}_{suffix}"
+
+
 def _child_device_info(coordinator: KidsTasksDataUpdateCoordinator, child_id: str) -> DeviceInfo:
     """Return DeviceInfo for a child profile device."""
     child_data = coordinator.data["children"].get(child_id, {})
@@ -107,7 +119,7 @@ class ChildPointsSensor(CoordinatorEntity, SensorEntity):
         super().__init__(coordinator)
         self.child_id = child_id
         safe_child_name = get_safe_child_name(coordinator, child_id)
-        self._attr_unique_id = f"kidtasks_{safe_child_name}_points"
+        self._attr_unique_id = child_unique_id(child_id, "points")
         self._attr_device_class = None
         self._attr_state_class = SensorStateClass.TOTAL
         self._attr_icon = "mdi:star"
@@ -148,7 +160,12 @@ class ChildPointsSensor(CoordinatorEntity, SensorEntity):
             "avatar_type": child_data.get("avatar_type", "emoji"),
             "avatar_data": child_data.get("avatar_data"),
             "card_gradient_start": child_data.get("card_gradient_start"),
-            "card_gradient_end": child_data.get("card_gradient_end")
+            "card_gradient_end": child_data.get("card_gradient_end"),
+            # Cosmetics the child owns and wears — the cards need both to tell
+            # "bought but not worn" from "not bought yet".
+            "cosmetic_collection": child_data.get("cosmetic_collection", {}),
+            "active_cosmetics": child_data.get("active_cosmetics", {}),
+            "cosmetic_items": child_data.get("cosmetic_items", []),
         }
 
 
@@ -160,7 +177,7 @@ class ChildLevelSensor(CoordinatorEntity, SensorEntity):
         super().__init__(coordinator)
         self.child_id = child_id
         safe_child_name = get_safe_child_name(coordinator, child_id)
-        self._attr_unique_id = f"kidtasks_{safe_child_name}_level"
+        self._attr_unique_id = child_unique_id(child_id, "level")
         self._attr_icon = "mdi:trophy"
         self.entity_id = f"sensor.kidtasks_{safe_child_name}_level"
 
@@ -189,7 +206,7 @@ class ChildTasksCompletedTodaySensor(CoordinatorEntity, SensorEntity):
         super().__init__(coordinator)
         self.child_id = child_id
         safe_child_name = get_safe_child_name(coordinator, child_id)
-        self._attr_unique_id = f"kidtasks_{safe_child_name}_tasks_today"
+        self._attr_unique_id = child_unique_id(child_id, "tasks_today")
         self._attr_icon = "mdi:check-circle"
         self.entity_id = f"sensor.kidtasks_{safe_child_name}_tasks_today"
 
@@ -362,140 +379,6 @@ class ActiveTasksSensor(CoordinatorEntity, SensorEntity):
             if task_data.get("active", True):
                 count += 1
         return count
-
-
-class AllTasksListSensor(CoordinatorEntity, SensorEntity):
-    """Sensor that shows all tasks with their details."""
-
-    def __init__(self, coordinator: KidsTasksDataUpdateCoordinator) -> None:
-        """Initialize the sensor."""
-        super().__init__(coordinator)
-        self._attr_unique_id = f"kidtasks_all_tasks_list"
-        self._attr_icon = "mdi:format-list-bulleted"
-        self.entity_id = f"sensor.kidtasks_all_tasks_list"
-
-    @property
-    def name(self) -> str:
-        """Return the name of the sensor."""
-        return "Liste de Toutes les Tâches"
-
-    @property
-    def native_value(self) -> int:
-        """Return the total number of tasks."""
-        return len(self.coordinator.data.get("tasks", {}))
-
-    @property
-    def extra_state_attributes(self) -> dict[str, Any]:
-        """Return the state attributes with all tasks details."""
-        all_tasks = []
-        
-        for task_id, task_data in self.coordinator.data.get("tasks", {}).items():
-            assigned_child_ids = task_data.get("assigned_child_ids") or []
-
-            child_names = []
-            for cid in assigned_child_ids:
-                name = self.coordinator.data.get("children", {}).get(cid, {}).get("name")
-                if name:
-                    child_names.append(name)
-            child_name = ", ".join(child_names) if child_names else "Non assigné"
-            
-            # Format status for display
-            status_display = {
-                "todo": "À faire",
-                "in_progress": "En cours", 
-                "completed": "Terminé",
-                "pending_validation": "En validation",
-                "validated": "Validé",
-                "failed": "Échoué"
-            }.get(task_data.get("status", "todo"), "Statut inconnu")
-            
-            # Format frequency for display
-            frequency_display = {
-                "daily": "Quotidienne",
-                "weekly": "Hebdomadaire",
-                "monthly": "Mensuelle",
-                "once": "Une fois"
-            }.get(task_data.get("frequency", "daily"), "Inconnue")
-            
-            all_tasks.append({
-                "task_id": task_id,
-                "name": task_data.get("name", "Tâche sans nom"),
-                "description": task_data.get("description", ""),
-                "category": task_data.get("category", "other").title(),
-                "points": task_data.get("points", 0),
-                "frequency": frequency_display,
-                "status": status_display,
-                "assigned_child": child_name,
-                "assigned_child_ids": assigned_child_ids,
-                "validation_required": task_data.get("validation_required", False),
-                "active": task_data.get("active", True),
-                "created_at": task_data.get("created_at"),
-                "last_completed_at": task_data.get("last_completed_at"),
-                "completion_count": task_data.get("completion_count", 0)
-            })
-        
-        # Sort by name for consistent display
-        all_tasks.sort(key=lambda x: x["name"])
-        
-        return {
-            "tasks": all_tasks,
-            "total_count": len(all_tasks),
-            "active_count": sum(1 for task in all_tasks if task["active"]),
-            "completed_today_count": len([
-                task for task in all_tasks
-                if task["last_completed_at"] and
-                task["last_completed_at"].startswith(dt_util.now().strftime("%Y-%m-%d"))
-            ])
-        }
-
-
-class AllRewardsListSensor(CoordinatorEntity, SensorEntity):
-    """Sensor that shows all rewards with their details."""
-
-    def __init__(self, coordinator: KidsTasksDataUpdateCoordinator) -> None:
-        """Initialize the sensor."""
-        super().__init__(coordinator)
-        self._attr_unique_id = f"kidtasks_all_rewards_list"
-        self._attr_icon = "mdi:gift"
-        self.entity_id = f"sensor.kidtasks_all_rewards_list"
-
-    @property
-    def name(self) -> str:
-        """Return the name of the sensor."""
-        return "Liste de Toutes les Récompenses"
-
-    @property
-    def native_value(self) -> int:
-        """Return the total number of rewards."""
-        return len(self.coordinator.data.get("rewards", {}))
-
-    @property
-    def extra_state_attributes(self) -> dict[str, Any]:
-        """Return the state attributes with all rewards details."""
-        all_rewards = []
-        
-        for reward_id, reward_data in self.coordinator.data.get("rewards", {}).items():
-            all_rewards.append({
-                "reward_id": reward_id,
-                "name": reward_data.get("name", "Récompense sans nom"),
-                "description": reward_data.get("description", ""),
-                "cost": reward_data.get("cost", 0),
-                "category": reward_data.get("category", "fun").title(),
-                "active": reward_data.get("active", True),
-                "limited_quantity": reward_data.get("limited_quantity"),
-                "remaining_quantity": reward_data.get("remaining_quantity"),
-                "is_available": reward_data.get("remaining_quantity") is None or reward_data.get("remaining_quantity", 0) > 0,
-            })
-        
-        # Sort by cost for logical display
-        all_rewards.sort(key=lambda x: x["cost"])
-        
-        return {
-            "rewards": all_rewards,
-            "total_count": len(all_rewards),
-            "active_count": sum(1 for reward in all_rewards if reward["active"]),
-            "available_count": sum(1 for reward in all_rewards if reward["is_available"] and reward["active"])
-        }
 
 
 class AllChildrenListSensor(CoordinatorEntity, SensorEntity):
@@ -714,7 +597,7 @@ class ChildPointsHistorySensor(CoordinatorEntity, SensorEntity):
         super().__init__(coordinator)
         self.child_id = child_id
         safe_child_name = get_safe_child_name(coordinator, child_id)
-        self._attr_unique_id = f"kidtasks_{safe_child_name}_points_history"
+        self._attr_unique_id = child_unique_id(child_id, "points_history")
         self._attr_device_class = None
         self._attr_state_class = None
         self._attr_icon = "mdi:history"

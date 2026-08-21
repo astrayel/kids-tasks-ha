@@ -11,7 +11,34 @@ from typing import Any
 
 from homeassistant.util import dt as dt_util
 
-from .const import TASK_STATUS_TODO, FREQUENCY_DAILY, FREQUENCY_NONE
+from .const import (
+    TASK_STATUS_TODO,
+    TASK_STATUS_VALIDATED,
+    TASK_STATUS_NOT_APPLICABLE,
+    FREQUENCY_DAILY,
+    FREQUENCY_NONE,
+)
+
+
+def _now() -> datetime:
+    """Current time in Home Assistant's timezone, always tz-aware."""
+    return dt_util.now()
+
+
+def _parse_dt(value: str | None) -> datetime | None:
+    """Parse a stored timestamp, making it tz-aware.
+
+    Data written before timestamps became timezone-aware is naive; those
+    values are read as Home Assistant local time. Without this, a task
+    holding one naive and one aware timestamp would raise TypeError as soon
+    as the two were compared.
+    """
+    if not value:
+        return None
+    parsed = datetime.fromisoformat(value)
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=dt_util.DEFAULT_TIME_ZONE)
+    return parsed
 
 
 @dataclass
@@ -43,9 +70,9 @@ class TaskChildStatus:
         return cls(
             child_id=data["child_id"],
             status=data.get("status", TASK_STATUS_TODO),
-            completed_at=datetime.fromisoformat(data["completed_at"]) if data.get("completed_at") else None,
-            validated_at=datetime.fromisoformat(data["validated_at"]) if data.get("validated_at") else None,
-            penalty_applied_at=datetime.fromisoformat(data["penalty_applied_at"]) if data.get("penalty_applied_at") else None,
+            completed_at=_parse_dt(data.get("completed_at")),
+            validated_at=_parse_dt(data.get("validated_at")),
+            penalty_applied_at=_parse_dt(data.get("penalty_applied_at")),
             penalty_applied=data.get("penalty_applied", False),
             validation_history=data.get("validation_history", []),
         )
@@ -77,7 +104,7 @@ class Child:
     cosmetic_collection: dict[str, list[str]] = field(default_factory=dict)  # Collection organisée {"type": ["id1", "id2"]}
     active_cosmetics: dict[str, str] = field(default_factory=dict)  # Cosmétiques actifs {"type": "cosmetic_id"}
     points_history: list[PointsHistoryEntry] = field(default_factory=list)  # Historique des 20 dernières modifications
-    created_at: datetime = field(default_factory=datetime.now)
+    created_at: datetime = field(default_factory=_now)
     card_customizations: dict[str, Any] = field(default_factory=dict)  # Personnalisations de la carte enfant
     
     @property
@@ -213,7 +240,7 @@ class Child:
     def _add_to_points_history(self, action_type: str, points_delta: int, description: str, related_entity_id: str = None, related_entity_name: str = None) -> None:
         """Add an entry to the points history and maintain max 20 entries."""
         entry = PointsHistoryEntry(
-            timestamp=datetime.now(),
+            timestamp=_now(),
             action_type=action_type,
             points_delta=points_delta,
             description=description,
@@ -288,7 +315,7 @@ class Child:
             cosmetic_collection=data.get("cosmetic_collection", {}),
             active_cosmetics=data.get("active_cosmetics", {}),
             points_history=[PointsHistoryEntry.from_dict(entry) for entry in data.get("points_history", [])],
-            created_at=datetime.fromisoformat(data.get("created_at", datetime.now().isoformat())),
+            created_at=_parse_dt(data.get("created_at")) or _now(),
             card_customizations=data.get("card_customizations", {}),
         )
 
@@ -307,7 +334,7 @@ class Task:
     status: str = TASK_STATUS_TODO  # Statut global pour compatibilité (sera calculé automatiquement)
     assigned_child_ids: list[str] = field(default_factory=list)  # Liste des IDs d'enfants assignés
     child_statuses: dict[str, TaskChildStatus] = field(default_factory=dict)  # Statuts par enfant
-    created_at: datetime = field(default_factory=datetime.now)
+    created_at: datetime = field(default_factory=_now)
     last_completed_at: datetime | None = None
     due_date: datetime | None = None
     validation_required: bool = True
@@ -339,11 +366,11 @@ class Task:
         
         if validation_required:
             child_status.status = "pending_validation"
-            child_status.completed_at = datetime.now()
+            child_status.completed_at = _now()
         else:
             child_status.status = "validated"
-            child_status.completed_at = datetime.now()
-            child_status.validated_at = datetime.now()
+            child_status.completed_at = _now()
+            child_status.validated_at = _now()
         
         # Update global status and compatibility fields
         self.completed_by_child_id = child_id
@@ -358,7 +385,7 @@ class Task:
         
         child_status = self.child_statuses[child_id]
         if child_status.status == "pending_validation":
-            validation_time = datetime.now()
+            validation_time = _now()
             child_status.status = "validated"
             child_status.validated_at = validation_time
             
@@ -388,12 +415,25 @@ class Task:
         # Count statuses
         statuses = [cs.status for cs in self.child_statuses.values()]
         
+        assigned = [
+            cs for cs in self.child_statuses.values()
+            if cs.child_id in self.assigned_child_ids
+        ]
+
         # If any child has pending validation, task is pending validation
         if "pending_validation" in statuses:
             self.status = "pending_validation"
-        # If all assigned children are validated, task is validated
-        elif all(cs.status == "validated" for cs in self.child_statuses.values() if cs.child_id in self.assigned_child_ids):
-            self.status = "validated"
+        # Nobody owes anything: every assigned child has either earned it or
+        # is not scheduled today.
+        elif assigned and all(
+            cs.status in (TASK_STATUS_VALIDATED, TASK_STATUS_NOT_APPLICABLE)
+            for cs in assigned
+        ):
+            self.status = (
+                TASK_STATUS_NOT_APPLICABLE
+                if all(cs.status == TASK_STATUS_NOT_APPLICABLE for cs in assigned)
+                else TASK_STATUS_VALIDATED
+            )
             # Update last_completed_at to the latest validation
             latest_validation = max(
                 (cs.validated_at for cs in self.child_statuses.values() 
@@ -413,11 +453,31 @@ class Task:
         self.completed_by_child_id = None  # Reset completion info
         # Reset all child statuses
         for child_status in self.child_statuses.values():
-            child_status.status = TASK_STATUS_TODO
-            child_status.completed_at = None
-            child_status.validated_at = None
-            child_status.penalty_applied_at = None
-            child_status.penalty_applied = False
+            self._reset_child_status(child_status)
+
+    def reset_for_child(self, child_id: str) -> bool:
+        """Reset the task for a single child, leaving the others untouched.
+
+        Returns False when the child has no status on this task.
+        """
+        child_status = self.child_statuses.get(child_id)
+        if child_status is None:
+            return False
+
+        self._reset_child_status(child_status)
+        if self.completed_by_child_id == child_id:
+            self.completed_by_child_id = None
+        self._update_global_status()
+        return True
+
+    @staticmethod
+    def _reset_child_status(child_status: TaskChildStatus) -> None:
+        """Clear one child's progress on this task."""
+        child_status.status = TASK_STATUS_TODO
+        child_status.completed_at = None
+        child_status.validated_at = None
+        child_status.penalty_applied_at = None
+        child_status.penalty_applied = False
     
     def get_assigned_child_ids(self) -> list[str]:
         """Get list of assigned child IDs."""
@@ -432,16 +492,17 @@ class Task:
         if not self.deadline_time or self.status != TASK_STATUS_TODO:
             return False
 
-        now = dt_util.now()
-        today = now.date()
+        now = _now()
 
-        # Parse deadline time (format "HH:MM")
+        # Parse deadline time (format "HH:MM") and place it on today, in the
+        # same timezone as "now" so the comparison stays tz-aware throughout.
         try:
             deadline_hour, deadline_minute = map(int, self.deadline_time.split(':'))
-            deadline_datetime = datetime.combine(today, time(deadline_hour, deadline_minute))
-            # Compare as naive datetimes using HA-timezone "now"
-            now_naive = now.replace(tzinfo=None)
-            if now_naive > deadline_datetime and not self.deadline_passed:
+            deadline_datetime = now.replace(
+                hour=deadline_hour, minute=deadline_minute,
+                second=0, microsecond=0,
+            )
+            if now > deadline_datetime and not self.deadline_passed:
                 self.deadline_passed = True
                 return True
         except (ValueError, AttributeError):
@@ -450,8 +511,14 @@ class Task:
         return False
     
     def suspend(self, until_date: datetime | None = None) -> None:
-        """Suspend the task temporarily."""
+        """Suspend the task temporarily.
+
+        A naive end date is read as Home Assistant local time, so callers may
+        pass either form.
+        """
         self.suspended = True
+        if until_date is not None and until_date.tzinfo is None:
+            until_date = until_date.replace(tzinfo=dt_util.DEFAULT_TIME_ZONE)
         self.suspended_until = until_date
     
     def resume(self) -> None:
@@ -462,8 +529,12 @@ class Task:
     def check_suspension_expiry(self) -> bool:
         """Check if suspension has expired and auto-resume if needed."""
         if self.suspended and self.suspended_until:
-            now_naive = dt_util.now().replace(tzinfo=None)
-            if now_naive >= self.suspended_until:
+            # The field may hold a naive value from older data or from direct
+            # construction; read it as local time rather than blowing up.
+            until = self.suspended_until
+            if until.tzinfo is None:
+                until = until.replace(tzinfo=dt_util.DEFAULT_TIME_ZONE)
+            if _now() >= until:
                 self.resume()
                 return True
         return False
@@ -523,13 +594,13 @@ class Task:
             status=data.get("status", TASK_STATUS_TODO),
             assigned_child_ids=data.get("assigned_child_ids", []),
             child_statuses=child_statuses,
-            created_at=datetime.fromisoformat(data["created_at"]),
-            last_completed_at=datetime.fromisoformat(data["last_completed_at"]) if data.get("last_completed_at") else None,
-            due_date=datetime.fromisoformat(data["due_date"]) if data.get("due_date") else None,
+            created_at=_parse_dt(data.get("created_at")) or _now(),
+            last_completed_at=_parse_dt(data.get("last_completed_at")),
+            due_date=_parse_dt(data.get("due_date")),
             validation_required=data.get("validation_required", True),
             active=data.get("active", True),
             suspended=data.get("suspended", False),
-            suspended_until=datetime.fromisoformat(data["suspended_until"]) if data.get("suspended_until") else None,
+            suspended_until=_parse_dt(data.get("suspended_until")),
             weekly_days=data.get("weekly_days"),
             deadline_time=data.get("deadline_time"),
             penalty_points=data.get("penalty_points", 0),
@@ -640,7 +711,7 @@ class PointsHistoryEntry:
     def from_dict(cls, data: dict[str, Any]) -> PointsHistoryEntry:
         """Create from dictionary."""
         return cls(
-            timestamp=datetime.fromisoformat(data["timestamp"]),
+            timestamp=_parse_dt(data.get("timestamp")) or _now(),
             action_type=data["action_type"],
             points_delta=data["points_delta"],
             description=data["description"],

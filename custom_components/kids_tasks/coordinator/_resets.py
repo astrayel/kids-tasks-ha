@@ -6,7 +6,13 @@ from datetime import timedelta
 
 from homeassistant.util import dt as dt_util
 
+from ..const import TASK_STATUS_NOT_APPLICABLE, TASK_STATUS_VALIDATED
+from ..models import TaskChildStatus
+
 _LOGGER = logging.getLogger("custom_components.kids_tasks.coordinator")
+
+# A child owes nothing for a task already earned, or not scheduled that day.
+NO_PENALTY_STATUSES = (TASK_STATUS_VALIDATED, TASK_STATUS_NOT_APPLICABLE)
 
 
 class ResetsMixin:
@@ -78,7 +84,7 @@ class ResetsMixin:
                         child_status = task.get_status_for_child(child_id)
 
                         # Apply penalty if task was not validated by this child
-                        if child_status != "validated":
+                        if child_status not in NO_PENALTY_STATUSES:
                             # Check if penalty was already applied for this period (e.g., deadline penalty)
                             penalty_already_applied = False
                             if child_id in task.child_statuses:
@@ -140,15 +146,19 @@ class ResetsMixin:
             task.reset()
             tasks_reset = True
 
-            # For tasks with weekly_days, only reset if it matches the current day
+            # A daily task restricted to certain weekdays is neither owed nor
+            # earned on the other days. It used to be marked "validated" to
+            # dodge the penalty, which inflated the "tasks done today" counters
+            # and the statistics; not_applicable says what is actually true.
             if frequency == "daily" and task.weekly_days:
-                now = dt_util.now()
-                current_day = now.strftime('%a').lower()
+                current_day = dt_util.now().strftime('%a').lower()
                 if current_day not in task.weekly_days:
                     for child_id in task.get_assigned_child_ids():
-                        if child_id in task.child_statuses:
-                            task.child_statuses[child_id].status = "validated"
-                            task.child_statuses[child_id].validated_at = now
+                        # Create the entry when missing: without it the child
+                        # reads as "todo" and gets charged on the next reset.
+                        if child_id not in task.child_statuses:
+                            task.child_statuses[child_id] = TaskChildStatus(child_id=child_id)
+                        task.child_statuses[child_id].status = TASK_STATUS_NOT_APPLICABLE
                     task._update_global_status()
 
         # Note: Saving is handled by the caller to ensure atomic operations
@@ -168,7 +178,7 @@ class ResetsMixin:
                         child_status = task.get_status_for_child(child_id)
 
                         # Si l'enfant n'a pas validé la tâche, appliquer une pénalité
-                        if child_status != "validated":
+                        if child_status not in NO_PENALTY_STATUSES:
                             # Pour reset manuel: utiliser penalty_points si défini, sinon moitié des points (minimum 1)
                             penalty_points = task.penalty_points if task.penalty_points > 0 else max(1, task.points // 2)
                             old_points = child.points
@@ -226,7 +236,7 @@ class ResetsMixin:
                         child_status = task.get_status_for_child(child_id)
 
                         # Si l'enfant n'a pas validé la tâche, appliquer une pénalité
-                        if child_status != "validated":
+                        if child_status not in NO_PENALTY_STATUSES:
                             # Pour reset manuel: utiliser penalty_points si défini, sinon moitié des points (minimum 1)
                             penalty_points = task.penalty_points if task.penalty_points > 0 else max(1, task.points // 2)
                             old_points = child.points
@@ -284,7 +294,7 @@ class ResetsMixin:
                         child_status = task.get_status_for_child(child_id)
 
                         # Si l'enfant n'a pas validé la tâche, appliquer une pénalité
-                        if child_status != "validated":
+                        if child_status not in NO_PENALTY_STATUSES:
                             # Pour reset manuel: utiliser penalty_points si défini, sinon moitié des points (minimum 1)
                             penalty_points = task.penalty_points if task.penalty_points > 0 else max(1, task.points // 2)
                             old_points = child.points

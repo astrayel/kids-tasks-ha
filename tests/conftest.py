@@ -85,6 +85,9 @@ def coordinator(mock_hass, mock_store):
         coord.last_weekly_reset = None
         coord.last_monthly_reset = None
         coord._initialized = False
+        # Represents a coordinator whose (empty) store has already been read,
+        # so async_save_data() is allowed to write.
+        coord._storage_loaded = True
         coord._reset_lock = asyncio.Lock()
         coord._platform_add_entities = {}
         coord._last_statistics_hour = None

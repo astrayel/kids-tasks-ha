@@ -5,6 +5,61 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 et ce projet adhère au [Versioning Sémantique](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2026-08-16
+
+### Corrigé
+
+#### Perte de données à la mise à jour (BUG-002)
+- `Store.async_load()` vérifie lui-même la version du fichier `.storage` et appelle `_async_migrate_func()`, dont l'implémentation par défaut lève `NotImplementedError`. La migration, placée après `store.async_load()`, n'était donc **jamais atteinte** sur une installation v1 : le chargement échouait, le coordinator repartait vide, et la première sauvegarde écrasait les données.
+- Nouveau module `storage.py` : `KidsTasksStore` implémente la migration là où Home Assistant l'appelle.
+- `async_save_data()` refuse d'écrire tant que le stockage n'a pas été chargé — aucun échec de chargement futur ne peut plus effacer les données.
+
+#### Validation multi-enfants
+- `validate_task` et `reject_task` acceptent un `child_id` : valider un enfant ne valide plus ses frères et sœurs, et ne les crédite plus.
+- Même correction sur `switch.async_turn_off`, qui remettait la tâche à zéro pour tous les enfants assignés.
+
+#### Cartes ↔ intégration
+- Trois services appelés par les cartes n'existaient pas : `equip_cosmetic`, `adjust_points`, `adjust_coins`.
+- `undoTransaction()` et `showGiveCosmeticModal()` étaient appelées sans jamais être définies.
+- La création d'un enfant depuis la carte Manager ne faisait rien : l'appel était en commentaire.
+- Les identifiants de tâches et de récompenses étaient reconstruits depuis l'`entity_id`, où les tirets des UUID sont devenus des underscores — ils ne correspondaient donc à rien.
+- La carte enfant affichait le statut global de la tâche au lieu de celui de l'enfant.
+- Aucune tâche hebdomadaire n'apparaissait au calendrier : la table des jours n'acceptait que `monday`, le modèle stocke `mon`.
+
+#### Divers
+- Six `datetime.now()` naïfs subsistaient dans `models.py`. Tous les horodatages sont désormais tz-aware, les valeurs déjà stockées étant relues comme heure locale.
+- Doublon `async_activate_cosmetic` supprimé.
+- `backup_data` et `get_child_history` renvoient enfin leur résultat (`SupportsResponse.ONLY`) au lieu de le déverser dans le journal.
+
+### Ajouté
+
+#### Contrôle d'accès (`permissions.py`)
+- Quatre régimes : **parent** (administrateur), **enfant** (compte lié via `person_entity_id`, agit pour lui seul), **tablette** (compte partagé listé dans l'option `kiosk_users`, agit pour n'importe quel enfant mais ne valide ni ne touche aux points), **invité** (lecture seule).
+- Les 38 services sont enregistrés via `build_registrar()` : un service non explicitement ouvert est réservé aux parents par défaut.
+- Option `kiosk_users` dans le flux d'options, et masquage des vues parentales côté cartes.
+- `docs/permissions.md`.
+
+#### Statut `not_applicable`
+- Une tâche quotidienne restreinte à certains jours était marquée « validée » les autres jours pour éviter la pénalité, ce qui gonflait les compteurs et les statistiques. Le nouveau statut dit ce qui est vrai et reste exempté de pénalité.
+
+#### Autres
+- Cinq services enregistrés mais absents de `services.yaml` y sont déclarés : `set_points`, `set_coins`, `set_level`, `get_child_history`, `cleanup_old_entities`.
+- Le capteur enfant expose sa collection de cosmétiques et ceux qu'il porte.
+- `docs/dashboards.md` : vues enfant, tablette et parent, exclusion recorder.
+
+### Modifié
+
+- **`unique_id` des capteurs enfants dérivés de `child.id`** et non plus du prénom : renommer un enfant orphelinait ses entités et perdait son historique. Migration du registre incluse.
+- **Plateformes `number`, `select` et `button` retirées.** Les deux premières écrivaient directement dans le coordinator en contournant toute la garde ; la troisième ne créait ses entités qu'au démarrage. Leurs entités résiduelles sont purgées du registre.
+- Intervalle de rafraîchissement porté de 30 s à 60 s.
+- `OptionsFlowWithConfigEntry` (déprécié depuis HA 2024.11) remplacé par `OptionsFlow`.
+- Documentation remise en phase : `INTERFACE_GUIDE.md` décrivait quatre cartes supprimées de ce dépôt.
+
+### Tests
+
+- **290 tests** (contre 174) : stockage et migration, permissions, validation par enfant, statut `not_applicable`, `switch`, `calendar`, `statistics`.
+- Côté cartes, `npm test` vérifie que chaque service `kids_tasks` appelé existe réellement dans `services.yaml`.
+
 ## [2.0.0] - 2026-05-22
 
 ### Ajouté

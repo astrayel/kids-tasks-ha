@@ -12,6 +12,7 @@ from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.helpers import config_validation as cv
 
 from ..const import DOMAIN
+from ..permissions import build_registrar
 from ..models import Reward
 
 if TYPE_CHECKING:
@@ -76,6 +77,8 @@ def register_reward_services(
 ) -> None:
     """Register all reward-related services."""
 
+    register = build_registrar(hass, coordinator)
+
     async def add_reward_service(call: ServiceCall) -> None:
         try:
             cosmetic_data = call.data.get("cosmetic_data")
@@ -133,9 +136,9 @@ def register_reward_services(
             _LOGGER.error("Failed to create cosmetic rewards: %s", e)
             raise
 
-    hass.services.async_register(DOMAIN, SERVICE_ADD_REWARD, add_reward_service, schema=SERVICE_ADD_REWARD_SCHEMA)
-    hass.services.async_register(DOMAIN, SERVICE_CLAIM_REWARD, claim_reward_service, schema=SERVICE_CLAIM_REWARD_SCHEMA)
-    hass.services.async_register(DOMAIN, SERVICE_UPDATE_REWARD, update_reward_service, schema=SERVICE_UPDATE_REWARD_SCHEMA)
-    hass.services.async_register(DOMAIN, SERVICE_REMOVE_REWARD, remove_reward_service, schema=SERVICE_REMOVE_REWARD_SCHEMA)
-    hass.services.async_register(DOMAIN, "load_cosmetics_catalog", load_cosmetics_catalog_service, schema=SERVICE_LOAD_COSMETICS_SCHEMA)
-    hass.services.async_register(DOMAIN, "create_cosmetic_rewards", create_cosmetic_rewards_service, schema=SERVICE_CREATE_COSMETIC_REWARDS_SCHEMA)
+    register(SERVICE_ADD_REWARD, add_reward_service, schema=SERVICE_ADD_REWARD_SCHEMA)
+    register(SERVICE_CLAIM_REWARD, claim_reward_service, schema=SERVICE_CLAIM_REWARD_SCHEMA)
+    register(SERVICE_UPDATE_REWARD, update_reward_service, schema=SERVICE_UPDATE_REWARD_SCHEMA)
+    register(SERVICE_REMOVE_REWARD, remove_reward_service, schema=SERVICE_REMOVE_REWARD_SCHEMA)
+    register("load_cosmetics_catalog", load_cosmetics_catalog_service, schema=SERVICE_LOAD_COSMETICS_SCHEMA)
+    register("create_cosmetic_rewards", create_cosmetic_rewards_service, schema=SERVICE_CREATE_COSMETIC_REWARDS_SCHEMA)
