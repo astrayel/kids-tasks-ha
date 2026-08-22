@@ -1,0 +1,44 @@
+name: Manual Release
+
+# Crée un tag et une release GitHub depuis la branche courante.
+# Déclenchement manuel : Actions → Manual Release → Run workflow.
+# Nécessaire parce que les tags ne peuvent pas toujours être poussés
+# directement ; ici le GITHUB_TOKEN du runner crée le tag côté serveur.
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag à créer (ex. v2.1.0)"
+        required: true
+      prerelease:
+        description: "Marquer comme pré-version"
+        type: boolean
+        default: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extraire les notes du CHANGELOG
+        run: |
+          if [ -f CHANGELOG.md ]; then
+            awk '/^## \[/{c++} c==1' CHANGELOG.md > NOTES.md
+          fi
+          if [ ! -s NOTES.md ]; then
+            echo "Release ${{ github.event.inputs.tag }}" > NOTES.md
+          fi
+
+      - name: Créer la release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.inputs.tag }}
+          PRERELEASE: ${{ github.event.inputs.prerelease }}
+        run: |
+          FLAGS=(--target "$GITHUB_SHA" --title "$TAG" --notes-file NOTES.md)
+          if [ "$PRERELEASE" = "true" ]; then FLAGS+=(--prerelease); fi
+          gh release create "$TAG" "${FLAGS[@]}"
